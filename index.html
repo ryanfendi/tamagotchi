@@ -2,102 +2,155 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Tamagotchi Pixel Pet</title>
+  <title>🐣 Tamagotchi Pixel Pet</title>
   <style>
-    body { text-align:center; font-family:sans-serif; background:#f0f9ff; }
-    canvas { border:2px solid #333; background:#fff; margin-top:10px; }
-    button { margin:5px; padding:10px 15px; border-radius:10px; cursor:pointer; }
+    body {
+      background: #f0f9ff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { color: #333; }
+    #pet {
+      font-size: 64px;
+      margin: 20px;
+      animation: bounce 1s infinite alternate;
+    }
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-20px); }
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #4cafef;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #2196f3; }
+    #leaderboard {
+      margin-top: 20px;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>🐣 Pixel Tamagotchi</h1>
-  <p id="stats"></p>
-  <canvas id="game" width="200" height="200"></canvas><br>
-  <button onclick="feedPet()">🍎 Feed</button>
-  <button onclick="sellPet()">💸 Sell Pet</button>
-  <button onclick="buyPet()">🛒 Buy Pet</button>
+  <h1>🐣 Tamagotchi Pixel Pet</h1>
+  <div id="pet">🐤</div>
+  <p><b>Nama:</b> <span id="nameDisplay"></span></p>
+  <p><b>Level:</b> <span id="level">1</span></p>
+  <p><b>Umur:</b> <span id="age">0</span> hari</p>
+  <p><b>Last Fed:</b> <span id="lastFed">Belum makan</span></p>
+  <button onclick="feedPet()">🍎 Kasih Makan</button>
+  <button onclick="renamePet()">✏️ Ganti Nama</button>
 
-  <script>
-  let canvas = document.getElementById("game");
-  let ctx = canvas.getContext("2d");
+  <div id="leaderboard">
+    <h3>🏆 Leaderboard Pemain</h3>
+    <ul id="leaderboardList"></ul>
+  </div>
 
-  // save data
-  let save = JSON.parse(localStorage.getItem("petSave")) || {
-    name: "Pet001",
-    level: 1,
-    xp: 0,
-    age: 0,
-    lastFed: 0,
-    birthday: Date.now(),
-    owner: "Player-" + Math.floor(Math.random()*1000)
+<script>
+  // Evolusi karakter berdasarkan umur (tiap hari)
+  const evolutions = ["🐤","🐥","🐧","🐔","🐲","🐉","👾","🐼","🦄","🐵"];
+
+  let pet = {
+    name: localStorage.getItem("petName") || prompt("Masukkan nama pet kamu:"),
+    level: parseInt(localStorage.getItem("petLevel")) || 1,
+    age: parseInt(localStorage.getItem("petAge")) || 0,
+    lastFed: localStorage.getItem("petLastFed") || null,
+    lastEvo: localStorage.getItem("petLastEvo") || Date.now()
   };
 
-  // evolusi pet berdasarkan level
-  function drawPet(x){
-    ctx.font = "40px monospace";
-    if(save.level < 3){
-      ctx.fillText("🐤",x,100); // bayi
-    } else if(save.level < 5){
-      ctx.fillText("🐇",x,100); // remaja
-    } else {
-      ctx.fillText("🐉",x,100); // dewasa naga
-    }
+  // Tampilkan nama
+  document.getElementById("nameDisplay").innerText = pet.name;
+
+  // Update UI
+  function updateUI() {
+    document.getElementById("level").innerText = pet.level;
+    document.getElementById("age").innerText = pet.age;
+    document.getElementById("pet").innerText = evolutions[pet.age % evolutions.length];
+    document.getElementById("lastFed").innerText = pet.lastFed ? new Date(pet.lastFed).toLocaleString() : "Belum makan";
+    savePet();
+    updateLeaderboard();
   }
 
-  let dir = 1, posX = 50;
-
-  function loop(){
-    ctx.clearRect(0,0,200,200);
-    posX += dir*2;
-    if(posX>150 || posX<10) dir*=-1;
-    drawPet(posX);
-
-    // update umur
-    let days = Math.floor((Date.now()-save.birthday)/(1000*60*60*24));
-    save.age = days;
-
-    // naik level setiap 7 hari
-    let weeks = Math.floor(days/7)+1;
-    if(weeks > save.level){
-      save.level = weeks;
-    }
-
-    document.getElementById("stats").innerText =
-      `Name: ${save.name} | Age: ${save.age}d | Level: ${save.level} | Owner: ${save.owner}`;
-    
-    localStorage.setItem("petSave",JSON.stringify(save));
-    requestAnimationFrame(loop);
+  // Simpan ke localStorage
+  function savePet() {
+    localStorage.setItem("petName", pet.name);
+    localStorage.setItem("petLevel", pet.level);
+    localStorage.setItem("petAge", pet.age);
+    localStorage.setItem("petLastFed", pet.lastFed);
+    localStorage.setItem("petLastEvo", pet.lastEvo);
   }
-  loop();
 
-  // makan setiap 30 menit
-  function feedPet(){
-    let now = Date.now();
-    if(now - save.lastFed < 30*60*1000){
-      alert("Pet masih kenyang! Tunggu 30 menit lagi.");
+  // Kasih makan (hanya bisa tiap 30 menit)
+  function feedPet() {
+    const now = Date.now();
+    if (pet.lastFed && now - new Date(pet.lastFed).getTime() < 30*60*1000) {
+      alert("🐾 Petmu sudah kenyang! Tunggu 30 menit.");
       return;
     }
-    save.lastFed = now;
-    alert("Yummy! Pet makan dengan lahap 🍎");
+    pet.lastFed = now;
+    alert(pet.name + " makan dengan lahap! 🍎");
+    savePet();
+    updateUI();
   }
 
-  // sistem jual beli sederhana
-  function sellPet(){
-    let id = prompt("Masukkan ID unik untuk jual pet ini:");
-    if(!id) return;
-    localStorage.setItem("market_"+id,JSON.stringify(save));
-    alert("Pet dimasukkan ke pasar dengan ID: "+id);
+  // Ganti nama
+  function renamePet() {
+    let newName = prompt("Masukkan nama baru untuk pet:", pet.name);
+    if (newName) {
+      pet.name = newName;
+      document.getElementById("nameDisplay").innerText = pet.name;
+      savePet();
+      updateLeaderboard();
+    }
   }
 
-  function buyPet(){
-    let id = prompt("Masukkan ID pet yang ingin dibeli:");
-    let pet = JSON.parse(localStorage.getItem("market_"+id));
-    if(!pet){ alert("Pet tidak ditemukan di pasar!"); return; }
-    save = pet;
-    save.owner = "Player-" + Math.floor(Math.random()*1000);
-    localStorage.setItem("petSave",JSON.stringify(save));
-    alert("Berhasil membeli pet dengan ID: "+id);
+  // Evolusi otomatis tiap 1 hari sekali
+  setInterval(() => {
+    let now = Date.now();
+    if (now - pet.lastEvo >= 24*60*60*1000) {
+      pet.age++;
+      pet.level++;
+      pet.lastEvo = now;
+      alert("🎉 " + pet.name + " berevolusi ke bentuk baru!");
+      updateUI();
+    }
+  }, 60000); // cek tiap 1 menit (untuk simulasi di Google Sites)
+
+  // Leaderboard menggunakan localStorage
+  function updateLeaderboard() {
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    // update data pemain
+    let existing = leaderboard.find(p => p.name === pet.name);
+    if (existing) {
+      existing.level = pet.level;
+      existing.age = pet.age;
+    } else {
+      leaderboard.push({ name: pet.name, level: pet.level, age: pet.age });
+    }
+    leaderboard.sort((a,b) => b.level - a.level || b.age - a.age);
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+
+    // tampilkan
+    let list = document.getElementById("leaderboardList");
+    list.innerHTML = "";
+    leaderboard.forEach(p => {
+      let li = document.createElement("li");
+      li.innerText = `${p.name} - Level ${p.level} (Umur: ${p.age} hari)`;
+      list.appendChild(li);
+    });
   }
-  </script>
+
+  // Jalankan pertama kali
+  updateUI();
+
+</script>
 </body>
 </html>
