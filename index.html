@@ -1,359 +1,162 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pixel Tamagotchi — Multiplayer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamagotchi Pixel++ Ekspresi</title>
 <style>
-  :root{--bg:#071726;--panel:#0f1724;--accent:#06b6d4}
-  body{margin:0;min-height:100vh;background:linear-gradient(180deg,var(--bg),#04202a);color:#e6eef6;font-family:Inter,system-ui,Arial;}
-  .wrap{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:420px 1fr;gap:16px;padding:14px}
-  .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-  canvas{image-rendering:pixelated;background:#08121a;border-radius:8px;display:block;margin:8px auto}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
-  button{background:linear-gradient(180deg,var(--accent),#0891b2);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
-  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#e6eef6}
-  .muted{color:#9fb3b5;font-size:13px}
-  #marketList, #leaderboard{max-height:300px;overflow:auto;padding:6px}
-  .market-item{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+    body {
+        background: linear-gradient(135deg, #89cff0, #ffffff);
+        font-family: 'Press Start 2P', cursive;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+    }
+    h1 {
+        color: #333;
+        font-size: 22px;
+        margin-bottom: 10px;
+    }
+    .pet-container {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        background: #fefefe;
+        border: 6px solid #333;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .pet-wrapper {
+        animation: idle 3s infinite;
+        position: relative;
+    }
+    .pet-base {
+        width: 96px;
+        height: 96px;
+        image-rendering: pixelated;
+        background-size: cover;
+    }
+    @keyframes idle {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+    .stats {
+        margin-top: 10px;
+        font-size: 14px;
+    }
+    .buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    button {
+        font-size: 12px;
+        padding: 8px 12px;
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    button:hover {
+        background: #555;
+    }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <!-- Left: Game view -->
-    <div class="card">
-      <h2>🐣 Pixel Tamagotchi — Multiplayer</h2>
-
-      <div style="text-align:center">
-        <canvas id="petCanvas" width="100" height="100" style="width:320px;height:320px"></canvas>
-      </div>
-
-      <div class="controls">
-        <input id="nameInput" placeholder="Nama pemain (unik)" style="padding:6px;border-radius:6px;border:0">
-        <button id="loginBtn">Start / Login</button>
-        <label style="display:flex;gap:8px;align-items:center"><input id="devChk" type="checkbox"> DEV</label>
-      </div>
-
-      <div class="controls">
-        <button id="feedBtn">🍎 Feed</button>
-        <button id="evolveBtn" class="ghost">✨ Force Evolve</button>
-        <button id="exportBtn" class="ghost">⬇ Export Skin</button>
-      </div>
-
-      <div style="margin-top:10px" class="muted">
-        Status: <span id="statusText">—</span><br>
-        HP: <span id="hpText">100</span>/100 • Stage: <span id="stageText">0</span> • Level: <span id="levelText">1</span><br>
-        Last feed: <span id="lastFeedText">—</span>
-      </div>
+    <h1>Tamagotchi Pixel++</h1>
+    <div class="pet-container">
+        <div class="pet-wrapper">
+            <div class="pet-base" id="pet"></div>
+        </div>
+    </div>
+    <div class="stats" id="stats">❤️: 100 | 🍖: 100 | 🙂</div>
+    <div class="buttons">
+        <button onclick="feed()">Beri Makan</button>
+        <button onclick="play()">Main</button>
+        <button onclick="sleep()">Tidur</button>
     </div>
 
-    <!-- Right: Marketplace + Leaderboard -->
-    <div class="card">
-      <h3>🏪 Marketplace (global)</h3>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input id="saleId" placeholder="sale id unik" style="padding:6px;border-radius:6px;border:0;flex:1">
-        <button id="postSaleBtn">Post Sale</button>
-      </div>
-      <div id="marketList"></div>
-
-      <h3 style="margin-top:12px">🏆 Leaderboard</h3>
-      <div id="leaderboard"></div>
-
-      <div style="margin-top:12px" class="muted">
-        Server: <input id="serverUrl" placeholder="https://your-repl-url" style="padding:6px;border-radius:6px;border:0;width:60%">
-        <button id="connectBtn" class="ghost">Connect</button>
-        <div style="margin-top:6px">Keterangan: setelah connect, marketplace & leaderboard sinkron global (semua player terhubung ke server yang sama).</div>
-      </div>
-    </div>
-  </div>
-
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-/* Frontend multiplayer Tamagotchi
-   - 100x100 pixel sprites (procedural presets)
-   - animation (walk sway + jump when fed)
-   - feed rules maintained client-side; marketplace + leaderboard via Socket.IO global server
-   - To run global: deploy server code (see server.js) and put its URL into "serverUrl" and click Connect.
-*/
+const pet = document.getElementById("pet");
+const stats = document.getElementById("stats");
 
-// ---------- CONFIG ----------
-let SERVER_URL = ''; // set via UI
-let socket = null;
-let DEV = false;
-const TIM = { FEED_INTERVAL: 4*60*60*1000, DAY_MS: 24*60*60*1000, WEEK_MS: 7*24*60*60*1000 };
-const DEV_TIM = { FEED_INTERVAL: 60*1000, DAY_MS: 30*1000, WEEK_MS: 7*30*1000 };
-let timings = TIM;
+// Sprite URL (bisa diganti dengan gambar custom)
+const sprites = {
+    happy: "https://i.ibb.co/9qHLr7z/pet-happy.png",
+    sad: "https://i.ibb.co/rcX3xw8/pet-hungry.png",
+    sick: "https://i.ibb.co/pdh8JMy/pet-sick.png",
+    angry: "https://i.ibb.co/gvH5xn7/pet-angry.png",
+    sleep: "https://i.ibb.co/jWkpR2w/pet-sleep.png"
+};
 
-// ---------- STATE ----------
-let player = null; // will hold {name, createdAt, level, pet:{alive,evoIndex,ageDays,feedTimestamps,lastFeed}}
-let anim = { t:0, mode:'idle' };
+let data = JSON.parse(localStorage.getItem("tamagotchi")) || {
+    health: 100,
+    hunger: 100,
+    sleeping: false
+};
 
-// ---------- PIXEL SPRITES (3 presets 100x100 procedural) ----------
-const canvas = document.getElementById('petCanvas');
-const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
-
-function makeImageDataFromPainter(painter){
-  const img = ctx.createImageData(100,100);
-  const data = img.data;
-  for(let y=0;y<100;y++){
-    for(let x=0;x<100;x++){
-      const idx = (y*100 + x)*4;
-      const col = painter(x,y);
-      data[idx] = col[0]; data[idx+1] = col[1]; data[idx+2] = col[2]; data[idx+3] = 255;
-    }
-  }
-  return img;
-}
-
-function painterStage0(x,y){
-  // cute chick-ish shading
-  const cx=50, cy=48;
-  const dx=x-cx, dy=y-cy;
-  const d = Math.sqrt(dx*dx+dy*dy);
-  const base = [255,214,107];
-  const shade = Math.max(0.45, 1 - d/60);
-  return [Math.round(base[0]*shade + Math.random()*6), Math.round(base[1]*shade + Math.random()*6), Math.round(base[2]*shade + Math.random()*3)];
-}
-function painterStage1(x,y){
-  const cx=50, cy=48;
-  const dx=x-cx, dy=y-cy;
-  const d = Math.sqrt(dx*dx+dy*dy);
-  const base=[155,231,255];
-  const shade = Math.max(0.45, 1 - d/62);
-  return [Math.round(base[0]*shade + Math.random()*6), Math.round(base[1]*shade + Math.random()*6), Math.round(base[2]*shade + Math.random()*6)];
-}
-function painterStage2(x,y){
-  const cx=50, cy=48;
-  const dx=x-cx, dy=y-cy;
-  const d = Math.sqrt(dx*dx+dy*dy);
-  const base=[255,184,107];
-  const shade = Math.max(0.45, 1 - d/65);
-  return [Math.round(base[0]*shade + Math.random()*8), Math.round(base[1]*shade + Math.random()*6), Math.round(base[2]*shade + Math.random()*4)];
-}
-
-const SPRITES = [
-  makeImageDataFromPainter(painterStage0),
-  makeImageDataFromPainter(painterStage1),
-  makeImageDataFromPainter(painterStage2)
-];
-
-// draw helpers
-function drawSprite(imgData, offsetX=0, offsetY=0, jumpOffset=0){
-  ctx.putImageData(imgData, Math.round((canvas.width-100)/2 + offsetX), Math.round((canvas.height-100)/2 - jumpOffset + offsetY));
-  // eyes / small features (drawn on top)
-  const px = Math.round((canvas.width-100)/2 + offsetX);
-  const py = Math.round((canvas.height-100)/2 - jumpOffset + offsetY);
-  // simple eyes
-  ctx.fillStyle = '#0b1a2b';
-  ctx.fillRect(px+36, py+42, 6, 6);
-  ctx.fillRect(px+58, py+42, 6, 6);
-  // small highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillRect(px+38, py+44, 2, 2);
-}
-
-// ---------- ANIMATION LOOP ----------
-function animLoop(){
-  requestAnimationFrame(animLoop);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(!player || !player.pet){ // no pet yet
-    ctx.fillStyle = '#09151a'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#9fb3b5'; ctx.font='10px monospace';
-    ctx.fillText('Login untuk memulai', 10, 20);
-    return;
-  }
-  anim.t++;
-  const sway = Math.sin(anim.t/12)*6;
-  let jump = 0;
-  if(anim.mode === 'jump'){ jump = Math.abs(Math.sin(anim.t/8))*22; if(anim.t>20) { anim.mode='idle'; anim.t=0; } }
-  const evo = Math.min(player.pet.evoIndex || 0, SPRITES.length-1);
-  drawSprite(SPRITES[evo], sway, 0, jump);
-}
-
-// ---------- UI bindings ----------
-document.getElementById('loginBtn').addEventListener('click', ()=>{
-  const name = (document.getElementById('nameInput').value||'').trim();
-  if(!name) return alert('Masukkan nama pemain!');
-  DEV = document.getElementById('devChk').checked;
-  timings = DEV ? DEV_TIM : TIM;
-  // create or load player from localStorage
-  const store = JSON.parse(localStorage.getItem('tama_players_v4')||'{}');
-  if(!store[name]) store[name] = { name, createdAt: Date.now(), level:1, pet:{ alive:true, evoIndex:0, ageDays:0, feedTimestamps:[], lastFeed:null } };
-  player = store[name];
-  localStorage.setItem('tama_players_v4', JSON.stringify(store));
-  renderStatus();
-  alert('Welcome, ' + name);
-});
-
-// feed
-document.getElementById('feedBtn').addEventListener('click', ()=>{
-  if(!player) return alert('Login dulu!');
-  const now = Date.now();
-  if(player.pet.lastFeed && now - player.pet.lastFeed < timings.FEED_INTERVAL){
-    alert('Pet baru saja makan. Tunggu: ' + msToStr(timings.FEED_INTERVAL - (now - player.pet.lastFeed)));
-    return;
-  }
-  player.pet.lastFeed = now;
-  player.pet.feedTimestamps = player.pet.feedTimestamps || [];
-  player.pet.feedTimestamps.push(now);
-  anim.mode = 'jump'; anim.t = 0;
-  playFeedSound();
-  persistPlayer();
-  renderStatus();
-});
-
-// force evolve
-document.getElementById('evolveBtn').addEventListener('click', ()=>{
-  if(!player) return alert('Login dulu!');
-  player.pet.evoIndex = (player.pet.evoIndex||0) + 1;
-  playEvolveSound();
-  persistPlayer();
-  renderStatus();
-});
-
-// export skin (download current evo stage as png)
-document.getElementById('exportBtn').addEventListener('click', ()=>{
-  if(!player) return alert('Login dulu!');
-  const evo = Math.min(player.pet.evoIndex||0, SPRITES.length-1);
-  const tmp = document.createElement('canvas'); tmp.width=100; tmp.height=100;
-  tmp.getContext('2d').putImageData(SPRITES[evo], 0, 0);
-  const a = document.createElement('a'); a.href = tmp.toDataURL('image/png'); a.download = `${player.name}-stage${evo}.png`; a.click();
-});
-
-// connect to server
-document.getElementById('connectBtn').addEventListener('click', ()=>{
-  const url = (document.getElementById('serverUrl').value||'').trim();
-  if(!url) return alert('Masukkan URL server Replit (https://...)');
-  SERVER_URL = url;
-  connectSocket();
-});
-
-// post sale
-document.getElementById('postSaleBtn').addEventListener('click', ()=>{
-  const id = (document.getElementById('saleId').value||'').trim();
-  if(!id) return alert('Masukkan sale ID unik');
-  if(!player || !player.pet) return alert('Login dulu');
-  if(!socket) return alert('Belum connect ke server');
-  const sale = { id, seller: player.name, pet: player.pet, postedAt: Date.now() };
-  socket.emit('postSale', sale);
-});
-
-// ---------- Socket.IO ----------
-function connectSocket(){
-  if(!SERVER_URL) return;
-  if(socket) socket.disconnect();
-  socket = io(SERVER_URL, { transports:['websocket','polling'] });
-  socket.on('connect', ()=> { console.log('connected to server'); alert('Connected to server'); socket.emit('hello', { name: player?player.name:null }); });
-  socket.on('marketUpdate', buildMarketUI);
-  socket.on('leaderUpdate', buildLeaderboardUI);
-  socket.on('disconnect', ()=> console.log('disconnected'));
-  // on buy success (server may broadcast)
-  socket.on('bought', (info)=> { alert(`Pet ${info.id} bought by ${info.buyer}`); });
-  // request initial data
-  socket.emit('getState');
-}
-
-// buy marketplace item (client UI calls this)
-function buyItem(id){
-  if(!socket) return alert('Not connected to server');
-  socket.emit('buy', { id, buyer: player.name });
-}
-
-// ---------- MARKET & LEADER UI ----------
-function buildMarketUI(list){
-  const out = document.getElementById('marketList');
-  out.innerHTML = '';
-  (list||[]).forEach(item=>{
-    const el = document.createElement('div'); el.className='market-item';
-    el.innerHTML = `<div><strong>${item.id}</strong> — seller:${item.seller} • evo:${item.pet.evoIndex||0} • age:${item.pet.ageDays||0}d</div>`;
-    const right = document.createElement('div');
-    const btn = document.createElement('button'); btn.textContent='Buy'; btn.onclick = ()=> buyItem(item.id);
-    right.appendChild(btn);
-    el.appendChild(right);
-    out.appendChild(el);
-  });
-}
-function buildLeaderboardUI(list){
-  const out = document.getElementById('leaderboard');
-  out.innerHTML = '';
-  (list||[]).forEach((p,i)=>{ const d = document.createElement('div'); d.textContent = `${i+1}. ${p.name} — Lv ${p.level} • ${p.pet? (p.pet.ageDays||0)+'d' : 'no pet'}`; out.appendChild(d); });
-}
-
-// ---------- persistence & daily check ----------
-function persistPlayer(){
-  const store = JSON.parse(localStorage.getItem('tama_players_v4')||'{}');
-  store[player.name] = player;
-  localStorage.setItem('tama_players_v4', JSON.stringify(store));
-  // if connected, push to server leaderboard
-  if(socket && socket.connected) socket.emit('updatePlayer', { name: player.name, level: player.level, pet: player.pet });
-}
-
-function loadPlayer(name){
-  const store = JSON.parse(localStorage.getItem('tama_players_v4')||'{}');
-  return store[name] || null;
-}
-
-// periodic daily rollover check (requires timing per timings.DAY_MS)
-setInterval(()=>{
-  if(!player) return;
-  const now = Date.now();
-  const today = new Date(now).toDateString();
-  if(player.lastDailyChecked !== today){
-    // previous day window
-    const prevStart = new Date(now - timings.DAY_MS); prevStart.setHours(0,0,0,0);
-    const prevEnd = prevStart.getTime() + timings.DAY_MS;
-    const feeds = (player.pet.feedTimestamps||[]).filter(t=> t >= prevStart.getTime() && t < prevEnd).length;
-    if(feeds < 3){
-      if(player.pet) player.pet.alive = false;
-      alert('Pet mati karena tidak makan minimal 3x pada hari sebelumnya ('+feeds+'x). Reset diperlukan.');
+function updatePet() {
+    let emoji = "🙂";
+    if (data.sleeping) {
+        pet.style.backgroundImage = `url('${sprites.sleep}')`;
+        emoji = "💤";
+    } else if (data.hunger < 20 && data.health < 20) {
+        pet.style.backgroundImage = `url('${sprites.angry}')`;
+        emoji = "😡";
+    } else if (data.hunger < 40) {
+        pet.style.backgroundImage = `url('${sprites.sad}')`;
+        emoji = "😢";
+    } else if (data.health < 40) {
+        pet.style.backgroundImage = `url('${sprites.sick}')`;
+        emoji = "🤢";
     } else {
-      if(player.pet){ player.pet.ageDays = (player.pet.ageDays||0) + 1; player.pet.evoIndex = Math.min(player.pet.ageDays, SPRITES.length-1); }
-      // level (weeks)
-      player.level = Math.floor((Date.now() - player.createdAt) / timings.WEEK_MS) + 1;
-      playLevelSoundIfChanged();
+        pet.style.backgroundImage = `url('${sprites.happy}')`;
+        emoji = "😊";
     }
-    player.lastDailyChecked = today;
-    persistPlayer();
-    renderStatus();
-  }
-}, 2000);
 
-// level up sound detection
-let lastLevelSeen = null;
-function playLevelSoundIfChanged(){
-  if(lastLevelSeen === null) lastLevelSeen = player.level;
-  if(player.level > lastLevelSeen){ playLevelSound(); lastLevelSeen = player.level; }
+    stats.textContent = `❤️: ${data.health} | 🍖: ${data.hunger} | ${emoji}`;
+    localStorage.setItem("tamagotchi", JSON.stringify(data));
 }
 
-// ---------- sounds (WebAudio simple) ----------
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const audioCtx = AudioCtx ? new AudioCtx() : null;
-function playTone(freq, dur=0.12, type='sine', vol=0.08){
-  if(!audioCtx) return;
-  const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-  o.type = type; o.frequency.value = freq; g.gain.value = vol;
-  o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>o.stop(), dur*1000);
-}
-function playFeedSound(){ playTone(900,0.07,'triangle',0.09); setTimeout(()=>playTone(1200,0.06,'sine',0.06),90); }
-function playEvolveSound(){ playTone(620,0.18,'sine',0.12); setTimeout(()=>playTone(880,0.12,'sine',0.12),140); }
-function playLevelSound(){ playTone(1200,0.18,'sine',0.14); setTimeout(()=>playTone(1600,0.12,'sine',0.12),120); }
-
-// helpers
-function msToStr(ms){ if(ms<=0) return '0s'; const s=Math.floor(ms/1000); const m=Math.floor(s/60); const h=Math.floor(m/60); if(h>0) return `${h}h${m%60}m`; if(m>0) return `${m}m${s%60}s`; return `${s}s`; }
-
-function renderStatus(){
-  if(!player) return;
-  document.getElementById('statusText').innerText = player.pet.alive ? 'Hidup' : 'Mati';
-  document.getElementById('hpText').innerText = player.pet.hp || 100;
-  document.getElementById('stageText').innerText = player.pet.evoIndex || 0;
-  document.getElementById('levelText').innerText = player.level || 1;
-  document.getElementById('lastFeedText').innerText = player.pet.lastFeed ? new Date(player.pet.lastFeed).toLocaleString() : '—';
+function feed() {
+    if (!data.sleeping) {
+        data.hunger = Math.min(100, data.hunger + 20);
+    }
+    updatePet();
 }
 
-// initial animation start
-animLoop();
+function play() {
+    if (!data.sleeping) {
+        data.health = Math.min(100, data.health + 10);
+        data.hunger = Math.max(0, data.hunger - 5);
+    }
+    updatePet();
+}
 
+function sleep() {
+    data.sleeping = !data.sleeping;
+    updatePet();
+}
+
+// Penurunan otomatis
+setInterval(() => {
+    if (!data.sleeping) {
+        data.hunger = Math.max(0, data.hunger - 1);
+        data.health = Math.max(0, data.health - (data.hunger === 0 ? 2 : 0));
+    }
+    updatePet();
+}, 3000);
+
+updatePet();
 </script>
 </body>
 </html>
