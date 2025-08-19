@@ -1,104 +1,232 @@
-<!DOCTYPE html><html lang="id">
+<!DOCTYPE html>
+<html lang="id">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tamagotchi Pixel + Marketplace Offline</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tamagotchi Pixel v3</title>
 <style>
-  :root{
-    --bg:#0b1220; --card:#0f1724; --accent:#10b981; --muted:#9fb3b5;
-  }
-  body{
-    margin:0; font-family:system-ui; color:#e6eef6;
-    background:linear-gradient(180deg,#071726,#06202a);
-  }
-  .wrap{max-width:960px;margin:20px auto;display:grid;grid-template-columns:480px 1fr;gap:16px;padding:12px}
-  .panel{background:#0f1724;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.05)}
-  canvas{display:block;margin:12px auto;background:#08121a;border-radius:8px;image-rendering:pixelated}
-  h1{margin-top:0;font-size:18px}
-  button{background:var(--accent);border:0;padding:6px 10px;border-radius:6px;font-weight:bold;cursor:pointer;color:#042018}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .small{font-size:13px;color:var(--muted)}
-  .market-item{border-bottom:1px solid rgba(255,255,255,0.1);padding:6px 0}
-  input[type=text]{padding:6px;border-radius:6px;border:0;width:120px}
-  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  body { background:#08121a; color:#e6eef6; font-family:monospace; margin:0; padding:16px; }
+  h1 { font-size:18px; margin:0 0 10px; }
+  .wrap { display:grid; grid-template-columns:320px 1fr; gap:16px; }
+  canvas { background:#0f1724; display:block; margin:auto; image-rendering:pixelated; }
+  button { background:#10b981; border:none; padding:6px 10px; margin:4px; border-radius:6px; cursor:pointer; font-weight:bold; }
+  input[type=text], input[type=number] { padding:6px; border-radius:4px; border:none; width:120px; }
+  .panel { background:#0f1724; padding:10px; border-radius:10px; }
+  .small { font-size:13px; color:#9fb3b5; }
+  #marketList, #inventory { max-height:150px; overflow:auto; font-size:13px; }
+  .market-item, .inv-item { background:#111a22; padding:6px; border-radius:6px; margin-bottom:6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>🐣 Tamagotchi Pixel</h1>
-    <canvas id="canvas" width="128" height="128" style="width:256px;height:256px"></canvas>
-    <div class="controls">
-      <input id="nameInput" type="text" placeholder="Nama player" />
-      <button id="startBtn">Login</button>
+    <h1>🐣 Tamagotchi Pixel v3</h1>
+    <canvas id="canvas" width="128" height="128" style="width:256px;height:256px;"></canvas>
+    <div style="text-align:center;margin-top:10px;">
+      <input id="nameInput" type="text" placeholder="Nama pemain" />
+      <button id="startBtn">Start</button>
     </div>
-    <div class="controls">
+    <div style="text-align:center;margin-top:10px;">
       <button id="feedBtn">🍎 Feed</button>
       <button id="sleepBtn">💤 Sleep</button>
-      <button id="sellBtn">💱 Jual</button>
     </div>
-    <div style="margin-top:8px" class="small">
-      Status: <span id="statusText">-</span> | Coin: <span id="coinText">0</span>
-    </div>
-    <div style="margin-top:6px" class="small">
-      Inventory: <span id="invText">-</span>
-    </div>
-    <div id="log" class="small" style="margin-top:10px;min-height:30px"></div>
+    <div style="margin-top:10px;">Coin: <span id="coinText">0</span></div>
+    <div class="small">Status: <span id="statusText">-</span></div>
+    <h3>Inventory</h3>
+    <div id="inventory"></div>
   </div>
+  
   <div class="panel">
-    <h2 style="margin-top:0">Marketplace</h2>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="saleId" type="text" placeholder="id unik" />
-      <input id="salePrice" type="text" placeholder="harga" />
-      <button id="postSaleBtn">Post Jual</button>
+    <h2 style="font-size:16px;margin:0;">Marketplace</h2>
+    <div>
+      <h4>Toko NPC</h4>
+      <div class="market-item">🍎 Food (10💰) <button onclick="buyFromNPC('food')">Beli</button></div>
+      <div class="market-item">🧸 Toy (15💰) <button onclick="buyFromNPC('toy')">Beli</button></div>
+      <div class="market-item">💊 Medicine (25💰) <button onclick="buyFromNPC('medicine')">Beli</button></div>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="buyId" type="text" placeholder="id beli" />
-      <button id="doBuyBtn">Beli</button>
-    </div>
-    <div id="marketList" style="max-height:260px;overflow:auto;font-size:14px"></div>
+    <h4>Market Player</h4>
+    <input id="saleId" type="text" placeholder="ID jual" />
+    <input id="salePrice" type="number" placeholder="Harga" />
+    <button onclick="postItemSale()">Post Item</button>
+    <div id="marketList"></div>
   </div>
 </div>
+
 <script>
-const CANVAS=document.getElementById('canvas');
-const CTX=CANVAS.getContext('2d');
-CTX.imageSmoothingEnabled=false;const nameInput=document.getElementById('nameInput'); const startBtn=document.getElementById('startBtn'); const feedBtn=document.getElementById('feedBtn'); const sleepBtn=document.getElementById('sleepBtn'); const sellBtn=document.getElementById('sellBtn'); const logEl=document.getElementById('log'); const statusText=document.getElementById('statusText'); const coinText=document.getElementById('coinText'); const invText=document.getElementById('invText'); const postSaleBtn=document.getElementById('postSaleBtn'); const saleIdInput=document.getElementById('saleId'); const salePriceInput=document.getElementById('salePrice'); const buyIdInput=document.getElementById('buyId'); const doBuyBtn=document.getElementById('doBuyBtn'); const marketListEl=document.getElementById('marketList');
+// ====== DATA STORAGE ======
+const CANVAS = document.getElementById('canvas');
+const CTX = CANVAS.getContext('2d');
+CTX.imageSmoothingEnabled = false;
 
-const PLAYERS_KEY='tama_players_v3'; const MARKET_KEY='tama_market_v3';
+let players = JSON.parse(localStorage.getItem('tama_players_v5')||'{}');
+let market = JSON.parse(localStorage.getItem('tama_market_v5')||'{}');
 
-let players=load(PLAYERS_KEY)||{}; let market=load(MARKET_KEY)||{}; let current=null; let anim={frame:0,mode:'idle',t:0};
+function savePlayers(){ localStorage.setItem('tama_players_v5', JSON.stringify(players)); }
+function saveMarket(){ localStorage.setItem('tama_market_v5', JSON.stringify(market)); }
 
-function load(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch(e){return{}}} function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+let currentPlayer=null;
+let mood="idle";
+let posX=32, dir=1, jumpY=0;
+let blinkTimer=0;
 
-function makePlayer(name){return{name,coin:100,inv:{apple:3},pet:{alive:true,mood:'idle',age:0}}}
+// ===== SPRITES =====
+const SPRITES={
+  idle:["................","....XXXX........","...XXXXXX.......","..XXXXXXXX......","..XX....XX......","..XX.XX.XX......","..XX....XX......","..XXXXXXXX......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
+  happy:["................","....XXXX........","...X..X.X.......","..X.XX.XX.......","..X      X......","..X .XX. X......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...X.XX.X.......","....X..X........","................","................","................","................","................"],
+  hungry:["................","....XXXX........","...X..X.X.......","..X.XX.XX.......","..X  oo X.......","..X  oo X.......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
+  sad:["................","....XXXX........","...X..X.X.......","..X.XX.XX.......","..X  -- X.......","..X      X......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
+  angry:["................","....XXXX........","...X><X><.......","..X.XX.XX.......","..X  __ X.......","..X      X......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
+  sleep:["................","....ZZZZ........","...Z    Z.......","..Z  --  Z......","..Z      Z......","..Z      Z......","..Z      Z......","..Z  ZZ  Z......","..ZZZZZZZZ......","...ZZZZZZ.......","....ZZZZ........","................","................","................","................","................"]
+};
 
-startBtn.onclick=()=>{ const n=nameInput.value.trim(); if(!n)return alert('Masukkan nama'); if(!players[n])players[n]=makePlayer(n); current=players[n]; log('Login: '+n); render(); tickLoop(); }
+// ===== DRAW =====
+function drawSprite(name){
+  CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
+  const map=SPRITES[name]||SPRITES.idle;
+  const scale=8;
+  for(let y=0;y<16;y++){
+    for(let x=0;x<16;x++){
+      if(map[y][x]!=="." && map[y][x]!==" "){
+        CTX.fillStyle="#ffd07a";
+        CTX.fillRect(posX+(x*scale), (y*scale)+jumpY, scale, scale);
+      }
+    }
+  }
+}
 
-feedBtn.onclick=()=>{ if(!current)return alert('Login'); if(!current.pet.alive)return alert('Pet mati'); if((current.inv.apple||0)<=0)return alert('Tidak ada apel'); current.inv.apple--; current.pet.mood='happy'; anim.mode='jump';anim.t=0; log('Pet diberi makan'); saveAll();render(); }
+// ===== GAME =====
+function makePlayer(name){
+  return { name, coin:100, pet:{ lastFeed:Date.now() }, inventory:[] };
+}
 
-sleepBtn.onclick=()=>{ if(!current)return; current.pet.mood='sleep'; anim.mode='sleep';anim.t=0; saveAll();render(); }
+document.getElementById('startBtn').onclick=()=>{
+  const name=document.getElementById('nameInput').value.trim();
+  if(!name) return alert("Isi nama!");
+  if(!players[name]) players[name]=makePlayer(name);
+  currentPlayer=players[name];
+  savePlayers();
+};
 
-sellBtn.onclick=()=>{ if(!current||!current.pet)return; if(!current.pet.alive)return alert('Tidak bisa jual pet mati'); const id=prompt('Masukkan id unik jualan:'); if(!id)return; const price=parseInt(prompt('Harga?'),10)||10; market[id]={id,seller:current.name,price,pet:JSON.parse(JSON.stringify(current.pet))}; current.pet=null; saveAll();render(); }
+document.getElementById('feedBtn').onclick=()=>{
+  if(!currentPlayer) return alert("Login dulu");
+  currentPlayer.pet.lastFeed=Date.now();
+  mood="happy"; jumpY=-16;
+  savePlayers();
+};
 
-postSaleBtn.onclick=()=>{ if(!current||!current.pet)return alert('Login + punya pet'); const id=saleIdInput.value.trim();const price=parseInt(salePriceInput.value)||10; if(!id)return; market[id]={id,seller:current.name,price,pet:JSON.parse(JSON.stringify(current.pet))}; current.pet=null; saveAll();render(); }
+document.getElementById('sleepBtn').onclick=()=>{ mood="sleep"; };
 
-doBuyBtn.onclick=()=>{ const id=buyIdInput.value.trim();if(!id)return; const item=market[id];if(!item)return alert('Tidak ditemukan'); if(!current)return alert('Login'); if(current.coin<item.price)return alert('Coin tidak cukup'); current.coin-=item.price; current.pet=item.pet; delete market[id]; saveAll();render(); }
+function updateMood(){
+  if(!currentPlayer) return;
+  const diff=Date.now()-currentPlayer.pet.lastFeed;
+  if(mood!=="sleep"){
+    if(diff<5000) mood="happy";
+    else if(diff<15000) mood="idle";
+    else if(diff<30000) mood="hungry";
+    else if(diff<60000) mood="sad";
+    else mood="angry";
+  }
+}
 
-function saveAll(){players[current.name]=current;save(PLAYERS_KEY,players);save(MARKET_KEY,market)}
+function anim(){
+  posX+=dir;
+  if(posX>64||posX<0) dir*=-1;
+  if(jumpY<0) jumpY+=2;
+}
 
-function log(m){logEl.innerHTML='['+new Date().toLocaleTimeString()+'] '+m+'<br>'+logEl.innerHTML}
+// ===== NPC SHOP =====
+function buyFromNPC(item){
+  if(!currentPlayer) return alert("Login dulu");
+  let price=item==="food"?10:item==="toy"?15:25;
+  if(currentPlayer.coin<price) return alert("Coin kurang!");
+  currentPlayer.coin-=price;
+  currentPlayer.inventory.push(item);
+  savePlayers();
+}
 
-function render(){ if(current){statusText.innerText=current.pet?(current.pet.alive?'Hidup':'Mati'):'No Pet'; coinText.innerText=current.coin; invText.innerText='Apel:'+(current.inv.apple||0); } draw();buildMarket(); }
+// ===== INVENTORY UI =====
+function useItem(idx){
+  const item=currentPlayer.inventory[idx];
+  if(item==="food"){ currentPlayer.pet.lastFeed=Date.now(); mood="happy"; }
+  if(item==="toy"){ mood="happy"; }
+  currentPlayer.inventory.splice(idx,1);
+  savePlayers();
+}
 
-function buildMarket(){marketListEl.innerHTML=''; const keys=Object.keys(market); if(keys.length===0){marketListEl.innerHTML='<div>Marketplace kosong</div>';return;} keys.forEach(id=>{ const it=market[id]; const div=document.createElement('div'); div.className='market-item'; div.innerHTML=<strong>${id}</strong> - Seller:${it.seller} | Harga:${it.price}; marketListEl.appendChild(div); }) }
+// ===== MARKET PLAYER =====
+function postItemSale(){
+  if(!currentPlayer) return alert("Login dulu");
+  const id=document.getElementById('saleId').value.trim();
+  const price=parseInt(document.getElementById('salePrice').value);
+  if(!id||!price) return alert("Isi ID & harga!");
+  if(currentPlayer.inventory.length===0) return alert("Tidak ada item");
+  const item=currentPlayer.inventory.pop();
+  market[id]={ seller:currentPlayer.name, item:item, price:price };
+  savePlayers(); saveMarket();
+}
 
-function tickLoop(){setInterval(()=>{ if(!current||!current.pet)return; anim.frame=(anim.frame+1)%60; if(anim.mode==='jump'){anim.t++;if(anim.t>20){anim.mode='idle';}} if(anim.mode==='sleep'){anim.t++;if(anim.t>40){anim.mode='idle';}} if(anim.mode==='idle'&&Math.random()<0.01){current.pet.mood='blink';anim.t=0;} render(); },500)}
+function buyFromMarket(id){
+  if(!currentPlayer) return;
+  const m=market[id];
+  if(!m) return;
+  const offer=parseInt(prompt(`Harga jual ${m.price}. Masukkan tawaran:`));
+  if(isNaN(offer)) return;
+  if(offer>=m.price && currentPlayer.coin>=offer){
+    currentPlayer.coin-=offer;
+    currentPlayer.inventory.push(m.item);
+    // Transfer coin ke seller
+    if(players[m.seller]) players[m.seller].coin+=offer;
+    delete market[id];
+    savePlayers(); saveMarket();
+    alert("Berhasil membeli!");
+  } else {
+    alert("Tawaran kurang atau coin tidak cukup");
+  }
+}
 
-const FACE={ idle:["..xxxx..",".xxxxxx.","xx....xx","xx.xx.xx","xx....xx",".xxxxxx.","..xxxx.."], happy:["..xxxx..",".xxxxxx.","xx ^  xx","xx    xx","xx -- xx",".xxxxxx.","..xxxx.."], sad:["..xxxx..",".xxxxxx.","xx    xx","xx -- xx","xx vv xx",".xxxxxx.","..xxxx.."], angry:["..xxxx..",".xxxxxx.","xx >< xx","xx    xx","xx -- xx",".xxxxxx.","..xxxx.."], sleep:["..xxxx..",".xxxxxx.","xx zz xx","xx zz xx","xx    xx",".xxxxxx.","..xxxx.."], blink:["..xxxx..",".xxxxxx.","xx -- xx","xx    xx","xx -- xx",".xxxxxx.","..xxxx.."] };
+// ===== RENDER UI =====
+function buildMarket(){
+  const el=document.getElementById('marketList');
+  el.innerHTML="";
+  Object.keys(market).forEach(id=>{
+    const m=market[id];
+    const div=document.createElement("div");
+    div.className="market-item";
+    div.innerHTML=`${id}: ${m.item} (Harga:${m.price}, seller:${m.seller}) <button onclick="buyFromMarket('${id}')">Tawar/Beli</button>`;
+    el.appendChild(div);
+  });
+}
 
-function draw(){CTX.clearRect(0,0,128,128);CTX.fillStyle='#08121a';CTX.fillRect(0,0,128,128); if(!current||!current.pet){CTX.fillStyle='#999';CTX.fillText('Login',40,64);return;} let mood=current.pet.mood||'idle';if(!FACE[mood])mood='idle'; const px=32+(Math.sin(anim.frame/10)8); const py=32; FACE[mood].forEach((row,y)=>{[...row].forEach((c,x)=>{ if(c==='x'){CTX.fillStyle='#ffdd7a';CTX.fillRect(px+x4,py+y4,4,4);} if(c==='^'||c==='v'||c==='<'||c==='>'||c==='z'||c==='-'){CTX.fillStyle='#000';CTX.fillRect(px+x4,py+y*4,4,4);} })}); }
+function buildInventory(){
+  const el=document.getElementById('inventory');
+  el.innerHTML="";
+  if(!currentPlayer) return;
+  currentPlayer.inventory.forEach((it,i)=>{
+    const div=document.createElement("div");
+    div.className="inv-item";
+    div.innerHTML=`${it} <button onclick="useItem(${i})">Use</button>`;
+    el.appendChild(div);
+  });
+}
 
-draw(); </script>
+function renderUI(){
+  if(currentPlayer){
+    document.getElementById('statusText').textContent=mood;
+    document.getElementById('coinText').textContent=currentPlayer.coin;
+  }
+  buildInventory();
+  buildMarket();
+}
 
+// ===== LOOP =====
+setInterval(()=>{
+  updateMood();
+  anim();
+  drawSprite(mood);
+  renderUI();
+},500);
+
+drawSprite("idle");
+</script>
 </body>
 </html>
