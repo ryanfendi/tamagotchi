@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory</title>
+<style>
+body{background:#08121a;color:#fff;font-family:sans-serif;padding:10px}
+.pet-card{background:#111;margin:8px;padding:8px;border-radius:6px}
+button{margin:4px;padding:6px 10px}
+</style>
+</head>
+<body>
+<h2>📦 Inventory</h2>
+<div id="inventoryList"></div>
+<a href="index.html"><button>Kembali ke Game</button></a>
+<script>
+let player=JSON.parse(localStorage.getItem('player')||'null');
+const inv=document.getElementById('inventoryList');
+
+function render(){
+  inv.innerHTML='';
+  player.inventory.forEach(p=>{
+    const div=document.createElement('div');div.className='pet-card';
+    div.innerHTML=`<b>${p.name}</b> | Status: ${p.status}<br>`;
+    const setBtn=document.createElement('button');setBtn.textContent='Set Active';
+    setBtn.onclick=()=>{player.activePet=p.id;save();alert('Pet aktif diubah!');};
+    const sellBtn=document.createElement('button');sellBtn.textContent='Jual';
+    sellBtn.onclick=()=>{
+      const price=prompt('Masukkan harga pet ini:');
+      if(price){
+        let market=JSON.parse(localStorage.getItem('market')||'{}');
+        market[p.id]={pet:p,seller:player.name,price:parseInt(price),offers:[]};
+        localStorage.setItem('market',JSON.stringify(market));
+        // hapus pet dari inventory
+        player.inventory=player.inventory.filter(x=>x.id!==p.id);
+        if(player.activePet===p.id)player.activePet=null;
+        save();render();alert('Pet dijual di marketplace!');
+      }
+    };
+    div.appendChild(setBtn);
+    div.appendChild(sellBtn);
+    inv.appendChild(div);
+  });
+}
+
+function save(){localStorage.setItem('player',JSON.stringify(player));}
+render();
+</script>
+</body>
+</html>
