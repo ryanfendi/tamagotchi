@@ -1,116 +1,244 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <title>Pixel Tamagotchi</title>
+  <meta charset="utf-8" />
+  <title>Pixel Tamagotchi — With Death System</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body {
-      text-align: center;
-      font-family: monospace;
-      background: #222;
-      color: white;
+    :root {
+      --bg: #0b1220;
+      --card: #0f1724;
+      --accent: #ffd166;
     }
+    body{
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(180deg,#0b1220,#07202a); font-family:system-ui,Segoe UI,Arial;
+      color: #e6eef6;
+      padding:20px;
+    }
+    .card{
+      width:360px; background:linear-gradient(180deg,#08212a,#071726); padding:18px; border-radius:12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); text-align:center;
+    }
+    h1{ margin:6px 0 12px; font-size:20px }
     #pet {
-      font-size: 40px;
-      margin: 20px;
-      animation: bounce 1s infinite alternate;
+      font-size:56px; line-height:1; display:inline-block; padding:8px 12px;
+      border-radius:10px; background: rgba(255,255,255,0.03);
+      transition: transform .18s ease;
     }
-    @keyframes bounce {
-      from { transform: translateY(0px); }
-      to { transform: translateY(-10px); }
-    }
-    button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-    }
-    #stats {
-      margin-top: 15px;
-    }
+    #pet.dead { filter: grayscale(1) contrast(.8); opacity:.6; transform: scale(.98) rotate(-4deg); }
+    .stats { display:flex; justify-content:space-between; gap:8px; margin-top:12px; font-size:15px; }
+    .statbox{ flex:1; background:rgba(255,255,255,0.02); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.03) }
+    .controls{ margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap }
+    button{ background:linear-gradient(180deg,#10b981,#059669); border:0; color:white; padding:8px 12px; border-radius:8px; cursor:pointer }
+    button.alt{ background:linear-gradient(180deg,#06b6d4,#0891b2) }
+    button.danger{ background:linear-gradient(180deg,#ef4444,#b91c1c) }
+    button:disabled{ opacity:.45; cursor:not-allowed }
+    .small{ margin-top:10px; color:#9fb3bd; font-size:13px }
+    .log{ margin-top:10px; color:#a8d5d8; font-size:13px; min-height:22px }
   </style>
 </head>
 <body>
-  <h1>🐣 Pixel Tamagotchi</h1>
-  <div id="pet"> (•ᴗ•) </div>
+  <div class="card">
+    <h1>🐣 Pixel Tamagotchi</h1>
+    <div id="pet" aria-live="polite">(^_^)</div>
 
-  <button onclick="feed()">🍎 Feed</button>
-  <button onclick="play()">🎮 Play</button>
-  <button onclick="sleep()">💤 Sleep</button>
+    <div class="stats" style="margin-top:14px">
+      <div class="statbox">🍖 Hunger<br><strong id="hunger">100</strong></div>
+      <div class="statbox">⭐ Level<br><strong id="level">1</strong></div>
+      <div class="statbox">⏳ Age<br><strong id="age">0</strong>s</div>
+    </div>
 
-  <div id="stats">
-    ❤️ Hunger: <span id="hunger">5</span><br>
-    😀 Happiness: <span id="happy">5</span><br>
-    😴 Energy: <span id="energy">5</span><br>
-    ⭐ Level: <span id="level">1</span>
+    <div class="controls">
+      <button id="feedBtn">🍎 Feed</button>
+      <button id="playBtn" class="alt">🎮 Play</button>
+      <button id="resetBtn" class="danger">🔄 Reset</button>
+    </div>
+
+    <div class="small">Evolusi tiap 5 EXP. Mati jika hunger = 0 atau usia mencapai <span id="maxAgeLabel">120</span>s.</div>
+    <div class="log" id="log"></div>
   </div>
 
-  <script>
-    let hunger = 5, happy = 5, energy = 5, level = 1, xp = 0;
+<script>
+/* Tamagotchi with death system, evolutions, persistence */
+(function(){
+  // config
+  const TICK_MS = 1000;           // tick interval (ms)
+  const HUNGER_DECAY = 2;        // hunger lost per tick
+  const EXP_PER_ACTION = 1;
+  const EXP_TO_LEVEL = 5;        // exp required to level up
+  const MAX_AGE = 120;           // seconds => at this age pet dies (you can change)
+  // state keys
+  const STORAGE_KEY = 'tama_simple_v3';
 
-    function updateStats() {
-      document.getElementById("hunger").innerText = hunger;
-      document.getElementById("happy").innerText = happy;
-      document.getElementById("energy").innerText = energy;
-      document.getElementById("level").innerText = level;
-      saveGame();
+  // initial default state
+  const DEFAULT = {
+    hunger: 100,
+    level: 1,
+    exp: 0,
+    age: 0,        // in seconds
+    dead: false
+  };
+
+  // evolutions shapes (text emoticon)
+  const FORMS = {
+    1: "(^_^)",
+    2: "(>‿<)",
+    3: "(◕‿◕)",
+    4: "(✧ω✧)",
+    5: "(ʘ‿ʘ)",
+    6: "(≧◡≦)",
+    7: "(★‿★)"
+  };
+
+  // DOM
+  const petEl = document.getElementById('pet');
+  const hungerEl = document.getElementById('hunger');
+  const levelEl = document.getElementById('level');
+  const ageEl = document.getElementById('age');
+  const feedBtn = document.getElementById('feedBtn');
+  const playBtn = document.getElementById('playBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const logEl = document.getElementById('log');
+  const maxAgeLabel = document.getElementById('maxAgeLabel');
+
+  maxAgeLabel.textContent = MAX_AGE;
+
+  // load / save
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return {...DEFAULT};
+      const obj = JSON.parse(raw);
+      // migrate missing keys
+      return Object.assign({}, DEFAULT, obj);
+    }catch(e){ return {...DEFAULT}; }
+  }
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+  function resetState(){
+    state = {...DEFAULT};
+    save();
+    render();
+    log('Game direset. Selamat bermain lagi!');
+  }
+
+  // initial
+  let state = load();
+
+  // UI helpers
+  function formForLevel(l){
+    // clamp to available forms
+    const maxKey = Math.max(...Object.keys(FORMS).map(k=>Number(k)));
+    const idx = Math.min(l, maxKey);
+    return FORMS[idx] || FORMS[maxKey];
+  }
+  function render(){
+    // pet text + dead style
+    petEl.textContent = state.dead ? "☠️" : formForLevel(state.level);
+    petEl.className = state.dead ? 'dead' : '';
+    hungerEl.textContent = Math.max(0, Math.round(state.hunger));
+    levelEl.textContent = state.level;
+    ageEl.textContent = Math.max(0, Math.round(state.age));
+    // enable/disable buttons when dead
+    feedBtn.disabled = state.dead;
+    playBtn.disabled = state.dead;
+    // show message if dead
+    if(state.dead){
+      log('💀 Pet telah meninggal. Tekan Reset untuk mulai lagi.');
     }
+  }
 
-    function feed() {
-      hunger = Math.min(hunger + 2, 10);
-      xp++;
-      evolve();
-      document.getElementById("pet").innerText = "(◕‿◕)";
-      updateStats();
+  // logging (small)
+  function log(msg){
+    logEl.innerHTML = msg + '<br>' + logEl.innerHTML;
+  }
+
+  // actions
+  function feed(){
+    if(state.dead) return;
+    state.hunger = Math.min(100, state.hunger + 20);
+    gainExp(EXP_PER_ACTION);
+    log('🍎 Diberi makan (+20 hunger).');
+    animatePet();
+    save(); render();
+  }
+  function play(){
+    if(state.dead) return;
+    // playing costs a little hunger but gives exp
+    state.hunger = Math.max(0, state.hunger - 6);
+    gainExp(EXP_PER_ACTION + 1);
+    log('🎮 Bermain (hunger -6, exp +2).');
+    animatePet();
+    save(); render();
+  }
+  function gainExp(n){
+    state.exp += n;
+    // check level up
+    while(state.exp >= EXP_TO_LEVEL){
+      state.exp -= EXP_TO_LEVEL;
+      state.level++;
+      // small reward on level up
+      state.hunger = Math.min(100, state.hunger + 8);
+      log('⭐ Level up! Sekarang level ' + state.level + '.');
     }
+  }
 
-    function play() {
-      happy = Math.min(happy + 2, 10);
-      energy = Math.max(energy - 1, 0);
-      xp++;
-      evolve();
-      document.getElementById("pet").innerText = "ᕕ(ᐛ)ᕗ";
-      updateStats();
+  // animation
+  function animatePet(){
+    petEl.style.transform = 'translateY(-8px) scale(1.04)';
+    setTimeout(()=> petEl.style.transform = '', 180);
+  }
+
+  // death handling
+  function kill(reason){
+    if(state.dead) return;
+    state.dead = true;
+    log('💀 Pet meninggal — ' + reason);
+    save(); render();
+  }
+
+  // main tick: hunger decay and age increment
+  function tick(){
+    if(state.dead) return;
+    // hunger decreases
+    state.hunger = Math.max(0, state.hunger - HUNGER_DECAY);
+    // if hunger hits 0 -> die
+    if(state.hunger <= 0){
+      kill('kelaparan');
+      return;
     }
-
-    function sleep() {
-      energy = Math.min(energy + 3, 10);
-      hunger = Math.max(hunger - 1, 0);
-      xp++;
-      evolve();
-      document.getElementById("pet").innerText = "(-_-) zzz";
-      updateStats();
+    // age increases per tick
+    state.age += Math.round(TICK_MS/1000);
+    // if age >= MAX_AGE -> die of old age
+    if(state.age >= MAX_AGE){
+      kill('usia tua (' + state.age + 's)');
+      return;
     }
-
-    function evolve() {
-      if (xp >= level * 5) {
-        level++;
-        xp = 0;
-        document.getElementById("pet").innerText = "★(•ᴗ•)★";
-        alert("Level Up! Your Tamagotchi reached Level " + level);
-      }
+    // small random chance to gain 0-1 exp passively
+    if(Math.random() < 0.03){
+      gainExp(1);
     }
+    save(); render();
+  }
 
-    function saveGame() {
-      localStorage.setItem("tamaSave", JSON.stringify({hunger, happy, energy, level, xp}));
-    }
+  // wire events
+  feedBtn.addEventListener('click', feed);
+  playBtn.addEventListener('click', play);
+  resetBtn.addEventListener('click', ()=>{
+    if(confirm('Reset permainan? Semua progress akan hilang.')) resetState();
+  });
 
-    function loadGame() {
-      let save = localStorage.getItem("tamaSave");
-      if (save) {
-        let data = JSON.parse(save);
-        hunger = data.hunger;
-        happy = data.happy;
-        energy = data.energy;
-        level = data.level;
-        xp = data.xp;
-        updateStats();
-      }
-    }
+  // start ticks
+  render();
+  // use setInterval with TICK_MS
+  setInterval(tick, TICK_MS);
 
-    loadGame();
-    updateStats();
-  </script>
+  // expose for debugging (optional)
+  window._tamaState = state;
+
+})();
+</script>
 </body>
 </html>
