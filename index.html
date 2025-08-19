@@ -1,232 +1,116 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tamagotchi Pixel v3</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamagotchi Pixel Game</title>
 <style>
-  body { background:#08121a; color:#e6eef6; font-family:monospace; margin:0; padding:16px; }
-  h1 { font-size:18px; margin:0 0 10px; }
-  .wrap { display:grid; grid-template-columns:320px 1fr; gap:16px; }
-  canvas { background:#0f1724; display:block; margin:auto; image-rendering:pixelated; }
-  button { background:#10b981; border:none; padding:6px 10px; margin:4px; border-radius:6px; cursor:pointer; font-weight:bold; }
-  input[type=text], input[type=number] { padding:6px; border-radius:4px; border:none; width:120px; }
-  .panel { background:#0f1724; padding:10px; border-radius:10px; }
-  .small { font-size:13px; color:#9fb3b5; }
-  #marketList, #inventory { max-height:150px; overflow:auto; font-size:13px; }
-  .market-item, .inv-item { background:#111a22; padding:6px; border-radius:6px; margin-bottom:6px; }
+  body{background:#08121a;color:#fff;font-family:sans-serif;text-align:center;padding:10px}
+  canvas{background:#111;border-radius:8px;margin:10px auto;display:block;image-rendering:pixelated}
+  button{padding:8px 12px;margin:6px;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
+  .green{background:#10b981;color:#042018}
+  .blue{background:#3b82f6;color:#fff}
+  .nav{margin-top:10px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="panel">
-    <h1>🐣 Tamagotchi Pixel v3</h1>
-    <canvas id="canvas" width="128" height="128" style="width:256px;height:256px;"></canvas>
-    <div style="text-align:center;margin-top:10px;">
-      <input id="nameInput" type="text" placeholder="Nama pemain" />
-      <button id="startBtn">Start</button>
-    </div>
-    <div style="text-align:center;margin-top:10px;">
-      <button id="feedBtn">🍎 Feed</button>
-      <button id="sleepBtn">💤 Sleep</button>
-    </div>
-    <div style="margin-top:10px;">Coin: <span id="coinText">0</span></div>
-    <div class="small">Status: <span id="statusText">-</span></div>
-    <h3>Inventory</h3>
-    <div id="inventory"></div>
-  </div>
-  
-  <div class="panel">
-    <h2 style="font-size:16px;margin:0;">Marketplace</h2>
-    <div>
-      <h4>Toko NPC</h4>
-      <div class="market-item">🍎 Food (10💰) <button onclick="buyFromNPC('food')">Beli</button></div>
-      <div class="market-item">🧸 Toy (15💰) <button onclick="buyFromNPC('toy')">Beli</button></div>
-      <div class="market-item">💊 Medicine (25💰) <button onclick="buyFromNPC('medicine')">Beli</button></div>
-    </div>
-    <h4>Market Player</h4>
-    <input id="saleId" type="text" placeholder="ID jual" />
-    <input id="salePrice" type="number" placeholder="Harga" />
-    <button onclick="postItemSale()">Post Item</button>
-    <div id="marketList"></div>
-  </div>
+<h1>🐣 Tamagotchi Pixel</h1>
+<canvas id="gameCanvas" width="128" height="128" style="width:256px;height:256px"></canvas>
+<div>Nama: <span id="playerName">-</span></div>
+<div>Koin: <span id="coins">0</span></div>
+<div>
+  <button id="feedBtn" class="green">🍎 Feed</button>
+  <button id="sleepBtn" class="blue">💤 Sleep</button>
 </div>
-
+<div>
+  <button id="tapBtn">👆 Tap (Coin)</button>
+  <button id="topupBtn">💰 Top-Up 100</button>
+</div>
+<div class="nav">
+  <a href="inventory.html"><button>📦 Inventory</button></a>
+  <a href="marketplace.html"><button>🏪 Marketplace</button></a>
+</div>
 <script>
-// ====== DATA STORAGE ======
-const CANVAS = document.getElementById('canvas');
-const CTX = CANVAS.getContext('2d');
-CTX.imageSmoothingEnabled = false;
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
 
-let players = JSON.parse(localStorage.getItem('tama_players_v5')||'{}');
-let market = JSON.parse(localStorage.getItem('tama_market_v5')||'{}');
+let player=JSON.parse(localStorage.getItem('player')||'null');
+if(!player){
+  player={name:prompt('Masukkan nama:'),coins:0,activePet:null,inventory:[]};
+  // buat pet awal
+  const pet={id:'pet'+Date.now(),name:'Chick',age:0,happy:true,status:'idle'};
+  player.activePet=pet.id;
+  player.inventory.push(pet);
+  localStorage.setItem('player',JSON.stringify(player));
+}
 
-function savePlayers(){ localStorage.setItem('tama_players_v5', JSON.stringify(players)); }
-function saveMarket(){ localStorage.setItem('tama_market_v5', JSON.stringify(market)); }
+document.getElementById('playerName').innerText=player.name;
+document.getElementById('coins').innerText=player.coins;
 
-let currentPlayer=null;
-let mood="idle";
-let posX=32, dir=1, jumpY=0;
-let blinkTimer=0;
+function save(){localStorage.setItem('player',JSON.stringify(player));}
 
-// ===== SPRITES =====
-const SPRITES={
-  idle:["................","....XXXX........","...XXXXXX.......","..XXXXXXXX......","..XX....XX......","..XX.XX.XX......","..XX....XX......","..XXXXXXXX......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
-  happy:["................","....XXXX........","...X..X.X.......","..X.XX.XX.......","..X      X......","..X .XX. X......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...X.XX.X.......","....X..X........","................","................","................","................","................"],
-  hungry:["................","....XXXX........","...X..X.X.......","..X.XX.XX.......","..X  oo X.......","..X  oo X.......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
-  sad:["................","....XXXX........","...X..X.X.......","..X.XX.XX.......","..X  -- X.......","..X      X......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
-  angry:["................","....XXXX........","...X><X><.......","..X.XX.XX.......","..X  __ X.......","..X      X......","..X      X......","..X.XXXX.X......","..XXXXXXXX......","...XXXXXX.......","....XXXX........","................","................","................","................","................"],
-  sleep:["................","....ZZZZ........","...Z    Z.......","..Z  --  Z......","..Z      Z......","..Z      Z......","..Z      Z......","..Z  ZZ  Z......","..ZZZZZZZZ......","...ZZZZZZ.......","....ZZZZ........","................","................","................","................","................"]
+function drawPet(){
+  ctx.clearRect(0,0,128,128);
+  ctx.fillStyle='#111';ctx.fillRect(0,0,128,128);
+  const pet=player.inventory.find(p=>p.id===player.activePet);
+  if(!pet){ctx.fillStyle='#fff';ctx.fillText('No Pet',40,64);return;}
+  let color=pet.status==='sleep'?'#888':'#ffd07a';
+  ctx.fillStyle=color;
+  ctx.fillRect(40,50,48,48);
+  ctx.fillStyle='#000';
+  if(pet.status==='happy'){
+    ctx.fillRect(52,64,6,6);
+    ctx.fillRect(66,64,6,6);
+    ctx.fillStyle='#ff69b4';
+    ctx.fillRect(58,76,12,4);
+  }else if(pet.status==='sad'){
+    ctx.fillRect(52,64,6,6);
+    ctx.fillRect(66,64,6,6);
+    ctx.fillStyle='#00f';
+    ctx.fillRect(58,76,12,2);
+  }else if(pet.status==='sleep'){
+    ctx.fillStyle='#000';
+    ctx.fillRect(50,64,24,4);
+  }else{
+    ctx.fillRect(52,64,6,6);
+    ctx.fillRect(66,64,6,6);
+  }
+}
+
+drawPet();
+
+// feed
+feedBtn.onclick=()=>{
+  const pet=player.inventory.find(p=>p.id===player.activePet);
+  pet.status='happy';
+  drawPet();
+  setTimeout(()=>{pet.status='idle';drawPet();},2000);
+  save();
 };
 
-// ===== DRAW =====
-function drawSprite(name){
-  CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
-  const map=SPRITES[name]||SPRITES.idle;
-  const scale=8;
-  for(let y=0;y<16;y++){
-    for(let x=0;x<16;x++){
-      if(map[y][x]!=="." && map[y][x]!==" "){
-        CTX.fillStyle="#ffd07a";
-        CTX.fillRect(posX+(x*scale), (y*scale)+jumpY, scale, scale);
-      }
-    }
-  }
-}
-
-// ===== GAME =====
-function makePlayer(name){
-  return { name, coin:100, pet:{ lastFeed:Date.now() }, inventory:[] };
-}
-
-document.getElementById('startBtn').onclick=()=>{
-  const name=document.getElementById('nameInput').value.trim();
-  if(!name) return alert("Isi nama!");
-  if(!players[name]) players[name]=makePlayer(name);
-  currentPlayer=players[name];
-  savePlayers();
+// sleep
+sleepBtn.onclick=()=>{
+  const pet=player.inventory.find(p=>p.id===player.activePet);
+  pet.status='sleep';
+  drawPet();
+  setTimeout(()=>{pet.status='idle';drawPet();},4000);
+  save();
 };
 
-document.getElementById('feedBtn').onclick=()=>{
-  if(!currentPlayer) return alert("Login dulu");
-  currentPlayer.pet.lastFeed=Date.now();
-  mood="happy"; jumpY=-16;
-  savePlayers();
+// tap farming
+let tapBtn=document.getElementById('tapBtn');
+tapBtn.onclick=()=>{
+  player.coins+=1;
+  document.getElementById('coins').innerText=player.coins;
+  save();
 };
 
-document.getElementById('sleepBtn').onclick=()=>{ mood="sleep"; };
-
-function updateMood(){
-  if(!currentPlayer) return;
-  const diff=Date.now()-currentPlayer.pet.lastFeed;
-  if(mood!=="sleep"){
-    if(diff<5000) mood="happy";
-    else if(diff<15000) mood="idle";
-    else if(diff<30000) mood="hungry";
-    else if(diff<60000) mood="sad";
-    else mood="angry";
-  }
-}
-
-function anim(){
-  posX+=dir;
-  if(posX>64||posX<0) dir*=-1;
-  if(jumpY<0) jumpY+=2;
-}
-
-// ===== NPC SHOP =====
-function buyFromNPC(item){
-  if(!currentPlayer) return alert("Login dulu");
-  let price=item==="food"?10:item==="toy"?15:25;
-  if(currentPlayer.coin<price) return alert("Coin kurang!");
-  currentPlayer.coin-=price;
-  currentPlayer.inventory.push(item);
-  savePlayers();
-}
-
-// ===== INVENTORY UI =====
-function useItem(idx){
-  const item=currentPlayer.inventory[idx];
-  if(item==="food"){ currentPlayer.pet.lastFeed=Date.now(); mood="happy"; }
-  if(item==="toy"){ mood="happy"; }
-  currentPlayer.inventory.splice(idx,1);
-  savePlayers();
-}
-
-// ===== MARKET PLAYER =====
-function postItemSale(){
-  if(!currentPlayer) return alert("Login dulu");
-  const id=document.getElementById('saleId').value.trim();
-  const price=parseInt(document.getElementById('salePrice').value);
-  if(!id||!price) return alert("Isi ID & harga!");
-  if(currentPlayer.inventory.length===0) return alert("Tidak ada item");
-  const item=currentPlayer.inventory.pop();
-  market[id]={ seller:currentPlayer.name, item:item, price:price };
-  savePlayers(); saveMarket();
-}
-
-function buyFromMarket(id){
-  if(!currentPlayer) return;
-  const m=market[id];
-  if(!m) return;
-  const offer=parseInt(prompt(`Harga jual ${m.price}. Masukkan tawaran:`));
-  if(isNaN(offer)) return;
-  if(offer>=m.price && currentPlayer.coin>=offer){
-    currentPlayer.coin-=offer;
-    currentPlayer.inventory.push(m.item);
-    // Transfer coin ke seller
-    if(players[m.seller]) players[m.seller].coin+=offer;
-    delete market[id];
-    savePlayers(); saveMarket();
-    alert("Berhasil membeli!");
-  } else {
-    alert("Tawaran kurang atau coin tidak cukup");
-  }
-}
-
-// ===== RENDER UI =====
-function buildMarket(){
-  const el=document.getElementById('marketList');
-  el.innerHTML="";
-  Object.keys(market).forEach(id=>{
-    const m=market[id];
-    const div=document.createElement("div");
-    div.className="market-item";
-    div.innerHTML=`${id}: ${m.item} (Harga:${m.price}, seller:${m.seller}) <button onclick="buyFromMarket('${id}')">Tawar/Beli</button>`;
-    el.appendChild(div);
-  });
-}
-
-function buildInventory(){
-  const el=document.getElementById('inventory');
-  el.innerHTML="";
-  if(!currentPlayer) return;
-  currentPlayer.inventory.forEach((it,i)=>{
-    const div=document.createElement("div");
-    div.className="inv-item";
-    div.innerHTML=`${it} <button onclick="useItem(${i})">Use</button>`;
-    el.appendChild(div);
-  });
-}
-
-function renderUI(){
-  if(currentPlayer){
-    document.getElementById('statusText').textContent=mood;
-    document.getElementById('coinText').textContent=currentPlayer.coin;
-  }
-  buildInventory();
-  buildMarket();
-}
-
-// ===== LOOP =====
-setInterval(()=>{
-  updateMood();
-  anim();
-  drawSprite(mood);
-  renderUI();
-},500);
-
-drawSprite("idle");
+document.getElementById('topupBtn').onclick=()=>{
+  player.coins+=100;
+  document.getElementById('coins').innerText=player.coins;
+  save();
+};
 </script>
 </body>
 </html>
