@@ -15,21 +15,19 @@ a{color:#10b981;text-decoration:none;display:block;margin-top:10px;}
 <body>
 <h2>📝 Daftar Akun Baru</h2>
 <div class="panel">
-    <input type="text" id="name" placeholder="Nama"><br>
-    <input type="email" id="email" placeholder="Email"><br>
+    <input type="text" id="username" placeholder="Username (ID)"><br>
     <input type="password" id="password" placeholder="Password"><br>
     <button onclick="register()">Daftar</button>
     <a href="login.html">Sudah punya akun? Login</a>
 </div>
 <script>
 function register(){
-    const name=document.getElementById("name").value.trim();
-    const email=document.getElementById("email").value.trim().toLowerCase();
+    const username=document.getElementById("username").value.trim().toLowerCase();
     const pass=document.getElementById("password").value.trim();
-    if(!name||!email||!pass){alert("Isi semua data!");return;}
+    if(!username||!pass){alert("Isi semua data!");return;}
     let players=JSON.parse(localStorage.getItem("players")||"{}");
-    if(players[name]){alert("Nama sudah terpakai!");return;}
-    players[name]={name,email,password:pass,coins:1000,pet:{name:"Chick",level:1},inventory:[],health:1000};
+    if(players[username]){alert("Username sudah terpakai!");return;}
+    players[username]={name:username,password:pass,coins:1000,pet:{name:"Chick",level:1},inventory:[],health:1000};
     localStorage.setItem("players",JSON.stringify(players));
     alert("Registrasi berhasil! Silakan login.");
     location.href="login.html";
