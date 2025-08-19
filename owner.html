@@ -3,91 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Owner Panel - Tamagotchi</title>
+<title>Owner Panel</title>
 <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-    .panel { background:#101a2b; padding:15px; margin:15px auto; width:90%; max-width:500px; border-radius:8px; }
-    input, button { padding:8px; margin:5px; border-radius:8px; }
-    button { background:#10b981; border:none; color:#fff; font-weight:bold; cursor:pointer; }
+body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
+.panel{background:#101a2b;padding:15px;margin:10px auto;width:90%;max-width:500px;border-radius:8px;}
+input,select,button{padding:8px;margin:6px;border-radius:6px;}
+button{background:#10b981;border:none;color:#fff;font-weight:bold;cursor:pointer;}
+#ownerPanel{display:none;}
 </style>
 </head>
 <body>
-<h2>🔐 Owner Panel</h2>
+<h2>🔑 Owner Panel</h2>
 <div id="loginPanel" class="panel">
-    <h3>Login Owner</h3>
-    <input id="ownerID" placeholder="ID Owner"><br>
-    <input id="ownerPass" type="password" placeholder="Password"><br>
-    <button onclick="ownerLogin()">Login</button>
+    <input type="text" id="ownerId" placeholder="Owner ID"><br>
+    <input type="password" id="ownerPass" placeholder="Password"><br>
+    <button onclick="loginOwner()">Login</button>
 </div>
-<div id="ownerPanel" class="panel" style="display:none;">
-    <h3>Selamat datang, Owner!</h3>
-    <p>Top-up Coin:</p>
-    <input id="targetPlayer" placeholder="Nama Player"><br>
-    <input id="amountCoin" type="number" placeholder="Jumlah Coin"><br>
-    <button onclick="topupCoin()">Kirim Coin</button>
-    
-    <hr>
-    <p>Upgrade Pet Level:</p>
-    <input id="targetLevelPlayer" placeholder="Nama Player"><br>
-    <input id="newLevel" type="number" placeholder="Level (max 1000)"><br>
-    <button onclick="upgradeLevel()">Upgrade Level</button>
-    
-    <hr>
-    <button onclick="logout()">Logout</button>
-</div>
-<div style="margin-top:10px;">
-    <button onclick="goTo('index.html')">🏠 Kembali ke Game</button>
+<div id="ownerPanel" class="panel">
+    <h3>Selamat Datang, Owner</h3>
+    <select id="playerSelect"></select><br>
+    <input type="number" id="coinAmount" placeholder="Jumlah Coin"><br>
+    <button onclick="topUp()">Top-Up Coin</button><br><br>
+
+    <input type="number" id="levelAmount" placeholder="Level Pet (max 1000)"><br>
+    <button onclick="upgradePet()">Upgrade Pet Level</button><br><br>
+
+    <input type="text" id="itemName" placeholder="Nama Pet Baru"><br>
+    <button onclick="giveItem()">Kirim Pet Baru</button><br><br>
+
+    <button onclick="logoutOwner()">Logout</button>
 </div>
 <script>
-let players = JSON.parse(localStorage.getItem("players")||"{}");
-
-function ownerLogin(){
-    const id = document.getElementById("ownerID").value.trim();
-    const pass = document.getElementById("ownerPass").value.trim();
+function loginOwner(){
+    const id=document.getElementById("ownerId").value.trim();
+    const pass=document.getElementById("ownerPass").value.trim();
     if(id==="owner" && pass==="MainGame123$"){
-        localStorage.setItem("ownerAuth","true");
-        document.getElementById("loginPanel").style.display="none";
-        document.getElementById("ownerPanel").style.display="block";
-    } else {
+        localStorage.setItem("ownerLogged","true");
+        showPanel();
+    }else{
         alert("ID atau Password salah!");
     }
 }
 
-function topupCoin(){
-    const name=document.getElementById("targetPlayer").value.trim();
-    const amt=parseInt(document.getElementById("amountCoin").value);
-    if(!players[name]) return alert("Player tidak ditemukan!");
-    players[name].coins += amt;
-    save();
-    alert(`Top-up ${amt} coin ke ${name} berhasil!`);
+function showPanel(){
+    if(localStorage.getItem("ownerLogged")==="true"){
+        document.getElementById("loginPanel").style.display="none";
+        document.getElementById("ownerPanel").style.display="block";
+        loadPlayers();
+    }
 }
 
-function upgradeLevel(){
-    const name=document.getElementById("targetLevelPlayer").value.trim();
-    const level=parseInt(document.getElementById("newLevel").value);
-    if(!players[name]) return alert("Player tidak ditemukan!");
-    if(level>1000) return alert("Max level 1000");
-    players[name].pet.level = level;
-    save();
-    alert(`Level ${name} diatur ke ${level}`);
+function loadPlayers(){
+    let players=JSON.parse(localStorage.getItem("players")||"{}");
+    const select=document.getElementById("playerSelect");
+    select.innerHTML="";
+    Object.values(players).forEach(p=>{
+        select.innerHTML+=`<option value="${p.name}">${p.name}</option>`;
+    });
 }
 
-function save(){
+function topUp(){
+    let players=JSON.parse(localStorage.getItem("players")||"{}");
+    const name=document.getElementById("playerSelect").value;
+    const amount=parseInt(document.getElementById("coinAmount").value);
+    if(!amount||amount<=0)return alert("Masukkan jumlah coin!");
+    players[name].coins+=amount;
     localStorage.setItem("players",JSON.stringify(players));
+    alert(`Top-Up ${amount} coin ke ${name} berhasil!`);
 }
 
-function logout(){
-    localStorage.removeItem("ownerAuth");
+function upgradePet(){
+    let players=JSON.parse(localStorage.getItem("players")||"{}");
+    const name=document.getElementById("playerSelect").value;
+    const lvl=parseInt(document.getElementById("levelAmount").value);
+    if(!lvl||lvl<1||lvl>1000)return alert("Level harus 1-1000!");
+    players[name].pet.level=lvl;
+    localStorage.setItem("players",JSON.stringify(players));
+    alert(`Level pet ${name} sekarang ${lvl}!`);
+}
+
+function giveItem(){
+    let players=JSON.parse(localStorage.getItem("players")||"{}");
+    const name=document.getElementById("playerSelect").value;
+    const item=document.getElementById("itemName").value.trim();
+    if(!item)return alert("Nama pet tidak boleh kosong!");
+    players[name].inventory.push({name:item,level:1});
+    localStorage.setItem("players",JSON.stringify(players));
+    alert(`Pet baru "${item}" dikirim ke ${name}!`);
+}
+
+function logoutOwner(){
+    localStorage.removeItem("ownerLogged");
     location.reload();
 }
 
-function goTo(p){location.href=p;}
-
-// Jika sudah login sebelumnya
-if(localStorage.getItem("ownerAuth")==="true"){
-    document.getElementById("loginPanel").style.display="none";
-    document.getElementById("ownerPanel").style.display="block";
-}
+showPanel();
 </script>
 </body>
 </html>
