@@ -1,156 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>🐣 Tamagotchi Pixel Pet</title>
-  <style>
-    body {
-      background: #f0f9ff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 { color: #333; }
-    #pet {
-      font-size: 64px;
-      margin: 20px;
-      animation: bounce 1s infinite alternate;
-    }
-    @keyframes bounce {
-      from { transform: translateY(0); }
-      to { transform: translateY(-20px); }
-    }
-    button {
-      margin: 5px;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 10px;
-      background: #4cafef;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover { background: #2196f3; }
-    #leaderboard {
-      margin-top: 20px;
-      padding: 10px;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Tamagotchi Pixel</title>
+<style>
+  body { font-family: Arial, sans-serif; text-align:center; background:#222; color:#fff; }
+  #game { margin-top:20px; }
+  .pet {
+    font-size:60px;
+    animation: bounce 1s infinite alternate;
+  }
+  @keyframes bounce {
+    from { transform: translateY(0px); }
+    to { transform: translateY(-10px); }
+  }
+  button { margin:5px; padding:10px; border:none; border-radius:8px; cursor:pointer; }
+  #leaderboard { margin-top:20px; background:#333; padding:10px; border-radius:10px; }
+</style>
 </head>
 <body>
-  <h1>🐣 Tamagotchi Pixel Pet</h1>
-  <div id="pet">🐤</div>
-  <p><b>Nama:</b> <span id="nameDisplay"></span></p>
-  <p><b>Level:</b> <span id="level">1</span></p>
-  <p><b>Umur:</b> <span id="age">0</span> hari</p>
-  <p><b>Last Fed:</b> <span id="lastFed">Belum makan</span></p>
-  <button onclick="feedPet()">🍎 Kasih Makan</button>
-  <button onclick="renamePet()">✏️ Ganti Nama</button>
+<h1>🐾 Tamagotchi Pixel 🐾</h1>
+<div id="game">
+  <div id="pet" class="pet">🐣</div>
+  <p>Nama: <span id="petName">Pet1</span></p>
+  <p>Level: <span id="level">1</span></p>
+  <p>Umur (hari): <span id="age">0</span></p>
+  <p>Kenyang hari ini: <span id="feedCount">0</span> / 3</p>
+  <p>Status: <span id="status">Sehat</span></p>
+  <button onclick="feedPet()">🍖 Beri Makan</button>
+  <button onclick="sellPet()">💰 Jual Pet</button>
+</div>
 
-  <div id="leaderboard">
-    <h3>🏆 Leaderboard Pemain</h3>
-    <ul id="leaderboardList"></ul>
-  </div>
+<div id="leaderboard">
+  <h2>🏆 Leaderboard</h2>
+  <ul id="board"></ul>
+</div>
 
 <script>
-  // Evolusi karakter berdasarkan umur (tiap hari)
-  const evolutions = ["🐤","🐥","🐧","🐔","🐲","🐉","👾","🐼","🦄","🐵"];
+let pet = {
+  name: "Pet1",
+  level: 1,
+  age: 0,
+  feedCount: 0,
+  lastFeed: Date.now(),
+  alive: true
+};
 
-  let pet = {
-    name: localStorage.getItem("petName") || prompt("Masukkan nama pet kamu:"),
-    level: parseInt(localStorage.getItem("petLevel")) || 1,
-    age: parseInt(localStorage.getItem("petAge")) || 0,
-    lastFed: localStorage.getItem("petLastFed") || null,
-    lastEvo: localStorage.getItem("petLastEvo") || Date.now()
-  };
+let pets = [pet]; // daftar semua pemain
+let evoStages = ["🐣","🐥","🐤","🐔","🐲","🐉","👾","🐼","🦊","🐵"];
 
-  // Tampilkan nama
-  document.getElementById("nameDisplay").innerText = pet.name;
+function updateDisplay(){
+  document.getElementById("petName").innerText = pet.name;
+  document.getElementById("level").innerText = pet.level;
+  document.getElementById("age").innerText = pet.age;
+  document.getElementById("feedCount").innerText = pet.feedCount;
+  document.getElementById("status").innerText = pet.alive ? "Sehat" : "Mati";
+  document.getElementById("pet").innerText = evoStages[pet.age % evoStages.length];
+  updateLeaderboard();
+}
 
-  // Update UI
-  function updateUI() {
-    document.getElementById("level").innerText = pet.level;
-    document.getElementById("age").innerText = pet.age;
-    document.getElementById("pet").innerText = evolutions[pet.age % evolutions.length];
-    document.getElementById("lastFed").innerText = pet.lastFed ? new Date(pet.lastFed).toLocaleString() : "Belum makan";
-    savePet();
-    updateLeaderboard();
+function feedPet(){
+  if(!pet.alive) return alert("Pet sudah mati, mulai ulang!");
+  let now = Date.now();
+  let hoursPassed = (now - pet.lastFeed)/1000/60/60;
+  if(hoursPassed < 4){
+    alert("Tunggu 4 jam sebelum memberi makan lagi!");
+    return;
   }
-
-  // Simpan ke localStorage
-  function savePet() {
-    localStorage.setItem("petName", pet.name);
-    localStorage.setItem("petLevel", pet.level);
-    localStorage.setItem("petAge", pet.age);
-    localStorage.setItem("petLastFed", pet.lastFed);
-    localStorage.setItem("petLastEvo", pet.lastEvo);
+  pet.feedCount++;
+  pet.lastFeed = now;
+  if(pet.feedCount >= 3){
+    alert("Pet kenyang hari ini!");
   }
+  updateDisplay();
+}
 
-  // Kasih makan (hanya bisa tiap 30 menit)
-  function feedPet() {
-    const now = Date.now();
-    if (pet.lastFed && now - new Date(pet.lastFed).getTime() < 30*60*1000) {
-      alert("🐾 Petmu sudah kenyang! Tunggu 30 menit.");
-      return;
-    }
-    pet.lastFed = now;
-    alert(pet.name + " makan dengan lahap! 🍎");
-    savePet();
-    updateUI();
+function checkDaily(){
+  let now = new Date();
+  let lastAge = pet.age;
+  pet.age++;
+  pet.feedCount = 0; // reset makan harian
+  if(pet.age - lastAge >= 1){
+    evolvePet();
   }
-
-  // Ganti nama
-  function renamePet() {
-    let newName = prompt("Masukkan nama baru untuk pet:", pet.name);
-    if (newName) {
-      pet.name = newName;
-      document.getElementById("nameDisplay").innerText = pet.name;
-      savePet();
-      updateLeaderboard();
-    }
+  // cek makan minimal 3x
+  if(pet.feedCount < 3 && pet.age > 0){
+    pet.alive = false;
+    pet.status = "Mati karena kelaparan!";
+    alert("❌ Pet mati karena tidak diberi makan 3x sehari. Restart!");
+    restartGame();
   }
+  updateDisplay();
+}
 
-  // Evolusi otomatis tiap 1 hari sekali
-  setInterval(() => {
-    let now = Date.now();
-    if (now - pet.lastEvo >= 24*60*60*1000) {
-      pet.age++;
-      pet.level++;
-      pet.lastEvo = now;
-      alert("🎉 " + pet.name + " berevolusi ke bentuk baru!");
-      updateUI();
-    }
-  }, 60000); // cek tiap 1 menit (untuk simulasi di Google Sites)
-
-  // Leaderboard menggunakan localStorage
-  function updateLeaderboard() {
-    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-    // update data pemain
-    let existing = leaderboard.find(p => p.name === pet.name);
-    if (existing) {
-      existing.level = pet.level;
-      existing.age = pet.age;
-    } else {
-      leaderboard.push({ name: pet.name, level: pet.level, age: pet.age });
-    }
-    leaderboard.sort((a,b) => b.level - a.level || b.age - a.age);
-    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
-
-    // tampilkan
-    let list = document.getElementById("leaderboardList");
-    list.innerHTML = "";
-    leaderboard.forEach(p => {
-      let li = document.createElement("li");
-      li.innerText = `${p.name} - Level ${p.level} (Umur: ${p.age} hari)`;
-      list.appendChild(li);
-    });
+function evolvePet(){
+  // setiap 7 hari naik level
+  if(pet.age % 7 === 0){
+    pet.level++;
+    alert("🎉 Level UP! Sekarang level " + pet.level);
   }
+}
 
-  // Jalankan pertama kali
-  updateUI();
+function restartGame(){
+  pet = { name:"Pet"+Math.floor(Math.random()*1000), level:1, age:0, feedCount:0, lastFeed:Date.now(), alive:true };
+  pets.push(pet);
+  updateDisplay();
+}
 
+function updateLeaderboard(){
+  let board = document.getElementById("board");
+  board.innerHTML = "";
+  pets.sort((a,b)=>b.level - a.level);
+  pets.forEach(p=>{
+    let li = document.createElement("li");
+    li.textContent = p.name + " - Level " + p.level + " - Umur " + p.age;
+    board.appendChild(li);
+  });
+}
+
+function sellPet(){
+  if(!pet.alive) return alert("Pet mati tidak bisa dijual!");
+  alert("💰 Pet " + pet.name + " dijual ke pemain lain!");
+  pet.name = "Pet(Sold)";
+  updateDisplay();
+}
+
+// simulasi harian (untuk testing tiap 30 detik = 1 hari)
+setInterval(checkDaily, 30000);
+
+updateDisplay();
 </script>
 </body>
 </html>
