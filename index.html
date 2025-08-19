@@ -1,164 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <title>Pixel Pet Tamagotchi</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #222;
-      color: white;
-      text-align: center;
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      background: #d0f0ff; 
     }
-    canvas {
-      background: #444;
-      border: 3px solid #888;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
-    button {
+    canvas { 
+      border: 2px solid black; 
+      background: #fff; 
       margin: 10px;
-      padding: 10px 20px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
     }
-    #log {
-      margin-top: 20px;
-      font-size: 14px;
-      background: rgba(0,0,0,0.3);
+    #healthBar {
+      width: 200px;
+      height: 20px;
+      border: 2px solid black;
+      background: #ccc;
+      margin: 10px auto;
+      position: relative;
+    }
+    #healthFill {
+      width: 100%;
+      height: 100%;
+      background: red;
+    }
+    #marketplace {
+      border: 2px solid black;
+      background: #f5f5f5;
       padding: 10px;
-      border-radius: 6px;
-      max-height: 150px;
-      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .petItem {
+      border: 1px solid #000;
+      padding: 5px;
+      margin: 5px;
+      cursor: pointer;
+      background: #fff;
     }
   </style>
 </head>
 <body>
   <h1>🐾 Pixel Pet Tamagotchi</h1>
-  <canvas id="gameCanvas" width="200" height="200"></canvas>
-  <div>
-    <button onclick="feedPet()">🍖 Feed Pet</button>
-  </div>
-  <div id="log"></div>
+  
+  <canvas id="gameCanvas" width="100" height="100"></canvas>
 
+  <div id="healthBar">
+    <div id="healthFill"></div>
+  </div>
+  <button onclick="feedPet()">🍖 Kasih Makan</button>
+  
+  <h2>Marketplace Jual Beli Pet</h2>
+  <div id="marketplace">
+    <div class="petItem" onclick="buyPet('Dragon', 100)">🐉 Dragon - 100 Coin</div>
+    <div class="petItem" onclick="buyPet('Phoenix', 150)">🔥 Phoenix - 150 Coin</div>
+    <div class="petItem" onclick="buyPet('Slime', 50)">🟢 Slime - 50 Coin</div>
+  </div>
+
+  <h3>Koin Saya: <span id="coins">200</span></h3>
   <script>
+    // ==== PET ANIMATION SPRITE ====
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    const logBox = document.getElementById("log");
 
-    // === PET DATA ===
-    let pet = {
-      name: "PixelPet",
-      hunger: 0,
-      feedCountToday: 0,
-      level: 1,
-      evolutionStage: 0,
-      alive: true,
-      lastFed: 0
-    };
+    // contoh sprite pixel 100x100 unik (2 frame animasi)
+    const petSprite = new Image();
+    petSprite.src = "https://i.ibb.co/1Zz7cQZ/pixel-pet-sprite.png"; // ganti sprite sheet sendiri
 
-    // 100x100 pixel "sprites" per evolution (contoh sederhana unik)
-    const sprites = [
-      generateSprite("#ffcc00"), // stage 0 bayi
-      generateSprite("#ff6699"), // stage 1 anak
-      generateSprite("#66ccff"), // stage 2 remaja
-      generateSprite("#99ff66"), // stage 3 dewasa
-      generateSprite("#ffffff")  // stage 4 rare
-    ];
+    let frame = 0;
+    setInterval(() => {
+      ctx.clearRect(0,0,100,100);
+      ctx.drawImage(petSprite, frame*100, 0, 100, 100, 0, 0, 100, 100);
+      frame = (frame+1)%2;
+    }, 500);
 
-    let currentSprite = sprites[0];
-    let tick = 0;
-
-    function generateSprite(color) {
-      const sprite = document.createElement("canvas");
-      sprite.width = 100;
-      sprite.height = 100;
-      const sctx = sprite.getContext("2d");
-
-      // Bentuk sederhana tapi pixel-style (mata + badan kotak + telinga)
-      sctx.fillStyle = color;
-      sctx.fillRect(20, 30, 60, 50); // body
-      sctx.fillRect(10, 20, 20, 20); // ear left
-      sctx.fillRect(70, 20, 20, 20); // ear right
-      sctx.fillStyle = "black";
-      sctx.fillRect(35, 45, 10, 10); // eye left
-      sctx.fillRect(55, 45, 10, 10); // eye right
-      return sprite;
+    // ==== HEALTH BAR ====
+    let health = 100;
+    function updateHealthBar() {
+      document.getElementById("healthFill").style.width = health + "%";
     }
+    updateHealthBar();
 
-    // === GAME LOOP ===
-    function gameLoop() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (!pet.alive) {
-        ctx.fillStyle = "red";
-        ctx.font = "16px Arial";
-        ctx.fillText("💀 Your pet died!", 30, 100);
-        return;
-      }
-
-      // gerak kanan kiri animasi
-      let offset = Math.sin(tick / 20) * 10;
-      ctx.drawImage(currentSprite, 50 + offset, 50, 100, 100);
-
-      tick++;
-      requestAnimationFrame(gameLoop);
-    }
-
-    // === FEED SYSTEM ===
+    // kasih makan
     function feedPet() {
-      if (!pet.alive) return;
-      let now = Date.now();
-      if (now - pet.lastFed < 4 * 60 * 60 * 1000) { // 4 jam
-        log("⏳ Pet only eats every 4 hours!");
-        return;
-      }
-      pet.lastFed = now;
-      pet.feedCountToday++;
-      pet.hunger = 0;
-      log("🍖 You fed your pet!");
+      health += 20;
+      if (health > 100) health = 100;
+      updateHealthBar();
+      alert("Pet makan dan sehat kembali! ❤️");
     }
 
-    // === DAILY CHECK ===
-    setInterval(() => {
-      if (!pet.alive) return;
-
-      let date = new Date().toDateString();
-      if (pet.lastDay !== date) {
-        // Reset harian
-        if (pet.feedCountToday < 3) {
-          pet.alive = false;
-          log("💀 Your pet died (not fed 3x today)!");
-        } else {
-          pet.feedCountToday = 0;
-          pet.evolutionStage++;
-          if (pet.evolutionStage < sprites.length) {
-            currentSprite = sprites[pet.evolutionStage];
-            log("✨ Pet evolved to stage " + pet.evolutionStage);
-          }
-        }
-        pet.lastDay = date;
-      }
-    }, 10000); // cek tiap 10 detik (debug)
-
-    // === LEVEL UP (per minggu) ===
-    setInterval(() => {
-      if (!pet.alive) return;
-      pet.level++;
-      log("⭐ Pet leveled up! Now level " + pet.level);
-    }, 60 * 1000); // 1 menit = 1 minggu (debug cepat)
-
-    function log(msg) {
-      let p = document.createElement("div");
-      p.textContent = msg;
-      logBox.prepend(p);
+    // ==== MARKETPLACE ====
+    let coins = 200;
+    function updateCoins() {
+      document.getElementById("coins").innerText = coins;
     }
 
-    // START
-    gameLoop();
+    function buyPet(petName, price) {
+      if (coins >= price) {
+        coins -= price;
+        updateCoins();
+        alert("Kamu membeli " + petName + " 🎉");
+      } else {
+        alert("Koin tidak cukup!");
+      }
+    }
   </script>
 </body>
 </html>
