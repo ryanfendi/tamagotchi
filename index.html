@@ -1,0 +1,156 @@
+<!doctype html>
+
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tamagotchi Pixel Pet</title>
+  <style>
+    body {
+      margin: 0;
+      background: #101820;
+      color: #f2f2f2;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .game-box {
+      background: #1a2733;
+      padding: 20px;
+      border-radius: 12px;
+      width: 360px;
+      text-align: center;
+    }
+    canvas {
+      image-rendering: pixelated;
+      background: #000;
+      margin-bottom: 12px;
+      border-radius: 8px;
+    }
+    .bars { margin: 10px 0; text-align: left; }
+    .bar {
+      background: #333;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 4px 0;
+    }
+    .bar-fill {
+      height: 10px;
+      background: limegreen;
+      width: 50%;
+    }
+    button {
+      padding: 8px 12px;
+      margin: 5px;
+      border: none;
+      border-radius: 6px;
+      background: #00aaff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #0088cc; }
+    footer {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-box">
+    <h2>🐾 Tamagotchi Pixel Pet</h2>
+    <canvas id="petCanvas" width="16" height="16"></canvas><div class="bars">
+  <div>🍎 Hunger<div class="bar"><div id="hunger" class="bar-fill"></div></div></div>
+  <div>😊 Happiness<div class="bar"><div id="happy" class="bar-fill"></div></div></div>
+  <div>⚡ Energy<div class="bar"><div id="energy" class="bar-fill"></div></div></div>
+  <div>🧼 Clean<div class="bar"><div id="clean" class="bar-fill"></div></div></div>
+</div>
+
+<div>
+  <button onclick="feed()">Feed</button>
+  <button onclick="play()">Play</button>
+  <button onclick="sleep()">Sleep</button>
+  <button onclick="cleanPet()">Clean</button>
+</div>
+
+<p id="status">Status: Sehat dan Bahagia</p>
+<footer>Progress tersimpan otomatis (localStorage)</footer>
+
+  </div>  <script>
+    const canvas = document.getElementById('petCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    let pet = load() || {
+      hunger: 80,
+      happy: 80,
+      energy: 80,
+      clean: 80,
+      alive: true,
+      age: 0,
+      mood: 'happy'
+    };
+
+    function drawPet() {
+      const sprite = getSprite(pet.mood);
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          ctx.fillStyle = sprite[y][x] || '#000';
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+
+    function getSprite(mood) {
+      const c = { body: '#6cf', happy: '#fff', sad: '#00f', sleep: '#888', dirty: '#964B00' };
+      let face = Array.from({ length: 16 }, () => Array(16).fill('#000'));
+      for (let y = 6; y < 13; y++) for (let x = 4; x < 12; x++) face[y][x] = c.body;
+      if (mood === 'happy') { face[7][6] = face[7][9] = c.happy; face[9][7] = c.happy; }
+      else if (mood === 'sad') { face[7][6] = face[7][9] = c.sad; }
+      else if (mood === 'sleep') { face[7][6] = face[7][7] = face[7][8] = c.sleep; }
+      else if (mood === 'dirty') { face[9][7] = c.dirty; }
+      return face;
+    }
+
+    function updateBars() {
+      document.getElementById('hunger').style.width = pet.hunger + '%';
+      document.getElementById('happy').style.width = pet.happy + '%';
+      document.getElementById('energy').style.width = pet.energy + '%';
+      document.getElementById('clean').style.width = pet.clean + '%';
+    }
+
+    function setMood() {
+      if (!pet.alive) return pet.mood = 'dead';
+      if (pet.energy < 20) pet.mood = 'sleep';
+      else if (pet.hunger < 30) pet.mood = 'sad';
+      else if (pet.clean < 30) pet.mood = 'dirty';
+      else pet.mood = pet.happy > 60 ? 'happy' : 'neutral';
+    }
+
+    function feed() { pet.hunger = Math.min(100, pet.hunger + 20); render(); save(); }
+    function play() { pet.happy = Math.min(100, pet.happy + 20); pet.energy -= 10; render(); save(); }
+    function sleep() { pet.energy = Math.min(100, pet.energy + 30); pet.hunger -= 5; render(); save(); }
+    function cleanPet() { pet.clean = Math.min(100, pet.clean + 30); render(); save(); }
+
+    function tick() {
+      if (!pet.alive) return;
+      pet.hunger -= 2; pet.happy -= 1; pet.energy -= 1; pet.clean -= 0.5; pet.age++;
+      if (pet.hunger <= 0 || pet.energy <= 0) { pet.alive = false; document.getElementById('status').innerText = '💀 Pet meninggal'; }
+      setMood(); save(); render();
+    }
+
+    function render() {
+      updateBars();
+      drawPet();
+      if (pet.alive) document.getElementById('status').innerText = `Umur: ${pet.age}s | Mood: ${pet.mood}`;
+    }
+
+    function save() { localStorage.setItem('tamaSave', JSON.stringify(pet)); }
+    function load() { let s = localStorage.getItem('tamaSave'); return s ? JSON.parse(s) : null; }
+
+    setInterval(tick, 5000);
+    render();
+  </script></body>
+</html>
