@@ -1,199 +1,743 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamagotchi Pixel Online</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tamagotchi Pixel — Online Marketplace</title>
 <style>
-    body {
-        background: linear-gradient(135deg, #89cff0, #ffffff);
-        font-family: 'Press Start 2P', cursive;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        margin: 0;
-        text-align: center;
-    }
-    h1 { font-size: 20px; }
-    .pet-container {
-        width: 180px; height: 180px;
-        background: #fefefe;
-        border: 6px solid #333;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 10px;
-    }
-    .pet {
-        display: grid;
-        grid-template-columns: repeat(16, 8px);
-        grid-template-rows: repeat(16, 8px);
-    }
-    .pixel { width: 8px; height: 8px; }
-    .stats, .coins { font-size: 14px; margin: 6px 0; }
-    .bars { width: 200px; margin: 8px 0; }
-    .bar { height: 14px; background: #ddd; margin: 4px 0; border-radius: 3px; overflow: hidden; }
-    .bar-inner { height: 100%; transition: width 0.5s; }
-    .green { background: #4CAF50; }
-    .red { background: #E91E63; }
-    .buttons { display: flex; gap: 6px; margin-top: 8px; }
-    button { padding: 6px 10px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    .marketplace {
-        margin-top: 20px; padding: 10px;
-        background: #fff; border: 2px solid #333; width: 240px;
-    }
-    .item {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 6px; font-size: 12px;
-    }
+  :root{--bg:#0b1220;--card:#0f1724;--accent:#10b981;--muted:#9fb3b5}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071726,#06202a);font-family:system-ui,Arial;color:#e6eef6}
+  .wrap{max-width:980px;margin:18px auto;display:grid;grid-template-columns:520px 1fr;gap:18px;padding:16px}
+  .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+  h1{margin:0 0 8px;font-size:20px}
+  canvas{background:#08121a;border-radius:8px;display:block;margin:12px auto;image-rendering:pixelated}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
+  button.alt{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#042018}
+  .small{font-size:13px;color:var(--muted)}
+  label.inline{display:flex;gap:8px;align-items:center}
+  input[type=text],input[type=number]{padding:6px;border-radius:6px;border:0}
+  .mutelist{font-size:13px;color:#9fb3b5}
+  .market-item{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-bottom:8px}
+  ul{margin:0;padding-left:14px}
+  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<h1>Tamagotchi Pixel Online</h1>
-<div class="coins">💰 Coin: <span id="coins">100</span></div>
-<div class="pet-container"><div class="pet" id="pet"></div></div>
-<div class="stats" id="stats">❤️ 100 | 🍖 100</div>
-<div class="bars">
-    <div class="bar"><div class="bar-inner green" id="health-bar"></div></div>
-    <div class="bar"><div class="bar-inner red" id="hunger-bar"></div></div>
-</div>
-<div class="buttons">
-    <button onclick="feed()">Makan</button>
-    <button onclick="play()">Main</button>
-    <button onclick="sleep()">Tidur</button>
-</div>
-
-<div class="marketplace">
-    <h3>Marketplace</h3>
-    <div id="market-items">
-        <div class="item"><span>🍎 Makanan (+20)</span> <button onclick="buyItem('food')">10💰</button></div>
-        <div class="item"><span>🧸 Mainan (+15)</span> <button onclick="buyItem('toy')">15💰</button></div>
-        <div class="item"><span>💊 Obat (+30)</span> <button onclick="buyItem('medicine')">25💰</button></div>
+<div class="wrap">
+  <!-- LEFT: GAME -->
+  <div class="panel">
+    <h1>🐣 Tamagotchi Pixel — Online</h1>
+    <div style="text-align:center">
+      <canvas id="canvas" width="128" height="128" style="width:320px;height:320px"></canvas>
     </div>
+
+    <div class="controls" style="margin-top:8px">
+      <input id="nameInput" type="text" placeholder="Nama pemain / pemilik" />
+      <button id="startBtn">Start / Login</button>
+      <label class="inline"><input id="devChk" type="checkbox"> DEV_MODE</label>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap">
+      <button id="feedBtn" class="alt">🍎 Feed</button>
+      <button id="sleepBtn">💤 Sleep</button>
+      <button id="sellBtn">💱 Sell</button>
+      <button id="buyBtn">🛒 Buy</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between;align-items:center">
+      <div class="small">Status: <span id="statusText">—</span></div>
+      <div class="small">Last feed: <span id="lastFeedText">—</span></div>
+      <div class="small">💰 Coin: <span id="coinText">—</span></div>
+    </div>
+
+    <div style="margin-top:12px" class="mutelist">
+      <div>Aturan penting:</div>
+      <ul>
+        <li>Makan tiap <strong>4 jam</strong> (atau DEV 1 menit) — tidak boleh lebih cepat.</li>
+        <li>Dalam 1 hari harus makan ≥ <strong>3x</strong>, jika tidak → pet mati dan harus reset.</li>
+        <li>Evolusi tiap <strong>1 hari</strong> (DEV cepat untuk testing), level naik tiap <strong>7 hari</strong>.</li>
+      </ul>
+    </div>
+
+    <div style="margin-top:8px" class="small">
+      <button id="resetBtn" class="alt">🔁 Reset My Pet</button>
+      <button id="exportBtn">⬇️ Export Save</button>
+      <label for="importFile" class="inline">
+        <span style="background:#10b981;padding:6px;border-radius:6px;cursor:pointer">⬆️ Import Save</span>
+        <input id="importFile" type="file" accept="application/json" style="display:none">
+      </label>
+    </div>
+
+    <div id="log" class="small" style="margin-top:10px;min-height:30px"></div>
+  </div>
+
+  <!-- RIGHT: MARKET + LEADERBOARD -->
+  <div class="panel">
+    <h2 style="margin-top:0">🏆 Leaderboard & Marketplace</h2>
+
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="saleId" type="text" placeholder="sale id (unik)" />
+      <input id="salePrice" type="number" min="0" step="1" value="50" placeholder="harga" />
+      <button id="postSaleBtn">Post Sale</button>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <input id="buyId" type="text" placeholder="buy id" />
+      <button id="doBuyBtn">Buy</button>
+    </div>
+
+    <h3 style="margin-bottom:6px;margin-top:12px">Marketplace</h3>
+    <div id="marketList" style="max-height:220px;overflow:auto"></div>
+
+    <h3 style="margin-bottom:6px;margin-top:12px">Leaderboard</h3>
+    <div id="leaderboardList"></div>
+
+    <div class="small" style="margin-top:10px">
+      Default: data di browser (localStorage). <br>
+      <strong>Online aktif</strong> setelah isi Firebase config (Realtime DB).
+    </div>
+  </div>
 </div>
 
-<script>
-const pet = document.getElementById("pet");
-const stats = document.getElementById("stats");
-const healthBar = document.getElementById("health-bar");
-const hungerBar = document.getElementById("hunger-bar");
-const coinsEl = document.getElementById("coins");
-
-const COLORS = {
-    stage1: "#FFD966",
-    stage2: "#66FF66",
-    stage3: "#66CCFF",
-    eye: "#000",
-    eyeBlink: "#fff",
-    mouth: "#C21807",
-    mouthOpen: "#FF0000",
-    bg: "#fff"
+<!-- ============================================================
+     GAME SCRIPT + FIREBASE (modular CDN)
+     ============================================================ -->
+<script type="module">
+/* =========================================
+   Firebase (optional, isi config agar online)
+   ========================================= */
+// TODO: ISI FIREBASE CONFIG (dari Firebase console)
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-let data = {
-    health: 100,
-    hunger: 100,
+let fb = {enabled:false, app:null, db:null, refs:{}};
+
+try {
+  if (!FIREBASE_CONFIG.apiKey.startsWith("YOUR_")) {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js");
+    const { getDatabase, ref, set, get, onValue, remove, runTransaction, update } =
+      await import("https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js");
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db  = getDatabase(app);
+    fb = {enabled:true, app, db, ref, set, get, onValue, remove, runTransaction, update};
+    console.log("Firebase ONLINE mode aktif");
+  }
+} catch(e) {
+  console.warn("Firebase tidak aktif (akan pakai localStorage).", e);
+}
+
+/* =========================================
+   DOM Refs
+   ========================================= */
+const CANVAS = document.getElementById('canvas');
+const CTX = CANVAS.getContext('2d'); CTX.imageSmoothingEnabled = false;
+
+const nameInput   = document.getElementById('nameInput');
+const startBtn    = document.getElementById('startBtn');
+const devChk      = document.getElementById('devChk');
+const feedBtn     = document.getElementById('feedBtn');
+const sleepBtn    = document.getElementById('sleepBtn');
+const sellBtn     = document.getElementById('sellBtn');
+const buyBtn      = document.getElementById('buyBtn');
+
+const postSaleBtn  = document.getElementById('postSaleBtn');
+const saleIdInput  = document.getElementById('saleId');
+const salePriceInp = document.getElementById('salePrice');
+const doBuyBtn     = document.getElementById('doBuyBtn');
+const buyIdInput   = document.getElementById('buyId');
+
+const statusText   = document.getElementById('statusText');
+const lastFeedText = document.getElementById('lastFeedText');
+const coinText     = document.getElementById('coinText');
+const logEl        = document.getElementById('log');
+const marketListEl = document.getElementById('marketList');
+const leaderboardListEl = document.getElementById('leaderboardList');
+
+const PLAYERS_KEY = 'tama_players_v3';
+const MARKET_KEY  = 'tama_market_v3';
+const MS_HOUR = 60*60*1000;
+const DEFAULTS = { FEED_INTERVAL_MS: 4*MS_HOUR, DAY_MS: 24*MS_HOUR, WEEK_MS: 7*24*MS_HOUR };
+const DEV_DEFAULTS = { FEED_INTERVAL_MS: 60*1000, DAY_MS: 30*1000, WEEK_MS: 7*30*1000 };
+
+let T = DEFAULTS;
+let players = loadLS(PLAYERS_KEY) || {};
+let market  = loadLS(MARKET_KEY)  || {};
+let currentPlayer = null;
+
+/* =========================================
+   Pixel Art Sprite System (16×16)
+   ========================================= */
+const PALETTE = {
+  0:"#00000000", // transparent
+  1:"#2b2f3a",   // outline
+  2:"#ffe38a",   // stage1 body
+  3:"#7dff7a",   // stage2 body
+  4:"#77c8ff",   // stage3+ body
+  5:"#fff3a6",   // highlight
+  6:"#10141a",   // eye dark
+  7:"#f58a8a",   // mouth
+  8:"#9be7ff",   // sparkle
+  9:"#7afff0",   // sleep aura
+  a:"#44c04b",   // sick green
+  b:"#ff5252"    // angry red
+};
+// body color by evolution index
+const EVO_COLORS = (e)=> (e<2?PALETTE[2] : e<5?PALETTE[3] : PALETTE[4]);
+
+// Base body mask (16x16), 1=outline, 2=body, 0=empty
+const BODY_MASK = [
+  "0001111111110000",
+  "0012222222221000",
+  "0122222222222100",
+  "1122222222222210",
+  "1222222222222221",
+  "1222222222222221",
+  "1222222222222221",
+  "1222222222222221",
+  "1222222222222221",
+  "1222222222222221",
+  "1222222222222221",
+  "0122222222222100",
+  "0012222222221000",
+  "0001222222210000",
+  "0000111111100000",
+  "0000000000000000"
+];
+
+// Eyes & mouth per expression
+const FACE = {
+  happy: [
+    "0000000000000000",
+    "0000000000000000",
+    "0000060006000000",
+    "0000000000000000",
+    "0000007700000000",
+    "0000007700000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+  ],
+  sad: [
+    "0000000000000000",
+    "0000000000000000",
+    "0000060006000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000070070000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+  ],
+  angry: [
+    "0000060006000000",
+    "0000600000060000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000007700000000",
+    "0000007700000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+  ],
+  sick: [
+    "0000000000000000",
+    "0000000000000000",
+    "0000060006000000",
+    "0000000000000000",
+    "00000aa00aa00000",
+    "00000aa00aa00000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000007700000000",
+    "0000007700000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+  ],
+  sleep: [
+    "0000000000000000",
+    "0000000000000000",
+    "0000099999900000",
+    "0000090000900000",
+    "0000099999900000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+  ],
+  blink: [
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000666666660000",
+    "0000007700000000",
+    "0000007700000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000",
+  ],
+};
+
+// draw 16×16 grid
+function drawGrid(grid, bodyColor) {
+  const px = 8; // pixel size on canvas
+  for (let y=0; y<16; y++){
+    for (let x=0; x<16; x++){
+      const c = grid[y][x];
+      if (c==="0") continue;
+      let col = PALETTE[c] || bodyColor;
+      if (c==="2") col = bodyColor;     // body area uses evo color
+      if (c==="1") col = PALETTE[1];    // outline
+      CTX.fillStyle = col;
+      CTX.fillRect(x*px, y*px, px, px);
+    }
+  }
+}
+
+// compose body + face
+function makeFrame(evoIndex, expression) {
+  const bodyColor = EVO_COLORS(evoIndex);
+  const body = BODY_MASK.map(r=>r.split(""));
+  const face = (FACE[expression]||FACE.happy).map(r=>r.split(""));
+  const out = [];
+  for (let y=0;y<16;y++){
+    const row=[];
+    for (let x=0;x<16;x++){
+      row.push( body[y][x]!=="0" ? body[y][x] : face[y][x] );
+    }
+    out.push(row);
+  }
+  return {grid: out, bodyColor};
+}
+
+/* =========================================
+   Save/Load helpers
+   ========================================= */
+function loadLS(k){ try { return JSON.parse(localStorage.getItem(k)||"null"); } catch(e){ return null; } }
+function saveLS(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+function log(msg){
+  const t = (new Date()).toLocaleTimeString();
+  logEl.innerHTML = `[${t}] ${msg}<br>` + logEl.innerHTML;
+}
+
+function localDateStr(ts){ const d=new Date(ts); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+
+/* =========================================
+   Player model & rules
+   ========================================= */
+function makePlayer(name){
+  const now = Date.now();
+  return {
+    name, createdAt: now, lastDailyChecked: localDateStr(now),
     coins: 100,
-    evoStage: 1,
-    sleeping: false
+    level: 1,
+    pet: { alive: true, evoIndex: 0, ageDays: 0, feedTimestamps: [], lastFeed: null, sleeping:false }
+  };
+}
+
+function msToStr(ms){
+  if(ms<=0) return "0s";
+  const s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  if(h>0) return `${h}h ${m}m`;
+  if(m>0) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+
+/* =========================================
+   UI wiring
+   ========================================= */
+startBtn.onclick = () => {
+  const name = (nameInput.value||"").trim();
+  if(!name) { alert("Masukkan nama pemain unik."); return; }
+  T = devChk.checked ? DEV_DEFAULTS : DEFAULTS;
+  if (!players[name]) { players[name] = makePlayer(name); saveLS(PLAYERS_KEY, players); log("Akun baru: "+name); }
+  currentPlayer = players[name];
+  syncOnlineBindings();
+  renderAll();
 };
 
-let evoTimer = 0;
+feedBtn.onclick = () => {
+  if(!ensureLoginAlive()) return;
+  const now=Date.now();
+  const last = currentPlayer.pet.lastFeed||0;
+  const wait = T.FEED_INTERVAL_MS-(now-last);
+  if (last && wait>0) {
+    alert("Terlalu cepat! tunggu "+msToStr(wait));
+    return;
+  }
+  currentPlayer.pet.lastFeed = now;
+  currentPlayer.pet.feedTimestamps.push(now);
+  coinDelta(+2); // bonus koin kecil saat makan
+  saveAndRender("🍎 Makan!");
+};
 
-function createSprite(stage, blink=false, talk=false) {
-    const pixels = [];
-    for (let i = 0; i < 256; i++) {
-        let color = COLORS.bg;
-        let bodyColor = COLORS.stage1;
-        if (stage === 2) bodyColor = COLORS.stage2;
-        if (stage === 3) bodyColor = COLORS.stage3;
+sleepBtn.onclick = () => {
+  if(!ensureLoginAlive()) return;
+  currentPlayer.pet.sleeping = !currentPlayer.pet.sleeping;
+  saveAndRender(currentPlayer.pet.sleeping ? "😴 Tidur" : "🌞 Bangun");
+};
 
-        if (i > 35 && i < 220 && i % 16 > 2 && i % 16 < 13) color = bodyColor;
-        if (i === 75 || i === 78 || i === 139 || i === 142) color = blink ? COLORS.eyeBlink : COLORS.eye;
-        if (i === 187 || i === 188) color = talk ? COLORS.mouthOpen : COLORS.mouth;
+resetBtn.onclick = () => {
+  if(!currentPlayer) return alert("Login dulu");
+  if(!confirm("Reset pet dan mulai dari awal?")) return;
+  players[currentPlayer.name] = makePlayer(currentPlayer.name);
+  saveLS(PLAYERS_KEY, players);
+  currentPlayer = players[currentPlayer.name];
+  pushOnlinePlayer();
+  renderAll();
+};
 
-        pixels.push(color);
-    }
-    return pixels;
-}
+exportBtn.onclick = () => {
+  if(!currentPlayer) return alert("Login dulu");
+  const data = JSON.stringify(currentPlayer);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
+  a.download = currentPlayer.name + '-tama-save.json';
+  document.body.appendChild(a); a.click(); a.remove();
+};
 
-function renderPet(blink=false, talk=false) {
-    pet.innerHTML = "";
-    const pixels = createSprite(data.evoStage, blink, talk);
-    pixels.forEach(c => {
-        const div = document.createElement("div");
-        div.classList.add("pixel");
-        div.style.backgroundColor = c;
-        pet.appendChild(div);
+importFile.onchange = (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ev=>{
+    try{
+      const obj = JSON.parse(ev.target.result);
+      if(!obj.name) return alert('Save tidak valid');
+      players[obj.name] = obj; saveLS(PLAYERS_KEY, players);
+      alert('Save diimpor. Login pakai nama yang sama.');
+    }catch(_){ alert('File tidak valid'); }
+  };
+  r.readAsText(f);
+};
+
+/* =========================================
+   Marketplace (UI)
+   ========================================= */
+sellBtn.onclick = ()=> {
+  document.getElementById('saleId').focus();
+};
+postSaleBtn.onclick = async ()=> {
+  if(!ensureLoginAlive()) return;
+  const id = (saleIdInput.value||"").trim();
+  const price = Math.max(0, parseInt(salePriceInp.value||"0",10));
+  if(!id) { alert("Isi sale id unik"); return; }
+  if(currentPlayer.pet==null || !currentPlayer.pet.alive) { alert("Tidak ada pet aktif untuk dijual"); return; }
+
+  const sale = { id, price, seller: currentPlayer.name, pet: currentPlayer.pet, postedAt: Date.now() };
+
+  if (fb.enabled) {
+    const saleRef = fb.ref(fb.db, `market/${id}`);
+    const existing = await fb.get(saleRef);
+    if (existing.exists()) { alert("Sale id sudah dipakai"); return; }
+    await fb.set(saleRef, sale);
+  } else {
+    market[id] = sale; saveLS(MARKET_KEY, market);
+  }
+
+  // remove pet from player
+  currentPlayer.pet = null;
+  saveAndRender(`📣 Dijual id=${id} (price ${price})`);
+};
+
+buyBtn.onclick = ()=> { document.getElementById('buyId').focus(); };
+doBuyBtn.onclick = async ()=> {
+  const id = (buyIdInput.value||"").trim();
+  if(!currentPlayer){ alert("Login dulu"); return; }
+  if(!id){ alert("Isi buy id"); return; }
+
+  if (fb.enabled) {
+    // transactional buy
+    const saleRef = fb.ref(fb.db, `market/${id}`);
+    const userRef = fb.ref(fb.db, `players/${currentPlayer.name}`);
+    const snap = await fb.get(saleRef);
+    if (!snap.exists()) { alert("Sale tidak ditemukan"); return; }
+    const sale = snap.val();
+    if (sale.seller === currentPlayer.name) { alert("Tidak bisa beli milik sendiri"); return; }
+    // fetch buyer
+    const uSnap = await fb.get(userRef);
+    let buyer = uSnap.exists()? uSnap.val() : currentPlayer;
+
+    if ((buyer.coins||0) < sale.price) { alert("Koin tidak cukup"); return; }
+
+    await fb.runTransaction(saleRef, (curr)=>{
+      if (curr===null) return curr; // already bought
+      // mark removed
+      return null;
     });
+    // transfer locally & to server
+    buyer.coins = (buyer.coins||0) - sale.price;
+    buyer.pet = sale.pet;
+    await fb.update(userRef, buyer);
+
+    // update local mirrors
+    currentPlayer = players[currentPlayer.name] = buyer;
+    saveLS(PLAYERS_KEY, players);
+    log(`✅ Beli pet id=${id} dari ${sale.seller} (${sale.price}💰)`);
+    renderAll();
+  } else {
+    const sale = market[id];
+    if(!sale) { alert("ID tidak ditemukan"); return; }
+    if (sale.seller === currentPlayer.name) { alert("Tidak bisa beli milik sendiri"); return; }
+    if ((currentPlayer.coins||0) < sale.price) { alert("Koin tidak cukup"); return; }
+    currentPlayer.coins -= sale.price;
+    currentPlayer.pet = sale.pet;
+    delete market[id];
+    saveLS(MARKET_KEY, market);
+    saveAndRender(`✅ Beli pet id=${id} (${sale.price}💰)`);
+  }
+};
+
+/* =========================================
+   Online sync (leaderboard & market listeners)
+   ========================================= */
+function syncOnlineBindings(){
+  if (!fb.enabled || !currentPlayer) return;
+  // push my player once
+  pushOnlinePlayer();
+
+  // live market list
+  const mref = fb.ref(fb.db, "market");
+  fb.onValue(mref, (snap)=>{
+    market = snap.exists()? snap.val() : {};
+    buildMarketList();
+  });
+
+  // live players -> leaderboard
+  const pref = fb.ref(fb.db, "players");
+  fb.onValue(pref, (snap)=>{
+    const all = snap.exists()? snap.val() : {};
+    buildLeaderboardFrom(all);
+  });
 }
 
-function updateUI() {
-    stats.textContent = `❤️ ${data.health} | 🍖 ${data.hunger}`;
-    healthBar.style.width = data.health + "%";
-    hungerBar.style.width = data.hunger + "%";
-    coinsEl.textContent = data.coins;
+async function pushOnlinePlayer(){
+  if (!fb.enabled || !currentPlayer) return;
+  const uref = fb.ref(fb.db, `players/${currentPlayer.name}`);
+  await fb.set(uref, currentPlayer);
 }
 
-function feed() {
-    if (!data.sleeping && data.coins >= 0) {
-        data.hunger = Math.min(100, data.hunger + 20);
+/* =========================================
+   Render & Animation
+   ========================================= */
+let frame=0, blinkTimer=0;
+function drawScene(){
+  CTX.clearRect(0,0,128,128);
+  // BG
+  CTX.fillStyle = "#08121a"; CTX.fillRect(0,0,128,128);
+
+  if(!currentPlayer || !currentPlayer.pet){
+    CTX.fillStyle = "#9fb3b5"; CTX.font = "10px monospace";
+    CTX.fillText("Login untuk mulai", 20, 64);
+    return;
+  }
+
+  const pet = currentPlayer.pet;
+  // mood:
+  const now = Date.now();
+  const since = pet.lastFeed ? (now - pet.lastFeed) : Infinity;
+  let expr = "happy";
+  if (pet.sleeping) expr="sleep";
+  else if (since > 12*MS_HOUR) expr="sick";
+  else if (since > 8*MS_HOUR) expr="sad";
+  // angry jika mau makan tapi di-spam sebelum interval
+  if (lastClickTooSoon) expr="angry";
+
+  // blink setiap ~3s
+  blinkTimer = (blinkTimer+1)%180;
+  const blink = (blinkTimer<6 && !pet.sleeping) ? "blink" : null;
+
+  const fx = blink || expr;
+  const {grid, bodyColor} = makeFrame(pet.evoIndex||0, fx);
+  drawGrid(grid, bodyColor);
+
+  // sparkles untuk evo tinggi
+  if ((pet.evoIndex||0) >= 5) {
+    CTX.fillStyle = PALETTE[8];
+    CTX.fillRect(8,10,4,4); CTX.fillRect(108,18,3,3);
+  }
+}
+
+function renderAll(){
+  // daily rollover check
+  backgroundDailyCheck();
+  // UI
+  if(currentPlayer){
+    statusText.textContent = (!currentPlayer.pet) ? "No pet" : (currentPlayer.pet.alive ? "Hidup" : "Mati");
+    lastFeedText.textContent = (currentPlayer.pet && currentPlayer.pet.lastFeed) ? new Date(currentPlayer.pet.lastFeed).toLocaleString() : "—";
+    coinText.textContent = currentPlayer.coins ?? 0;
+  } else {
+    statusText.textContent = "—"; lastFeedText.textContent = "—"; coinText.textContent = "—";
+  }
+  buildMarketList();
+  buildLeaderboard();
+  drawScene();
+}
+
+function buildMarketList(){
+  if (fb.enabled) return; // realtime listener akan mengisi
+  market = loadLS(MARKET_KEY) || {};
+  marketListEl.innerHTML = "";
+  const ids = Object.keys(market);
+  if (ids.length===0) { marketListEl.innerHTML = '<div class="muted">Marketplace kosong</div>'; return; }
+  ids.forEach(id=>{
+    const s = market[id];
+    const el = document.createElement('div');
+    el.className = "market-item";
+    el.innerHTML = `<strong>${id}</strong> — Seller: ${s.seller} • Price: ${s.price}💰 • Posted: ${new Date(s.postedAt).toLocaleString()}<br>
+      Age:${s.pet.ageDays||0}d • Evo:${s.pet.evoIndex||0} • Alive:${s.pet.alive?'Yes':'No'}`;
+    const btn = document.createElement('button'); btn.textContent="Beli"; btn.style.marginLeft="8px";
+    btn.onclick = ()=>{ buyIdInput.value=id; doBuyBtn.click(); };
+    el.appendChild(btn);
+    marketListEl.appendChild(el);
+  });
+}
+
+function buildLeaderboard(){
+  if (fb.enabled) return; // realtime listener will handle
+  players = loadLS(PLAYERS_KEY) || {};
+  buildLeaderboardFrom(players);
+}
+function buildLeaderboardFrom(pl){
+  const arr = Object.values(pl).map(p=>({name:p.name, level:p.level||1, age:(p.pet?p.pet.ageDays||0:0), alive:(p.pet?p.pet.alive:false)}));
+  arr.sort((a,b)=> b.level-a.level || b.age-a.age);
+  leaderboardListEl.innerHTML = arr.length? "" : '<div class="muted">Belum ada pemain</div>';
+  arr.forEach((p,i)=>{
+    const el = document.createElement('div');
+    el.innerHTML = `${i+1}. <strong>${p.name}</strong> — Lv ${p.level} • Umur ${p.age}d ${p.alive? "":"⚰️"}`;
+    leaderboardListEl.appendChild(el);
+  });
+}
+
+/* =========================================
+   Daily checks, evolution, level
+   ========================================= */
+function backgroundDailyCheck(){
+  if(!currentPlayer) return;
+  const now = Date.now(), today = localDateStr(now);
+
+  if(currentPlayer.lastDailyChecked !== today){
+    // evaluate yesterday feeds
+    const prevStart = new Date(new Date(now - T.DAY_MS).toDateString()).getTime();
+    const prevEnd   = prevStart + T.DAY_MS;
+    const feeds = (currentPlayer.pet?.feedTimestamps||[]).filter(ts=> ts>=prevStart && ts<prevEnd).length;
+
+    if (currentPlayer.pet){
+      if (feeds < 3) {
+        currentPlayer.pet.alive = false;
+        log(`❌ Pet mati (makan ${feeds}x kemarin)`);
+      } else {
+        currentPlayer.pet.ageDays = (currentPlayer.pet.ageDays||0)+1;
+        currentPlayer.pet.evoIndex = Math.min(7, currentPlayer.pet.ageDays); // 8 tahap (0..7)
+        const weeks = Math.floor((now - currentPlayer.createdAt) / T.WEEK_MS) + 1;
+        currentPlayer.level = weeks;
+        coinDelta(+10); // bonus harian
+        log(`✅ Hari baru: survive (${feeds}x makan). age=${currentPlayer.pet.ageDays}d, lv=${currentPlayer.level}`);
+      }
     }
-    renderPet(false, true);
-    setTimeout(() => renderPet(false, false), 500);
-    updateUI();
+    currentPlayer.lastDailyChecked = today;
+    saveAndRender();
+  }
 }
 
-function play() {
-    if (!data.sleeping) {
-        data.health = Math.min(100, data.health + 10);
-        data.hunger = Math.max(0, data.hunger - 5);
-    }
-    renderPet(false, true);
-    setTimeout(() => renderPet(false, false), 500);
-    updateUI();
+/* =========================================
+   Coins helper
+   ========================================= */
+function coinDelta(d){
+  currentPlayer.coins = (currentPlayer.coins||0) + d;
 }
 
-function sleep() {
-    data.sleeping = !data.sleeping;
-    updateUI();
+/* =========================================
+   Save + sync
+   ========================================= */
+function saveAndRender(note){
+  players[currentPlayer.name] = currentPlayer;
+  saveLS(PLAYERS_KEY, players);
+  if (note) log(note);
+  if (fb.enabled) pushOnlinePlayer();
+  renderAll();
 }
 
-function buyItem(item) {
-    let cost = 0;
-    if (item === 'food') cost = 10;
-    if (item === 'toy') cost = 15;
-    if (item === 'medicine') cost = 25;
-
-    if (data.coins >= cost) {
-        data.coins -= cost;
-        if (item === 'food') data.hunger = Math.min(100, data.hunger + 20);
-        if (item === 'toy') data.health = Math.min(100, data.health + 15);
-        if (item === 'medicine') data.health = Math.min(100, data.health + 30);
-        updateUI();
-    } else {
-        alert("Coin tidak cukup!");
-    }
+function ensureLoginAlive(){
+  if(!currentPlayer){ alert("Login dulu"); return false; }
+  if(!currentPlayer.pet){ alert("Tidak ada pet aktif"); return false; }
+  if(!currentPlayer.pet.alive){ alert("Pet mati. Reset dulu."); return false; }
+  return true;
 }
 
-setInterval(() => {
-    if (!data.sleeping) {
-        data.hunger = Math.max(0, data.hunger - 1);
-        data.health = Math.max(0, data.health - (data.hunger === 0 ? 2 : 0));
-    }
-    evoTimer += 3;
-    if (evoTimer >= 60 && data.evoStage === 1) data.evoStage = 2;
-    if (evoTimer >= 120 && data.evoStage === 2) data.evoStage = 3;
+/* =========================================
+   Anti-spam state (untuk angry ekspresi)
+   ========================================= */
+let lastClickTooSoon = false;
+feedBtn.addEventListener('click', ()=>{
+  // flag diset di handler feedBtn utama via time check; di sini cuma reset
+  setTimeout(()=> lastClickTooSoon=false, 1500);
+});
+/* override feedBtn to set angry moment if too soon */
+const _origFeed = feedBtn.onclick;
+feedBtn.onclick = () => {
+  if(!currentPlayer){ alert("Login dulu"); return; }
+  const now=Date.now(); const last=currentPlayer.pet?.lastFeed||0;
+  if (currentPlayer?.pet && last && now-last<T.FEED_INTERVAL_MS){
+    lastClickTooSoon=true;
+  }
+  _origFeed();
+};
 
-    renderPet();
-    updateUI();
-}, 3000);
+/* =========================================
+   Loop
+   ========================================= */
+setInterval(drawScene, 1000/30); // 30 FPS
+setInterval(()=>renderAll(), 1000); // UI tick
 
-renderPet();
-updateUI();
+// first paint
+renderAll();
 </script>
 </body>
 </html>
