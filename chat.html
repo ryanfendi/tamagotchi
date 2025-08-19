@@ -5,50 +5,61 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chat - Tamagotchi</title>
 <style>
-body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
-.panel{background:#101a2b;padding:10px;margin:10px auto;width:95%;max-width:700px;border-radius:8px;}
-#messages{height:300px;overflow-y:auto;background:#1a2436;padding:8px;border-radius:8px;text-align:left;}
-.msg{margin-bottom:8px;}
-.msg b{color:#10b981;}
-input{padding:8px;width:70%;border-radius:6px;margin-top:8px;}
-button{background:#10b981;border:none;padding:8px;margin:4px;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer;}
+body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:0;}
+.panel{background:#101a2b;padding:14px;margin:10px auto;width:95%;max-width:700px;border-radius:12px;}
+#messages{height:400px;overflow-y:auto;background:#1a2436;padding:10px;border-radius:8px;text-align:left;}
+.msg{margin-bottom:8px;padding:6px;border-radius:6px;}
+.msg.you{background:#10b98133;text-align:right;}
+.msg.other{background:#0891b233;text-align:left;}
+.msg span{font-size:10px;color:#999;margin-left:5px;}
+input{padding:8px;width:70%;border-radius:6px;margin-top:8px;border:none;}
+button{background:#10b981;border:none;padding:8px;margin-left:5px;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer;}
+a.link{display:inline-block;background:#06b6d4;padding:8px 10px;border-radius:8px;color:#042018;text-decoration:none;margin:4px;}
 </style>
 </head>
 <body>
-<h2>💬 Chat Global</h2>
 <div class="panel">
+    <h2>💬 Chat Global</h2>
     <div id="messages"></div>
-    <input type="text" id="msgInput" placeholder="Ketik pesan...">
-    <button onclick="sendMsg()">Kirim</button>
-</div>
-<div style="margin-top:10px;">
-    <button onclick="goTo('index.html')">🏠 Home</button>
-    <button onclick="goTo('inventory.html')">📦 Inventory</button>
-    <button onclick="goTo('marketplace.html')">🛒 Marketplace</button>
-    <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
-    <button onclick="logout()">🚪 Logout</button>
+    <div>
+        <input type="text" id="msgInput" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter') sendMsg()">
+        <button onclick="sendMsg()">Kirim</button>
+    </div>
+    <div style="margin-top:10px;">
+        <a class="link" href="index.html">🏠 Home</a>
+        <a class="link" href="inventory.html">📦 Inventory</a>
+        <a class="link" href="marketplace.html">🛒 Marketplace</a>
+        <a class="link" href="leaderboard.html">🏆 Leaderboard</a>
+        <a class="link" href="#" onclick="logout()">🚪 Logout</a>
+    </div>
 </div>
 <script>
 let currentPlayerName = localStorage.getItem("currentPlayer");
 if(!currentPlayerName) location.href="login.html";
 
-let chat = JSON.parse(localStorage.getItem("chat")||"[]");
+function loadChat(){return JSON.parse(localStorage.getItem("chat")||"[]");}
+function saveChat(chat){localStorage.setItem("chat",JSON.stringify(chat));}
 
 function renderChat(){
-    const div=document.getElementById("messages");
-    div.innerHTML="";
-    chat.forEach(c=>{
-        div.innerHTML+=`<div class="msg"><b>${c.name}:</b> ${c.text}</div>`;
+    const msgs = loadChat();
+    const div = document.getElementById("messages");
+    div.innerHTML = "";
+    msgs.forEach(m=>{
+        const cls = m.name===currentPlayerName ? "you" : "other";
+        div.innerHTML += `<div class="msg ${cls}"><b>${m.name}:</b> ${m.text} <span>${m.time}</span></div>`;
     });
-    div.scrollTop=div.scrollHeight;
+    div.scrollTop = div.scrollHeight;
 }
 
 function sendMsg(){
-    const text=document.getElementById("msgInput").value.trim();
-    if(!text)return;
-    chat.push({name:currentPlayerName,text});
-    localStorage.setItem("chat",JSON.stringify(chat));
-    document.getElementById("msgInput").value="";
+    const input = document.getElementById("msgInput");
+    const text = input.value.trim();
+    if(!text) return;
+    const chat = loadChat();
+    const time = new Date().toLocaleTimeString();
+    chat.push({name:currentPlayerName,text,time});
+    saveChat(chat);
+    input.value="";
     renderChat();
 }
 
@@ -57,8 +68,8 @@ function logout(){
     location.href="login.html";
 }
 
-function goTo(p){location.href=p;}
-
+// Auto refresh chat tiap 1 detik (simulasi real-time)
+setInterval(renderChat,1000);
 renderChat();
 </script>
 </body>
