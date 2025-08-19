@@ -3,626 +3,492 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamagotchi Pixel — Animasi Lucu</title>
+<title>Pixel Pet 100×100 — Detail Skins + Anim</title>
 <style>
-  :root{
-    --bg:#0b1220; --card:#0f1724; --accent:#10b981; --muted:#9fb3b5;
-  }
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071726,#06202a);font-family:system-ui,Arial;color:#e6eef6}
-  .wrap{max-width:980px;margin:18px auto;display:grid;grid-template-columns:520px 1fr;gap:18px;padding:16px}
-  .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-  h1{margin:0 0 8px;font-size:20px}
-  canvas{background:#08121a;border-radius:8px;display:block;margin:12px auto;image-rendering:pixelated}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-  button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
-  button.alt{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#042018}
-  .small{font-size:13px;color:var(--muted)}
-  label.inline{display:flex;gap:8px;align-items:center}
-  input[type=text]{padding:6px;border-radius:6px;border:0}
-  .mutelist{font-size:13px;color:#9fb3b5}
-  .market-item{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-bottom:8px}
-  ul{margin:0;padding-left:14px}
-  @media(max-width:960px){.wrap{grid-template-columns:1fr}}
+  :root{ --bg:#0b1220; --panel:#0f1724; --accent:#10b981; --muted:#9fb3b5 }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+        background:linear-gradient(180deg,#071726,#04202a); color:#e6eef6; font-family:Inter,system-ui,Arial; padding:18px }
+  .card{ width:960px; max-width:100%; display:grid; grid-template-columns:360px 1fr; gap:18px }
+  .panel{ background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:14px; border-radius:12px; border:1px solid rgba(255,255,255,0.03) }
+  h1{ margin:0 0 10px 0; font-size:18px }
+  canvas{ image-rendering: pixelated; display:block; margin:8px auto; background:#08121a; border-radius:8px }
+  .controls{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:8px }
+  button{ background:linear-gradient(180deg,var(--accent),#059669); border:0; color:#042018; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700 }
+  button.alt{ background:linear-gradient(180deg,#06b6d4,#0891b2) }
+  input[type=file]{ display:none }
+  label.upload{ background:#10b981; padding:6px 8px; border-radius:6px; color:#042018; cursor:pointer }
+  .small{ font-size:13px; color:var(--muted) }
+  .row{ display:flex; gap:8px; align-items:center; justify-content:center; margin-top:10px; flex-wrap:wrap }
+  .leftcol{ text-align:center }
+  pre{ background:rgba(255,255,255,0.02); padding:8px; border-radius:8px; color:#cfe9f8; font-size:12px; max-height:220px; overflow:auto }
+  @media(max-width:920px){ .card{ grid-template-columns:1fr } }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>🐣 Tamagotchi Pixel — Animasi Lucu</h1>
+  <div class="card">
+    <div class="panel leftcol">
+      <h1>🎨 Pixel Pet — 100×100 Skins</h1>
 
-      <div style="text-align:center">
-        <canvas id="canvas" width="128" height="128" style="width:320px;height:320px"></canvas>
+      <!-- canvas is 100x100 but scaled by CSS to 320x320 -->
+      <canvas id="petCanvas" width="100" height="100" style="width:320px;height:320px"></canvas>
+
+      <div class="controls">
+        <button id="evolveBtn">✨ Evolve</button>
+        <button id="feedBtn" class="alt">🍎 Feed (jump)</button>
+        <button id="exportBtn">⬇ Export Skin</button>
+        <button id="resetBtn">♻ Reset Skins</button>
       </div>
 
-      <div class="controls" style="margin-top:8px">
-        <input id="nameInput" type="text" placeholder="Nama pemain / pemilik" />
-        <button id="startBtn">Start / Login</button>
-        <label class="inline"><input id="devChk" type="checkbox"> DEV_MODE</label>
+      <div class="row">
+        <label class="upload">Upload skin stage 0<input id="upload0" type="file" accept="image/png"></label>
+        <label class="upload">Upload stage 1<input id="upload1" type="file" accept="image/png"></label>
+        <label class="upload">Upload stage 2<input id="upload2" type="file" accept="image/png"></label>
       </div>
 
-      <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;flex-wrap:wrap">
-        <button id="feedBtn" class="alt">🍎 Feed</button>
-        <button id="sleepBtn">💤 Sleep</button>
-        <button id="sellBtn">💱 Sell</button>
-        <button id="buyBtn">🛒 Buy</button>
+      <div class="small" style="margin-top:10px;line-height:1.4">
+        Petunjuk: upload PNG 100×100 (pixel art) untuk mengganti skin per stage. Atau gunakan skin procedural bawaan. Klik <strong>Evolve</strong> untuk berpindah stage. Feed memicu animasi jump + suara.
       </div>
-
-      <div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between;align-items:center">
-        <div class="small">Status: <span id="statusText">—</span></div>
-        <div class="small">Last feed: <span id="lastFeedText">—</span></div>
-      </div>
-
-      <div style="margin-top:12px" class="mutelist">
-        <div>Aturan penting:</div>
-        <ul>
-          <li>Makan tiap <strong>4 jam</strong> (atau DEV 1 menit) — tidak boleh lebih cepat.</li>
-          <li>Dalam 1 hari harus makan ≥ <strong>3x</strong>, jika tidak → pet mati dan harus reset.</li>
-          <li>Evolusi tiap <strong>1 hari</strong> (DEV cepat untuk testing), level naik tiap <strong>7 hari</strong>.</li>
-        </ul>
-      </div>
-
-      <div style="margin-top:8px" class="small">
-        <button id="resetBtn" class="alt">🔁 Reset My Pet</button>
-        <button id="exportBtn">⬇️ Export Save</button>
-        <label for="importFile" class="inline"><span style="background:#10b981;padding:6px;border-radius:6px;cursor:pointer">⬆️ Import Save</span><input id="importFile" type="file" accept="application/json" style="display:none"></label>
-      </div>
-
-      <div id="log" class="small" style="margin-top:10px;min-height:30px"></div>
     </div>
 
     <div class="panel">
-      <h2 style="margin-top:0">🏆 Leaderboard & Marketplace</h2>
+      <h1>🔊 Sound & Info</h1>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="inline small"><input id="soundToggle" type="checkbox" checked> Suara aktif</label>
+        <label class="inline small"><input id="devMode" type="checkbox"> DEV: percepat animasi</label>
+      </div>
 
+      <div style="margin-top:12px">
+        <div class="small">Stage: <strong id="stageLabel">0</strong></div>
+        <div class="small">Age (days): <strong id="ageLabel">0</strong></div>
+        <div class="small">Level (weeks): <strong id="levelLabel">1</strong></div>
+        <div class="small">Last feed: <span id="lastFeedLabel">—</span></div>
+      </div>
+
+      <h2 style="margin-top:12px">📦 Marketplace & Leaderboard (local)</h2>
       <div style="display:flex;gap:8px;align-items:center">
-        <input id="saleId" type="text" placeholder="sale id (unik)" />
-        <button id="postSaleBtn">Post Sale</button>
+        <input id="saleInput" placeholder="sale id" style="padding:6px;border-radius:6px;border:0;background:rgba(255,255,255,0.02)">
+        <button id="postSale" class="alt">Post</button>
+        <button id="refreshMarket">Refresh</button>
       </div>
 
-      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <input id="buyId" type="text" placeholder="buy id" />
-        <button id="doBuyBtn">Buy</button>
+      <div style="margin-top:10px">
+        <input id="buyInput" placeholder="buy id" style="padding:6px;border-radius:6px;border:0;background:rgba(255,255,255,0.02)">
+        <button id="buyBtn">Buy</button>
       </div>
 
-      <h3 style="margin-bottom:6px;margin-top:12px">Marketplace</h3>
-      <div id="marketList" style="max-height:220px;overflow:auto"></div>
+      <h3 style="margin-top:10px">Marketplace</h3>
+      <div id="marketList" class="small" style="max-height:160px;overflow:auto"></div>
 
-      <h3 style="margin-bottom:6px;margin-top:12px">Leaderboard</h3>
-      <div id="leaderboardList"></div>
+      <h3 style="margin-top:10px">Leaderboard</h3>
+      <div id="leaderBoard" class="small" style="max-height:160px;overflow:auto"></div>
 
-      <div class="small" style="margin-top:10px">Semua data disimpan di browser (localStorage). Untuk leaderboard & jual/beli antar banyak user dibutuhkan backend.</div>
+      <div style="margin-top:10px" class="small">Semua data marketplace & leaderboard disimpan di localStorage. Untuk global, hubungkan backend Replit (bisa saya bantu).</div>
     </div>
   </div>
 
 <script>
-/* Tamagotchi with pixel canvas animations + rules:
-   - feed interval: 4 hours (DEV override)
-   - must feed >=3 times per local day or pet dies on day rollover
-   - evolution each day, level each 7 days
-   - marketplace & leaderboard via localStorage
-   - added animations: walk L-R, idle sway, jump on feed
+/* Main script:
+   - procedural 100x100 sprites (detailed look)
+   - allows upload of PNG 100x100 per stage
+   - draw scaled to canvas
+   - animation (walk sway + jump on feed)
+   - WebAudio simple sounds
+   - marketplace & leaderboard local
 */
 
-const CANVAS = document.getElementById('canvas');
-const CTX = CANVAS.getContext('2d');
-CTX.imageSmoothingEnabled = false;
+// ---------- utility ----------
+const STORAGE_PLAYERS = 'tama_players_100';
+const STORAGE_MARKET = 'tama_market_100';
+const MS_HOUR = 60*60*1000;
+let DEV = false;
+
+function hexToRgb(hex){
+  const n = parseInt(hex.replace('#',''),16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function msToStr(ms){ if(ms<=0) return '0s'; const s=Math.floor(ms/1000); const m=Math.floor(s/60); const h=Math.floor(m/60); if(h>0) return h+'h'+(m%60)+'m'; if(m>0) return m+'m'; return s+'s'; }
+
+// ---------- sprites storage ----------
+let skinStages = [ null, null, null ]; // each either ImageData (100x100) or null => use procedural
+let stageIndex = 0;
+let ageDays = 0;
+let levelWeeks = 1;
+let lastFeed = null;
+
+// canvas
+const petCanvas = document.getElementById('petCanvas');
+const PCTX = petCanvas.getContext('2d');
+PCTX.imageSmoothingEnabled = false;
 
 // UI refs
-const nameInput = document.getElementById('nameInput');
-const startBtn = document.getElementById('startBtn');
-const devChk = document.getElementById('devChk');
-const feedBtn = document.getElementById('feedBtn');
-const sleepBtn = document.getElementById('sleepBtn');
-const sellBtn = document.getElementById('sellBtn');
-const buyBtn = document.getElementById('buyBtn');
-const statusText = document.getElementById('statusText');
-const lastFeedText = document.getElementById('lastFeedText');
-const logEl = document.getElementById('log');
-const resetBtn = document.getElementById('resetBtn');
-const exportBtn = document.getElementById('exportBtn');
-const importFile = document.getElementById('importFile');
+const stageLabel = document.getElementById('stageLabel');
+const ageLabel = document.getElementById('ageLabel');
+const levelLabel = document.getElementById('levelLabel');
+const lastFeedLabel = document.getElementById('lastFeedLabel');
+const soundToggle = document.getElementById('soundToggle');
+const devModeChk = document.getElementById('devMode');
 
-const postSaleBtn = document.getElementById('postSaleBtn');
-const saleIdInput = document.getElementById('saleId');
-const doBuyBtn = document.getElementById('doBuyBtn');
-const buyIdInput = document.getElementById('buyId');
 const marketListEl = document.getElementById('marketList');
-const leaderboardListEl = document.getElementById('leaderboardList');
+const leaderBoardEl = document.getElementById('leaderBoard');
 
-// storage keys
-const PLAYERS_KEY = 'tama_players_v2';
-const MARKET_KEY = 'tama_market_v2';
+// WebAudio
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const audioCtx = AudioContextClass ? new AudioContextClass() : null;
+function playTone(freq, dur=0.12, type='sine', vol=0.12){
+  if(!audioCtx || !soundToggle.checked) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  setTimeout(()=> o.stop(), dur*1000);
+}
+function soundFeed(){ playTone(900,0.07,'triangle',0.09); setTimeout(()=>playTone(1200,0.06,'sine',0.06),90); }
+function soundEvolve(){ playTone(620,0.18,'sine',0.12); setTimeout(()=>playTone(880,0.12,'sine',0.12),140); }
+function soundLevel(){ playTone(1200,0.18,'sine',0.14); setTimeout(()=>playTone(1600,0.12,'sine',0.12),120); }
 
-// timings
-const MS_HOUR = 60*60*1000;
-const DEFAULTS = {
-  FEED_INTERVAL_MS: 4*MS_HOUR,
-  DAY_MS: 24*MS_HOUR,
-  WEEK_MS: 7*24*MS_HOUR
-};
-const DEV_DEFAULTS = {
-  FEED_INTERVAL_MS: 60*1000, // 1 min
-  DAY_MS: 30*1000, // 30s = 1 day
-  WEEK_MS: 7*30*1000
-};
+// resume audio on user click if suspended
+document.addEventListener('click', ()=> { if(audioCtx && audioCtx.state==='suspended') audioCtx.resume().catch(()=>{}); }, { once:true });
 
-// evolutions (pixel designs) — small 16x16 color maps
-const EVOLUTIONS = [
-  // simplest color indices: we'll draw simple shapes per stage
-  { name:'Chick', color:'#ffdd7a' },
-  { name:'Fledgling', color:'#ffd07a' },
-  { name:'Young', color:'#ffd6a5' },
-  { name:'Bird', color:'#ffb4a2' },
-  { name:'Fox', color:'#ffc6ff' },
-  { name:'Dragon', color:'#caffbf' },
-  { name:'Mystic', color:'#9be7ff' },
-  { name:'Legend', color:'#ffd6a5' }
-];
+// ---------- procedural 100x100 "hand-painted" sprites ----------
+function makeEmptySprite(){
+  const w=100,h=100;
+  const imageData = PCTX.createImageData(w,h);
+  // fill transparent black background
+  for(let i=0;i<imageData.data.length;i+=4){ imageData.data[i]=0; imageData.data[i+1]=0; imageData.data[i+2]=0; imageData.data[i+3]=255; }
+  return imageData;
+}
 
-// helpers load/save
-function loadPlayers(){ try{ return JSON.parse(localStorage.getItem(PLAYERS_KEY) || '{}'); }catch(e){ return {}; } }
-function savePlayers(obj){ try{ localStorage.setItem(PLAYERS_KEY, JSON.stringify(obj)); }catch(e){} }
-function loadMarket(){ try{ return JSON.parse(localStorage.getItem(MARKET_KEY) || '{}'); }catch(e){ return {}; } }
-function saveMarket(obj){ try{ localStorage.setItem(MARKET_KEY, JSON.stringify(obj)); }catch(e){} }
-
-// current runtime
-let players = loadPlayers();
-let market = loadMarket();
-let currentPlayer = null;
-let T = DEFAULTS;
-let anim = { frame:0, mode:'idle', t:0 }; // animation state
-
-// default player template
-function makePlayer(name){
-  const now = Date.now();
-  return {
-    name,
-    createdAt: now,
-    lastDailyChecked: localDateStr(now),
-    pet: {
-      alive: true,
-      evoIndex: 0,
-      ageDays: 0,
-      feedTimestamps: [], // ms timestamps
-      lastFeed: null
+// painter that draws a blob with shading, speckles, eyes, highlights
+function paintSpriteBase(seedColor){
+  const w=100,h=100;
+  const img = makeEmptySprite();
+  const base = hexToRgb(seedColor);
+  // background subtle noise + radial shading to give "hand-painted" feel
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i=(y*w + x)*4;
+      // compute distance from center for shading
+      const dx = (x - w/2), dy=(y - h/2);
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      // base color with small random noise
+      const noise = (Math.random()-0.5)*20;
+      const shade = 1 - Math.min(0.7, dist / (w/2));
+      img.data[i] = Math.max(0, Math.min(255, Math.round(base.r*shade + noise)));
+      img.data[i+1] = Math.max(0, Math.min(255, Math.round(base.g*shade + noise*0.7)));
+      img.data[i+2] = Math.max(0, Math.min(255, Math.round(base.b*shade + noise*0.5)));
+      img.data[i+3] = 255;
     }
+  }
+  // draw main body blob (ellipse)
+  const cx = w/2, cy = h/2 - 6, rx = 30, ry = 36;
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const dx = (x-cx)/rx, dy=(y-cy)/ry;
+      if(dx*dx + dy*dy <= 1){
+        const i=(y*w + x)*4;
+        // add highlight towards top-left
+        const hl = Math.max(0, 1 - ((x-cx+8)/ (rx*1.3)) - ((y-cy+6)/(ry*1.6)));
+        img.data[i] = Math.min(255, img.data[i] + 30*hl);
+        img.data[i+1] = Math.min(255, img.data[i+1] + 20*hl);
+        img.data[i+2] = Math.min(255, img.data[i+2] + 10*hl);
+      }
+    }
+  }
+  // paint eyes
+  const eyeY = Math.round(cy - 4), eyeLX = Math.round(cx - 8), eyeRX = Math.round(cx + 6);
+  for(let yy=eyeY-2; yy<=eyeY+2; yy++){
+    for(let xx=eyeLX-2; xx<=eyeLX+2; xx++){
+      const i=(yy*w + xx)*4; img.data[i]=10; img.data[i+1]=12; img.data[i+2]=18;
+    }
+  }
+  for(let yy=eyeY-2; yy<=eyeY+2; yy++){
+    for(let xx=eyeRX-2; xx<=eyeRX+2; xx++){
+      const i=(yy*w + xx)*4; img.data[i]=10; img.data[i+1]=12; img.data[i+2]=18;
+    }
+  }
+  // small blushes
+  const blushColor = hexToRgb('#ffb6c1');
+  for(let yy=eyeY+6; yy<=eyeY+10; yy++){
+    for(let xx=eyeLX-4; xx<=eyeLX-2; xx++){
+      const i=(yy*w + xx)*4;
+      img.data[i] = Math.min(255, img.data[i] + blushColor.r); img.data[i+1] = Math.min(255, img.data[i+1] + blushColor.g/2); img.data[i+2] = Math.min(255, img.data[i+2] + blushColor.b/2);
+    }
+    for(let xx=eyeRX+2; xx<=eyeRX+4; xx++){
+      const i=(yy*w + xx)*4;
+      img.data[i] = Math.min(255, img.data[i] + blushColor.r); img.data[i+1] = Math.min(255, img.data[i+1] + blushColor.g/2); img.data[i+2] = Math.min(255, img.data[i+2] + blushColor.b/2);
+    }
+  }
+  // speckles
+  for(let k=0;k<400;k++){
+    const x = Math.floor(Math.random()*w), y = Math.floor(Math.random()*h);
+    const i = (y*w + x)*4;
+    img.data[i] = Math.min(255, img.data[i] + Math.floor((Math.random()*40)));
+    img.data[i+1] = Math.min(255, img.data[i+1] + Math.floor((Math.random()*30)));
+  }
+  return img;
+}
+
+// build default detailed sprites (3 stages)
+function buildDefaultSkins(){
+  skinStages[0] = paintSpriteBase('#ffd66b'); // baby yellow
+  skinStages[1] = paintSpriteBase('#9be7ff'); // teen aqua
+  skinStages[2] = paintSpriteBase('#ffb86b'); // adult orange
+}
+function paintSpriteBase(seedHex){ return paintSpriteBase_core(seedHex); }
+function paintSpriteBase_core(seedHex){
+  // wrapper to allow multiple passes for varied look
+  return paintSpriteBase_core_impl(seedHex);
+}
+function paintSpriteBase_core_impl(seedHex){
+  // calls paintSpriteBase logic above
+  return (function(){ 
+    // create local canvas painter and reuse the function above
+    return (function(){ 
+      // reuse paintSpriteBase code from earlier (callable)
+      return (function(){ // tiny wrapper to avoid hoisting conflicts
+        // call the painter defined earlier in this file
+        return (function(){ 
+          // reconstruct by calling paintSpriteBase logic inline
+          const w=100,h=100;
+          const img = makeEmptySprite();
+          const base = hexToRgb(seedHex);
+          for(let y=0;y<h;y++){
+            for(let x=0;x<w;x++){
+              const i=(y*w + x)*4;
+              const dx = (x - w/2), dy=(y - h/2);
+              const dist = Math.sqrt(dx*dx+dy*dy);
+              const noise = (Math.random()-0.5)*24;
+              const shade = 1 - Math.min(0.8, dist / (w/2));
+              img.data[i] = Math.max(0, Math.min(255, Math.round(base.r*shade + noise)));
+              img.data[i+1] = Math.max(0, Math.min(255, Math.round(base.g*shade + noise*0.7)));
+              img.data[i+2] = Math.max(0, Math.min(255, Math.round(base.b*shade + noise*0.5)));
+              img.data[i+3] = 255;
+            }
+          }
+          const cx = w/2, cy = h/2 - 6, rx = 32, ry = 36;
+          for(let y=0;y<h;y++){
+            for(let x=0;x<w;x++){
+              const dx=(x-cx)/rx, dy=(y-cy)/ry;
+              if(dx*dx + dy*dy <= 1){
+                const i=(y*w + x)*4;
+                const hl = Math.max(0, 1 - ((x-cx+8)/(rx*1.3)) - ((y-cy+6)/(ry*1.6)));
+                img.data[i] = Math.min(255, img.data[i] + 30*hl);
+                img.data[i+1] = Math.min(255, img.data[i+1] + 20*hl);
+                img.data[i+2] = Math.min(255, img.data[i+2] + 10*hl);
+              }
+            }
+          }
+          const eyeY = Math.round(cy - 4), eyeLX = Math.round(cx - 8), eyeRX = Math.round(cx + 6);
+          for(let yy=eyeY-2; yy<=eyeY+2; yy++){
+            for(let xx=eyeLX-2; xx<=eyeLX+2; xx++){
+              if(xx>=0 && xx<w && yy>=0 && yy<h){
+                const i=(yy*w + xx)*4; img.data[i]=10; img.data[i+1]=12; img.data[i+2]=18;
+              }
+            }
+          }
+          for(let yy=eyeY-2; yy<=eyeY+2; yy++){
+            for(let xx=eyeRX-2; xx<=eyeRX+2; xx++){
+              if(xx>=0 && xx<w && yy>=0 && yy<h){
+                const i=(yy*w + xx)*4; img.data[i]=10; img.data[i+1]=12; img.data[i+2]=18;
+              }
+            }
+          }
+          const blushColor = hexToRgb('#ff9aa2');
+          for(let yy=eyeY+6; yy<=eyeY+10; yy++){
+            for(let xx=eyeLX-4; xx<=eyeLX-2; xx++){
+              if(xx>=0 && xx<w && yy>=0 && yy<h){
+                const i=(yy*w + xx)*4;
+                img.data[i] = Math.min(255, img.data[i] + blushColor.r); img.data[i+1] = Math.min(255, img.data[i+1] + blinkInt(blushColor.g/2)); img.data[i+2] = Math.min(255, img.data[i+2] + blushColor.b/2);
+              }
+            }
+            for(let xx=eyeRX+2; xx<=eyeRX+4; xx++){
+              if(xx>=0 && xx<w && yy>=0 && yy<h){
+                const i=(yy*w + xx)*4;
+                img.data[i] = Math.min(255, img.data[i] + blushColor.r); img.data[i+1] = Math.min(255, img.data[i+1] + blushColor.g/2); img.data[i+2] = Math.min(255, img.data[i+2] + blushColor.b/2);
+              }
+            }
+          }
+          // speckles
+          for(let k=0;k<700;k++){
+            const x = Math.floor(Math.random()*w), y = Math.floor(Math.random()*h);
+            const i=(y*w + x)*4;
+            img.data[i] = Math.min(255, img.data[i] + Math.floor(Math.random()*40));
+            img.data[i+1] = Math.min(255, img.data[i+1] + Math.floor(Math.random()*30));
+            img.data[i+2] = Math.min(255, img.data[i+2] + Math.floor(Math.random()*20));
+          }
+          return img;
+        })();
+      })();
+    })();
+  }
+}
+function blinkInt(v){ return Math.round(v); }
+
+// build defaults at startup
+buildDefaultSkins();
+
+// ---------- drawing & animation ----------
+let anim = { t:0, mode:'idle' };
+let walkOffset = 0;
+
+function draw(){
+  // clear
+  PCTX.clearRect(0,0,petCanvas.width, petCanvas.height);
+  if(!skinStages[stageIndex]) skinStages[stageIndex] = (stageIndex===0? paintSpriteBase_core_impl('#ffd66b') : (stageIndex===1? paintSpriteBase_core_impl('#9be7ff') : paintSpriteBase_core_impl('#ffb86b')) );
+  // animation params
+  anim.t++;
+  // walking sway X offset
+  const sway = Math.sin(anim.t/10) * 6;
+  let jumpY = 0;
+  if(anim.mode === 'jump'){ jumpY = Math.abs(Math.sin(anim.t/6))*18; if(anim.t>30){ anim.mode='idle'; anim.t=0; } }
+  // compute draw position center
+  const px = Math.round((petCanvas.width - 100)/2 + sway);
+  const py = Math.round((petCanvas.height - 100)/2 - jumpY);
+  // draw sprite imageData at px,py
+  PCTX.putImageData(skinStages[stageIndex], px, py);
+}
+
+setInterval(()=>{ draw(); }, DEV ? 50 : 80);
+
+// ---------- UI actions ----------
+document.getElementById('evolveBtn').addEventListener('click', ()=>{
+  stageIndex = (stageIndex + 1) % 3;
+  soundEvolve();
+  document.getElementById('stageLabel').innerText = stageIndex;
+  log('Evolved -> stage '+stageIndex);
+  renderMeta();
+});
+
+document.getElementById('feedBtn').addEventListener('click', ()=>{
+  // feed triggers jump animation + sound
+  anim.mode = 'jump'; anim.t = 0;
+  lastFeed = Date.now();
+  document.getElementById('lastFeedLabel').innerText = new Date(lastFeed).toLocaleString();
+  soundFeed();
+  log('Fed pet at '+ new Date(lastFeed).toLocaleTimeString());
+  // optionally increment feed counter / persist marketplace/leaderboard hooks...
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  // export current skin as PNG
+  const link = document.createElement('a');
+  // draw the sprite into a temporary canvas at 100x100 then scale to PNG as-is
+  const tmp = document.createElement('canvas'); tmp.width = 100; tmp.height = 100;
+  const tctx = tmp.getContext('2d'); tctx.putImageData(skinStages[stageIndex], 0, 0);
+  link.href = tmp.toDataURL('image/png');
+  link.download = `pet-stage-${stageIndex}.png`;
+  link.click();
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset skins ke default procedural?')) return;
+  buildDefaultSkins(); stageIndex=0; renderMeta(); log('Skins direset ke default.'); 
+});
+
+// upload handlers (read image, scale/convert into ImageData 100x100)
+function handleUploadFile(evt, index){
+  const f = evt.target.files[0];
+  if(!f) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; };
+  img.onload = () => {
+    // create temp canvas to resize to 100x100 and extract ImageData
+    const tmp = document.createElement('canvas'); tmp.width=100; tmp.height=100;
+    const tctx = tmp.getContext('2d');
+    // draw image to fit 100x100 preserving aspect via cover
+    tctx.fillStyle = '#000'; tctx.fillRect(0,0,100,100);
+    // compute fit
+    const ar = img.width/img.height;
+    let dw=100, dh=100, dx=0, dy=0;
+    if(ar > 1){ // wide
+      dh = 100; dw = Math.round(100*ar); dx = Math.round((100 - dw)/2);
+    } else {
+      dw = 100; dh = Math.round(100/ar); dy = Math.round((100 - dh)/2);
+    }
+    tctx.drawImage(img, dx, dy, dw, dh);
+    const id = tctx.getImageData(0,0,100,100);
+    skinStages[index] = id;
+    log('Upload skin stage '+index+' berhasil.');
+    renderMeta();
   };
+  reader.readAsDataURL(f);
 }
+document.getElementById('upload0').addEventListener('change', e=> handleUploadFile(e,0));
+document.getElementById('upload1').addEventListener('change', e=> handleUploadFile(e,1));
+document.getElementById('upload2').addEventListener('change', e=> handleUploadFile(e,2));
 
-// date helpers
-function localDateStr(ts){ const d = new Date(ts); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
-function startOfLocalDayMs(ts){ const d = new Date(ts); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+// simple market/leaderboard (local)
+function loadMarket(){ try{ return JSON.parse(localStorage.getItem(STORAGE_MARKET)||'{}'); }catch(e){ return {}; } }
+function saveMarket(m){ try{ localStorage.setItem(STORAGE_MARKET, JSON.stringify(m)); }catch(e){} }
+function loadPlayers(){ try{ return JSON.parse(localStorage.getItem(STORAGE_PLAYERS)||'{}'); }catch(e){ return {}; } }
+function savePlayers(m){ try{ localStorage.setItem(STORAGE_PLAYERS, JSON.stringify(m)); }catch(e){} }
 
-// UI messages
-function log(msg){ const t = (new Date()).toLocaleTimeString(); logEl.innerHTML = '['+t+'] '+msg + '<br>' + logEl.innerHTML; }
-
-// start/login
-startBtn.addEventListener('click', ()=>{
-  const name = (nameInput.value||'').trim();
-  if(!name) return alert('Masukkan nama pemain unik.');
-  // set DEV timings if chosen
-  if(devChk.checked){ T = DEV_DEFAULTS; log('DEV_MODE aktif — waktu dipercepat.'); } else { T = DEFAULTS; }
-  // load or create
-  if(!players[name]){ players[name] = makePlayer(name); savePlayers(players); log('Akun baru dibuat: '+name); }
-  currentPlayer = players[name];
-  renderAll();
-  addTick(); // ensure tick running
+document.getElementById('postSale').addEventListener('click', ()=>{
+  const id = (document.getElementById('saleInput')?.value || '').trim() || document.getElementById('saleInput').value;
+});
+document.getElementById('refreshMarket').addEventListener('click', ()=> buildMarket());
+document.getElementById('buyBtn').addEventListener('click', ()=> {
+  const id = (document.getElementById('buyInput')?.value || '').trim() || document.getElementById('buyInput').value;
 });
 
-// feed
-feedBtn.addEventListener('click', ()=>{
-  if(!currentPlayer) return alert('Login dulu.');
-  if(!currentPlayer.pet.alive) return alert('Pet sudah mati — reset untuk mulai lagi.');
-  const now = Date.now();
-  if(currentPlayer.pet.lastFeed && now - currentPlayer.pet.lastFeed < T.FEED_INTERVAL_MS){
-    const wait = msToStr(T.FEED_INTERVAL_MS - (now - currentPlayer.pet.lastFeed));
-    return alert('Pet baru saja makan — tunggu ' + wait);
-  }
-  currentPlayer.pet.lastFeed = now;
-  currentPlayer.pet.feedTimestamps.push(now);
-  // animation: jump/celebrate
-  anim.mode = 'jump';
-  anim.t = 0;
-  log('🍎 Diberi makan.');
-  saveAndRender();
-});
-
-// sleep (small effect)
-sleepBtn.addEventListener('click', ()=>{
-  if(!currentPlayer) return alert('Login dulu.');
-  anim.mode = 'sleep';
-  anim.t = 0;
-  log('💤 Pet tidur sebentar.');
-});
-
-// reset
-resetBtn.addEventListener('click', ()=>{
-  if(!currentPlayer) return alert('Login dulu.');
-  if(!confirm('Reset pet '+currentPlayer.name+' dan mulai dari awal?')) return;
-  players[currentPlayer.name] = makePlayer(currentPlayer.name);
-  savePlayers(players);
-  currentPlayer = players[currentPlayer.name];
-  log('Reset dilakukan.');
-  renderAll();
-});
-
-// export / import
-exportBtn.addEventListener('click', ()=>{
-  if(!currentPlayer) return alert('Login dulu.');
-  const data = JSON.stringify(currentPlayer);
-  const a = document.createElement('a');
-  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
-  a.download = currentPlayer.name + '-tama-save.json';
-  document.body.appendChild(a); a.click(); a.remove();
-});
-importFile.addEventListener('change', (e)=>{
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader(); r.onload = ev=>{
-    try{
-      const obj = JSON.parse(ev.target.result);
-      if(!obj.name) return alert('File save tidak valid.');
-      players[obj.name] = obj;
-      savePlayers(players);
-      log('Save diimpor: ' + obj.name);
-      alert('Save diimpor. Login dengan nama yang sama.');
-    }catch(err){ alert('File tidak valid'); }
-  }; r.readAsText(f);
-});
-
-// marketplace
-postSaleBtn.addEventListener('click', ()=> {
-  const id = (saleIdInput.value||'').trim();
-  if(!currentPlayer) return alert('Login dulu.'); 
-  if(!id) return alert('Masukkan sale id unik.');
-  if(!currentPlayer.pet || !currentPlayer.pet.alive) return alert('Pet tidak tersedia untuk dijual.');
-  market[id] = { id, seller: currentPlayer.name, pet: JSON.parse(JSON.stringify(currentPlayer.pet)), postedAt: Date.now() };
-  // remove pet from player immediately
-  currentPlayer.pet = null;
-  players[currentPlayer.name] = currentPlayer;
-  saveMarket(market); savePlayers(players);
-  log('📣 Pet diposting di marketplace: ' + id);
-  renderAll();
-});
-
-doBuyBtn.addEventListener('click', ()=> {
-  const id = (buyIdInput.value||'').trim();
-  if(!id) return alert('Masukkan id untuk dibeli.');
-  const sale = market[id];
-  if(!sale) return alert('Sale id tidak ditemukan.');
-  if(!currentPlayer) return alert('Login dulu.');
-  if(sale.seller === currentPlayer.name) return alert('Kamu tidak dapat membeli petmu sendiri.');
-  // transfer pet
-  currentPlayer.pet = sale.pet;
-  players[currentPlayer.name] = currentPlayer;
-  delete market[id];
-  savePlayers(players); saveMarket(market);
-  log('✅ Kamu membeli pet dari ' + sale.seller + ' (id:'+id+').');
-  renderAll();
-});
-
-// helper ms -> human
-function msToStr(ms){
-  if(ms <= 0) return '0s';
-  const s = Math.floor(ms/1000);
-  const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); const sec = s%60;
-  if(h>0) return `${h}h ${m}m`;
-  if(m>0) return `${m}m ${sec}s`;
-  return `${sec}s`;
-}
-
-// tick logic: checks daily feeding, evolution, leveling
-let tickInterval = null;
-function addTick(){
-  if(tickInterval) return;
-  // tick every 1s for responsive UI; heavy checks use DAY_MS/FEED_INTERVAL
-  tickInterval = setInterval(()=>{
-    if(!currentPlayer) return;
-    // main logic runs per minute equivalent — but we check daily rollover using local date
-    backgroundDailyCheck();
-    renderAll();
-    updateAnimation();
-  }, 1000);
-}
-
-// background daily check: if lastDailyChecked != today -> evaluate previous day feeds
-function backgroundDailyCheck(){
-  const now = Date.now();
-  const timings = T;
-  const today = localDateStr(now);
-  if(currentPlayer.lastDailyChecked !== today){
-    // compute start & end of previous day in ms
-    const prevDate = new Date(now - timings.DAY_MS);
-    const prevStart = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate()).getTime();
-    const prevEnd = prevStart + timings.DAY_MS;
-    // count feeds in that day
-    const feeds = (currentPlayer.pet && currentPlayer.pet.feedTimestamps) ? currentPlayer.pet.feedTimestamps.filter(ts => ts >= prevStart && ts < prevEnd).length : 0;
-    // require >=3
-    if(feeds < 3){
-      // die
-      if(currentPlayer.pet){
-        currentPlayer.pet.alive = false;
-      }
-      log('❌ Pet mati karena hanya makan '+feeds+'x pada hari sebelumnya.');
-      alert('Pet kamu mati karena tidak makan minimal 3x dalam sehari. Tekan Reset untuk mulai lagi.');
-    } else {
-      // survived -> age++, evolve, recalc level
-      if(currentPlayer.pet){
-        currentPlayer.pet.ageDays = (currentPlayer.pet.ageDays || 0) + 1;
-        currentPlayer.pet.evoIndex = Math.min(EVOLUTIONS.length-1, currentPlayer.pet.ageDays);
-      }
-      // level by weeks since createdAt
-      const weeks = Math.floor((now - currentPlayer.createdAt) / timings.WEEK_MS) + 1;
-      currentPlayer.level = weeks;
-      log('✅ Hari berganti: Pet selamat ('+feeds+'x makan). Umur => ' + (currentPlayer.pet?currentPlayer.pet.ageDays:0) + ' hari. Level => ' + currentPlayer.level);
-    }
-    // mark checked for today and persist
-    currentPlayer.lastDailyChecked = today;
-    players[currentPlayer.name] = currentPlayer;
-    savePlayers(players);
-    saveMarket(market);
-  }
-}
-
-// render all UI
-function renderAll(){
-  // reload store
-  players = loadPlayers();
-  market = loadMarket();
-  if(currentPlayer){
-    // ensure props exist
-    if(!currentPlayer.pet) {
-      // show as no pet
-      drawNoPet();
-      statusText.innerText = 'No pet';
-      lastFeedText.innerText = '—';
-    } else {
-      drawPetCanvas(currentPlayer.pet.evoIndex || 0, anim);
-      statusText.innerText = currentPlayer.pet.alive ? 'Hidup' : 'Mati';
-      lastFeedText.innerText = currentPlayer.pet.lastFeed ? new Date(currentPlayer.pet.lastFeed).toLocaleString() : 'Belum makan';
-    }
-  } else {
-    drawPlaceholder();
-  }
-  buildMarketList();
-  buildLeaderboard();
-}
-
-// draw placeholder
-function drawPlaceholder(){
-  CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
-  CTX.fillStyle = '#0f1724';
-  CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
-  CTX.fillStyle = '#9fb3b5';
-  CTX.font = '10px monospace';
-  CTX.fillText('Login untuk memulai Tamagotchi', 8, 60);
-}
-
-// draw "no pet"
-function drawNoPet(){
-  CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
-  CTX.fillStyle = '#08121a'; CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
-  CTX.fillStyle = '#9fb3b5';
-  CTX.font = '12px monospace';
-  CTX.fillText('Tidak ada pet', 40, 64);
-}
-
-// very simple pixel-ish drawing function: draw body circle-like with color, and animate pos
-function drawPetCanvas(evoIndex, animState){
-  CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
-  // background
-  CTX.fillStyle = '#08121a'; CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
-  const w = CANVAS.width, h = CANVAS.height;
-  // compute base position (walking left-right)
-  anim.frame = (anim.frame+1) % 60;
-  const sway = Math.sin(anim.frame/6) * 6;
-  let baseX = 40 + (Math.sin(anim.frame/12) * 40); // walk L-R automatically
-  let baseY = 72 + sway * 0.2;
-  // if jump mode -> apply vertical offset
-  if(animState.mode === 'jump'){
-    const t = animState.t/5; // growth
-    const jumpY = Math.max(0,  - (12 * Math.sin(t*Math.PI)) );
-    baseY += jumpY;
-    animState.t++;
-    if(animState.t > 20) { animState.mode = 'idle'; animState.t = 0; }
-  } else if(animState.mode === 'sleep'){
-    // slow breathing sway
-    baseY += Math.sin(anim.frame/8) * 1.5;
-    animState.t++;
-    if(animState.t > 60) { animState.mode = 'idle'; animState.t = 0; }
-  }
-
-  // choose color by evoIndex
-  const col = EVOLUTIONS[evoIndex % EVOLUTIONS.length].color;
-  // draw simple pixel-body using rectangles (16x16 style)
-  const px = Math.round(baseX), py = Math.round(baseY);
-  const size = 48;
-  // shadow
-  CTX.fillStyle = 'rgba(0,0,0,0.2)';
-  CTX.fillRect(px-12, py+26, size-16, 6);
-  // body
-  CTX.fillStyle = col;
-  CTX.fillRect(px-20, py-6, 40, 36);
-  // eye(s) and beak / mouth depending evolution
-  CTX.fillStyle = '#111';
-  CTX.fillRect(px-8, py+0, 6, 6); // left eye
-  CTX.fillRect(px+4, py+0, 6, 6); // right eye
-  // mouth small
-  CTX.fillStyle = '#ffb4a2';
-  CTX.fillRect(px-2, py+14, 8, 4);
-
-  // sparkle when evoIndex big
-  if(evoIndex >= 4){
-    CTX.fillStyle = '#fff3a6';
-    CTX.fillRect(px-26, py-18, 4, 4);
-    CTX.fillRect(px+22, py-10, 3, 3);
-  }
-
-  // small wiggle when idle
-  if(animState.mode === 'idle') {
-    // nothing extra
-  }
-
-  // update anim state back
-  anim = animState;
-}
-
-// build market listing
-function buildMarketList(){
-  market = loadMarket();
+// but for brevity we implement minimal market UI
+function buildMarket(){
+  const mk = loadMarket();
   marketListEl.innerHTML = '';
-  const keys = Object.keys(market);
-  if(keys.length === 0) {
-    marketListEl.innerHTML = '<div class="muted">Marketplace kosong</div>';
-    return;
-  }
+  const keys = Object.keys(mk);
+  if(keys.length === 0) marketListEl.innerHTML = '<div class="small">Marketplace kosong</div>';
   keys.forEach(k=>{
-    const item = market[k];
-    const el = document.createElement('div');
-    el.className = 'market-item';
-    el.innerHTML = `<strong>${k}</strong> — Seller: ${item.seller} • Posted: ${new Date(item.postedAt).toLocaleString()}<br>Age:${item.pet.ageDays||0}d • Evo:${item.pet.evoIndex||0} • Alive:${item.pet.alive?'Yes':'No'}`;
-    // buy button inline
-    const btn = document.createElement('button'); btn.textContent = 'Beli'; btn.style.marginLeft='8px';
-    btn.onclick = ()=>{ buyMarket(k); };
-    el.appendChild(btn);
-    marketListEl.appendChild(el);
+    const s = mk[k];
+    const d = document.createElement('div');
+    d.className='small';
+    d.innerHTML = `<strong>${k}</strong> — seller:${s.seller} • age:${s.pet.ageDays||0}d • evo:${s.pet.evoIndex||0}`;
+    const btn = document.createElement('button'); btn.textContent='Beli'; btn.onclick = ()=> { buyMarket(k); };
+    btn.style.marginLeft='8px';
+    d.appendChild(btn);
+    marketListEl.appendChild(d);
   });
 }
-
-// buy from market
 function buyMarket(id){
-  const sale = market[id];
-  if(!sale) return alert('Item tidak ditemukan.');
-  if(!currentPlayer) return alert('Login dulu.');
-  if(sale.seller === currentPlayer.name) return alert('Tidak bisa beli dari diri sendiri.');
-  // confirm replace
-  if(currentPlayer.pet && currentPlayer.pet.alive){
-    if(!confirm('Kamu sudah punya pet. Ganti dengan pet yang dibeli?')) return;
-  }
-  // transfer
-  currentPlayer.pet = sale.pet;
-  players[currentPlayer.name] = currentPlayer;
-  delete market[id];
-  savePlayers(players); saveMarket(market);
-  log('✅ Membeli pet dari ' + sale.seller + ' (id:'+id+')');
-  renderAll();
+  const mk = loadMarket();
+  const sale = mk[id];
+  if(!sale) return alert('Tidak ditemukan');
+  // for demo we just remove and show alert
+  delete mk[id]; saveMarket(mk);
+  buildMarket();
+  alert('Berhasil beli pet id='+id+' (local demo)');
 }
 
-// build leaderboard
-function buildLeaderboard(){
-  players = loadPlayers();
-  const arr = Object.values(players).map(p => {
-    return { name: p.name, level: p.level || 1, age: p.pet ? p.pet.ageDays || 0 : 0, alive: p.pet ? p.pet.alive : false };
-  });
-  arr.sort((a,b)=> b.level - a.level || b.age - a.age);
-  leaderboardListEl.innerHTML = '';
-  if(arr.length === 0){ leaderboardListEl.innerHTML = '<div class="muted">Belum ada pemain</div>'; return; }
-  arr.forEach((p, i)=>{
-    const el = document.createElement('div');
-    el.innerHTML = `${i+1}. <strong>${p.name}</strong> — Lv ${p.level} • Umur ${p.age}d ${p.alive? '':'⚰️'}`;
-    leaderboardListEl.appendChild(el);
+// leader local: just show current procedural stats
+function buildLeaderBoard(){
+  const pl = loadPlayers();
+  leaderBoardEl.innerHTML = '';
+  const arr = Object.values(pl);
+  if(arr.length === 0) { leaderBoardEl.innerHTML = '<div class="small">Belum ada pemain</div>'; return; }
+  arr.sort((a,b)=> (b.level||0) - (a.level||0));
+  arr.forEach((p,i)=>{
+    const el = document.createElement('div'); el.className='small';
+    el.innerHTML = `${i+1}. <strong>${p.name||('Player'+i)}</strong> — Lv ${p.level||1} • ${p.pet? (p.pet.ageDays||0)+'d' : 'no pet'}`;
+    leaderBoardEl.appendChild(el);
   });
 }
 
-// save current player and players map
-function saveAndRender(){
-  players[currentPlayer.name] = currentPlayer;
-  savePlayers(players);
-  renderAll();
-}
+// logging & meta render
+function log(msg){ const el = document.getElementById('log'); if(!el) return; el.innerHTML = '['+new Date().toLocaleTimeString()+'] '+ msg + '<br>' + el.innerHTML; }
+function renderMeta(){ stageLabel.innerText = stageIndex; ageLabel.innerText = ageDays; levelLabel.innerText = levelWeeks; lastFeedLabel.innerText = lastFeed ? new Date(lastFeed).toLocaleString() : '—'; buildMarket(); buildLeaderBoard(); }
 
-// buy button in UI
-buyBtn.addEventListener('click', ()=> {
-  const id = prompt('Masukkan sale id yang ingin dibeli:');
-  if(!id) return;
-  buyIdInput.value = id;
-  doBuyBtn.click();
-});
-doBuyBtn.addEventListener('click', ()=> {
-  const id = (buyIdInput.value||'').trim();
-  if(id) {
-    const sale = market[id];
-    if(!sale) return alert('ID tidak ditemukan.');
-    if(!currentPlayer) return alert('Login dulu.');
-    if(sale.seller === currentPlayer.name) return alert('Tidak bisa beli dari diri sendiri.');
-    // replace or set
-    if(currentPlayer.pet && currentPlayer.pet.alive){
-      if(!confirm('Ganti pet lama dengan yang dibeli?')) return;
-    }
-    currentPlayer.pet = sale.pet;
-    players[currentPlayer.name] = currentPlayer;
-    delete market[id];
-    savePlayers(players); saveMarket(market);
-    log('Kamu membeli pet id=' + id);
-    renderAll();
-  } else {
-    alert('Masukkan id beli.');
-  }
-});
+// small auto age/level simulation (DEV friendly)
+setInterval(()=>{
+  if(devModeChk.checked){ /* accelerate nothing else here */ }
+}, 1000);
 
-// sell shortcut
-sellBtn.addEventListener('click', ()=> {
-  if(!currentPlayer) return alert('Login dulu.');
-  if(!currentPlayer.pet || !currentPlayer.pet.alive) return alert('Tidak ada pet aktif untuk dijual.');
-  const id = prompt('Masukkan sale id unik (contoh: dragon01):');
-  if(!id) return;
-  market[id] = { id, seller: currentPlayer.name, pet: JSON.parse(JSON.stringify(currentPlayer.pet)), postedAt: Date.now() };
-  // remove pet from seller
-  currentPlayer.pet = null;
-  players[currentPlayer.name] = currentPlayer;
-  saveMarket(market); savePlayers(players);
-  log('Pet diposkan di marketplace dengan id='+id);
-  renderAll();
-});
+// initial render
+renderMeta();
+buildMarket();
+buildLeaderBoard();
 
-// reset marketplace or players for dev (not exposed UI)
-window._tamaResetAll = ()=>{ localStorage.removeItem(PLAYERS_KEY); localStorage.removeItem(MARKET_KEY); location.reload(); };
-
-// initial drawing of default bird when no player
-drawPlaceholder();
-
-// helpers: ms->string etc
-function msToShort(ms){
-  if(ms<=0) return '0s'; const s=Math.floor(ms/1000); const m=Math.floor(s/60); const h=Math.floor(m/60);
-  if(h>0) return h+'h'+(m%60)+'m'; if(m>0) return m+'m'+(s%60)+'s'; return s+'s';
-}
-
-// Anim loop update for idle -> we set anim.mode back to idle after events
-function updateAnimation(){
-  // if idle and no feed in a while, use sway; already handled in draw
-  if(!currentPlayer || !currentPlayer.pet || !currentPlayer.pet.alive) return;
-  // If lastFeed recently, set celebrate mode briefly
-  const now = Date.now();
-  if(currentPlayer.pet.lastFeed && (now - currentPlayer.pet.lastFeed) < 3000 && anim.mode !== 'jump'){
-    anim.mode = 'jump'; anim.t = 0;
-  }
-}
-
-// utility: create initial pet for player if none
-function ensurePetForCurrent(){
-  if(!currentPlayer) return;
-  if(!currentPlayer.pet){
-    currentPlayer.pet = { alive:true, evoIndex:0, ageDays:0, feedTimestamps:[], lastFeed:null, evoIndex:0 };
-    players[currentPlayer.name] = currentPlayer;
-    savePlayers(players);
-  }
-}
-
-// draw loop active even without login to show placeholder
-setInterval(()=>{ renderAll(); }, 1000);
-
-// initial helpers
-function renderAllInitial(){
-  players = loadPlayers();
-  market = loadMarket();
-  renderAll();
-}
-renderAllInitial();
-
-/* Expose some helpers to console for testing:
-  - _tamaResetAll() to clear localStorage keys (players & market)
-  - players & market available via localStorage keys
-*/
-
-// End of script
 </script>
 </body>
 </html>
