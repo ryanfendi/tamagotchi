@@ -1,37 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Register Tamagotchi</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Register — Tamagotchi</title>
 <style>
-body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
-.panel{background:#101a2b;padding:15px;margin:50px auto;width:90%;max-width:400px;border-radius:8px;}
-input{padding:10px;margin:8px;width:90%;border-radius:6px;}
-button{background:#10b981;border:none;color:#fff;padding:10px;width:95%;border-radius:6px;font-weight:bold;margin-top:10px;}
-a{color:#10b981;text-decoration:none;display:block;margin-top:10px;}
+body{background:#0b1220;color:#fff;font-family:system-ui,Arial;text-align:center;padding-top:40px}
+.panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block}
+input,button{padding:10px;margin:6px;border-radius:8px;border:0}
+button{background:#10b981;color:#042018;font-weight:700;cursor:pointer}
+.small{font-size:13px;color:#9fb3b5}
 </style>
 </head>
 <body>
-<h2>📝 Daftar Akun Baru</h2>
-<div class="panel">
-    <input type="text" id="username" placeholder="Username (ID)"><br>
-    <input type="password" id="password" placeholder="Password"><br>
-    <button onclick="register()">Daftar</button>
-    <a href="login.html">Sudah punya akun? Login</a>
-</div>
+  <div class="panel">
+    <h2>📝 Register (username)</h2>
+    <input id="username" placeholder="Username (ID)" /><br/>
+    <input id="password" type="password" placeholder="Password" /><br/>
+    <button id="regBtn">Daftar</button>
+    <div class="small">Sudah punya akun? <a href="login.html">Login</a></div>
+    <div id="msg" class="small"></div>
+  </div>
+
 <script>
-function register(){
-    const username=document.getElementById("username").value.trim().toLowerCase();
-    const pass=document.getElementById("password").value.trim();
-    if(!username||!pass){alert("Isi semua data!");return;}
-    let players=JSON.parse(localStorage.getItem("players")||"{}");
-    if(players[username]){alert("Username sudah terpakai!");return;}
-    players[username]={name:username,password:pass,coins:1000,pet:{name:"Chick",level:1},inventory:[],health:1000};
-    localStorage.setItem("players",JSON.stringify(players));
-    alert("Registrasi berhasil! Silakan login.");
-    location.href="login.html";
-}
+document.getElementById('regBtn').addEventListener('click', ()=> {
+  const raw = document.getElementById('username').value || '';
+  const username = raw.toString().trim().toLowerCase();
+  const password = (document.getElementById('password').value || '').toString();
+  if(!username || !password){ alert('Isi username & password'); return; }
+  const players = JSON.parse(localStorage.getItem('players')||'{}');
+  if(players[username]){ alert('Username sudah dipakai — pilih yang lain'); return; }
+  // create player
+  players[username] = {
+    username,
+    password,
+    coins: 1000,
+    pet: { name: 'Chick', level: 1 },
+    inventory: [],
+    health: 1000
+  };
+  localStorage.setItem('players', JSON.stringify(players));
+  document.getElementById('msg').textContent = 'Registrasi berhasil — silakan login';
+  setTimeout(()=> location.href = 'login.html', 900);
+});
 </script>
 </body>
 </html>
