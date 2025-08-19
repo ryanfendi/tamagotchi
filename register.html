@@ -30,7 +30,6 @@ document.getElementById('regBtn').addEventListener('click', ()=> {
   if(!username || !password){ alert('Isi username & password'); return; }
   const players = JSON.parse(localStorage.getItem('players')||'{}');
   if(players[username]){ alert('Username sudah dipakai — pilih yang lain'); return; }
-  // create player
   players[username] = {
     username,
     password,
