@@ -3,71 +3,70 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamagotchi — Marketplace & Trades</title>
+<title>Tamagotchi — Marketplace</title>
 <style>
-  body{background:linear-gradient(180deg,#071726,#06202a);color:#e6eef6;font-family:system-ui,Arial;margin:0;padding:18px}
-  .panel{max-width:1100px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
-  h1{margin:0 0 8px}
-  .sale{padding:8px;background:#0f1724;border-radius:8px;margin-bottom:8px}
-  button{background:#10b981;border:0;padding:6px 10px;border-radius:6px;color:#042018;cursor:pointer;margin-left:6px}
-  input{padding:6px;border-radius:6px;border:0}
-  .small{font-size:13px;color:#9fb3b5}
-  a.btn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
-  .audit{max-height:120px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
+body{background:linear-gradient(180deg,#071726,#06202a);color:#e6eef6;font-family:system-ui,Arial;margin:0;padding:18px}
+.panel{max-width:1100px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
+h1{margin:0 0 8px}
+.sale{padding:8px;background:#0f1724;border-radius:8px;margin-bottom:8px}
+button{background:#10b981;border:0;padding:6px 10px;border-radius:6px;color:#042018;cursor:pointer;margin-left:6px}
+input{padding:6px;border-radius:6px;border:0}
+.small{font-size:13px;color:#9fb3b5}
+.linkbtn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
+.audit{max-height:120px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
+.icon{font-size:16px;margin-right:6px}
 </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>Marketplace & Trades</h1>
-    <div>
-      User: <input id="userName" placeholder="Masukkan nama (sama dgn Game)" />
-      <button id="loadBtn">Load</button>
-      <a class="btn" href="index.html">Game</a>
-      <a class="btn" href="inventory.html">Inventory</a>
-    </div>
-
-    <h3 style="margin-top:12px">Pet Listings</h3>
-    <div id="listings"></div>
-
-    <h3 style="margin-top:12px">Make Trade (bilateral)</h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <input id="tradeTo" placeholder="To (player name)" />
-      <input id="offerCoins" type="number" placeholder="Offer coins" />
-      <input id="offerPetId" placeholder="Offer petId (optional)" />
-      <input id="requestCoins" type="number" placeholder="Request coins" />
-      <input id="requestPetId" placeholder="Request petId (optional)" />
-      <button id="makeTradeBtn">Make Trade</button>
-    </div>
-
-    <h3 style="margin-top:12px">Trades</h3>
-    <div id="tradesList"></div>
-
-    <div style="margin-top:12px">
-      <strong>Audit (recent)</strong>
-      <div id="auditBox" class="audit"></div>
-    </div>
-
-    <div id="log" class="small" style="margin-top:10px"></div>
+<div class="panel">
+  <h1>Marketplace & Trades</h1>
+  <div>
+    User: <input id="userName" placeholder="Masukkan nama (sama dgn Game)" />
+    <button id="loadBtn">Load</button>
+    <a class="linkbtn" href="index.html">Game</a>
+    <a class="linkbtn" href="inventory.html">Inventory</a>
   </div>
 
+  <h3 style="margin-top:12px">Pet Listings</h3>
+  <div id="listings"></div>
+
+  <h3 style="margin-top:12px">Make Trade (bilateral)</h3>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    <input id="tradeTo" placeholder="To (player)" />
+    <input id="offerCoins" type="number" placeholder="Offer coins" />
+    <input id="offerPetId" placeholder="Offer petId (optional)" />
+    <input id="requestCoins" type="number" placeholder="Request coins" />
+    <input id="requestPetId" placeholder="Request petId (optional)" />
+    <button id="makeTradeBtn">Make Trade</button>
+  </div>
+
+  <h3 style="margin-top:12px">Trades</h3>
+  <div id="tradesList"></div>
+
+  <div style="margin-top:12px">
+    <strong>Audit (recent)</strong>
+    <div id="auditBox" class="audit"></div>
+  </div>
+  <div id="log" class="small" style="margin-top:10px"></div>
+</div>
+
 <script>
-const PLAYERS_KEY = 'tama_players_v10';
-const MARKET_KEY  = 'tama_market_v10';
-const TRADES_KEY  = 'tama_trades_v10';
+const PLAYERS_KEY = 'tama_players_v11';
+const MARKET_KEY  = 'tama_market_v11';
+const TRADES_KEY  = 'tama_trades_v11';
 function load(k){ try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}} }
-function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-let players = load(PLAYERS_KEY); let market = load(MARKET_KEY); let trades = load(TRADES_KEY);
-let currentUser = null;
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+let players = load(PLAYERS_KEY), market = load(MARKET_KEY), trades = load(TRADES_KEY), currentUser = null;
 
 document.getElementById('loadBtn').addEventListener('click', ()=>{
-  const n = document.getElementById('userName').value.trim();
-  if(!n) return alert('Masukkan nama');
+  const n = document.getElementById('userName').value.trim(); if(!n) return alert('Masukkan nama');
   players = load(PLAYERS_KEY); market = load(MARKET_KEY); trades = load(TRADES_KEY);
-  if(!players[n]) return alert('Player tidak ditemukan (login di Game dahulu)');
-  currentUser = n; renderListings(); renderTrades(); renderAudit(); document.getElementById('log').innerText = 'Logged as '+n;
+  if(!players[n]) return alert('Player tidak ditemukan (login di Game dulu)');
+  currentUser = n; renderListings(); renderTrades(); renderAudit();
+  document.getElementById('log').innerText = 'Logged as '+n;
 });
 
-/* Listings */
+/* Render listings */
 function renderListings(){
   market = load(MARKET_KEY); players = load(PLAYERS_KEY);
   const out = document.getElementById('listings'); out.innerHTML = '';
@@ -75,16 +74,15 @@ function renderListings(){
   if(ids.length === 0){ out.innerHTML = '<div class="small">Marketplace kosong</div>'; return; }
   ids.forEach(id=>{
     const s = market[id];
-    const div = document.createElement('div'); div.className='sale';
-    // show offers summary
     const offersSummary = (s.offers||[]).map(o=>`${o.buyer}:${o.price}`).join(' | ') || 'No offers';
-    div.innerHTML = `<strong>${id}</strong> — seller: ${s.seller} — price: ${s.price} 💰<br>Pet: ${s.pet.name} (evo:${s.pet.evo})<br>
+    const div = document.createElement('div'); div.className='sale';
+    div.innerHTML = `<strong>${id}</strong> — seller: ${s.seller} — price: ${s.price} 💰<br>
+      Pet: 🐣 ${s.pet.name} (evo:${s.pet.evo})<br>
       <div class="small">Offers: ${offersSummary}</div>
       <div style="margin-top:6px">
-        <button onclick="buyDirect('${id}')">Buy (pay ${s.price})</button>
+        <button onclick="buyDirect('${id}')">Buy (pay ${s.price}💰)</button>
         <button onclick="makeOfferPrompt('${id}')">Tawar</button>
       </div>`;
-    // if currentUser is seller — allow accept/reject per offer
     if(currentUser && currentUser === s.seller){
       const offersDiv = document.createElement('div'); offersDiv.style.marginTop='6px';
       (s.offers||[]).forEach((o, idx)=>{
@@ -100,111 +98,102 @@ function renderListings(){
 
 /* Buy direct */
 function buyDirect(id){
-  if(!currentUser) return alert('Login dulu (nama di atas)');
+  if(!currentUser) return alert('Login dulu');
   players = load(PLAYERS_KEY); market = load(MARKET_KEY);
-  const pl = players[currentUser]; if(!pl) return alert('Player tidak ditemukan');
-  const s = market[id]; if(!s) return alert('Listing hilang');
-  if(pl.coins < s.price) return alert('Coin tidak cukup');
+  const pl = players[currentUser]; if(!pl) return alert('Player not found');
+  const s = market[id]; if(!s) return alert('Listing not found');
   if(s.seller === currentUser) return alert('Tidak bisa beli milik sendiri');
-  // transfer coin
-  pl.coins -= s.price;
-  players[s.seller].coins = (players[s.seller].coins||0) + s.price;
-  // give pet to buyer
+  const price = s.price;
+  // owner has unlimited coin
+  if(currentUser !== 'owner' && (pl.coins||0) < price) return alert('Coin tidak cukup');
+  if(currentUser !== 'owner') pl.coins -= price;
+  players[s.seller].coins = (players[s.seller].coins||0) + price;
   pl.inventory = pl.inventory || []; pl.inventory.push(s.pet);
-  // add audit
-  players[currentUser].audit = players[currentUser].audit || []; players[currentUser].audit.unshift({t:Date.now(), msg:`Beli pet ${s.pet.name} dari ${s.seller} (${s.price})`});
-  players[s.seller].audit = players[s.seller].audit || []; players[s.seller].audit.unshift({t:Date.now(), msg:`Pet ${s.pet.name} terjual ke ${currentUser} (${s.price})`});
+  // audit
+  players[currentUser].audit = players[currentUser].audit || []; players[currentUser].audit.unshift({t:Date.now(), msg:`Beli 🐣 ${s.pet.name} dari ${s.seller} (${price})`});
+  players[s.seller].audit = players[s.seller].audit || []; players[s.seller].audit.unshift({t:Date.now(), msg:`Terjual 🐣 ${s.pet.name} ke ${currentUser} (${price})`});
   save(PLAYERS_KEY, players);
   delete market[id]; save(MARKET_KEY, market);
   alert('Pembelian berhasil');
   renderListings(); renderTrades(); renderAudit();
 }
 
-/* Make offer */
+/* Make offer (tawar) */
 function makeOfferPrompt(id){
   if(!currentUser) return alert('Login dulu');
-  const offer = parseInt(prompt('Masukkan tawaran coin:'),10);
-  if(isNaN(offer) || offer<=0) return alert('Tawaran tidak valid');
-  market = load(MARKET_KEY);
-  const s = market[id]; if(!s) return alert('Listing tidak ada');
+  const offer = parseInt(prompt('Masukkan tawaran coin:'),10); if(isNaN(offer)||offer<=0) return alert('Invalid offer');
+  market = load(MARKET_KEY); const s = market[id]; if(!s) return alert('Listing not found');
   s.offers = s.offers || []; s.offers.push({ buyer: currentUser, price: offer, created: Date.now() });
-  save(MARKET_KEY, market);
   // audit
   players = load(PLAYERS_KEY);
-  players[currentUser].audit = players[currentUser].audit || []; players[currentUser].audit.unshift({t:Date.now(), msg:`Tawar ${offer} untuk ${s.pet.name}`});
+  players[currentUser].audit = players[currentUser].audit || []; players[currentUser].audit.unshift({t:Date.now(), msg:`Tawar ${offer}💰 untuk ${s.pet.name}`});
   players[s.seller].audit = players[s.seller].audit || []; players[s.seller].audit.unshift({t:Date.now(), msg:`Ada tawaran ${offer} dari ${currentUser} untuk ${s.pet.name}`});
-  save(PLAYERS_KEY, players);
-  alert('Tawaran dikirim ke penjual');
+  save(PLAYERS_KEY, players); save(MARKET_KEY, market);
+  alert('Tawaran dikirim');
   renderListings(); renderAudit();
 }
 
-/* Seller accept/reject offer */
+/* Accept / Reject offer (seller) */
 function acceptOffer(listingId, idx){
   market = load(MARKET_KEY); players = load(PLAYERS_KEY);
-  const s = market[listingId]; if(!s) return alert('Listing tidak ada');
+  const s = market[listingId]; if(!s) return alert('Listing hilang');
   if(currentUser !== s.seller) return alert('Hanya seller yang bisa accept');
   const offer = s.offers && s.offers[idx]; if(!offer) return alert('Offer tidak ada');
-  const buyer = players[offer.buyer];
-  if(!buyer) return alert('Buyer tidak ditemukan (mungkin deleted)');
-  if((buyer.coins||0) < offer.price) return alert('Buyer coin tidak cukup');
-  // transfer coins
+  const buyer = players[offer.buyer]; if(!buyer) return alert('Buyer tidak ada');
+  if((buyer.coins||0) < offer.price) return alert('Buyer coin insufficient');
+  // transfer
   buyer.coins -= offer.price; players[s.seller].coins = (players[s.seller].coins||0) + offer.price;
-  // transfer pet to buyer inventory
   buyer.inventory = buyer.inventory || []; buyer.inventory.push(s.pet);
-  // audit messages
-  buyer.audit = buyer.audit || []; buyer.audit.unshift({t:Date.now(), msg:`Purchase accepted: ${s.pet.name} from ${s.seller} (${offer.price})`});
-  players[s.seller].audit = players[s.seller].audit || []; players[s.seller].audit.unshift({t:Date.now(), msg:`Accept offer: ${offer.price} from ${offer.buyer} for ${s.pet.name}`});
-  // remove listing
-  delete market[listingId];
-  save(PLAYERS_KEY, players); save(MARKET_KEY, market);
-  alert('Offer accepted — pet transferred');
+  // audit
+  buyer.audit = buyer.audit || []; buyer.audit.unshift({t:Date.now(), msg:`Pembelian diterima: ${s.pet.name} dari ${s.seller} (${offer.price})`});
+  players[s.seller].audit = players[s.seller].audit || []; players[s.seller].audit.unshift({t:Date.now(), msg:`Accept offer ${offer.price} dari ${offer.buyer} untuk ${s.pet.name}`});
+  delete market[listingId]; save(PLAYERS_KEY, players); save(MARKET_KEY, market);
+  alert('Offer accepted & pet transferred');
   renderListings(); renderTrades(); renderAudit();
 }
 
 function rejectOffer(listingId, idx){
   market = load(MARKET_KEY);
-  const s = market[listingId]; if(!s) return alert('Listing tidak ada');
-  if(currentUser !== s.seller) return alert('Hanya seller yang bisa reject');
-  const offer = s.offers && s.offers[idx]; if(!offer) return alert('Offer tidak ada');
-  // notify
+  const s = market[listingId]; if(!s) return alert('Listing not found');
+  if(currentUser !== s.seller) return alert('Only seller can reject');
+  const offer = s.offers && s.offers[idx]; if(!offer) return alert('Offer not found');
   players = load(PLAYERS_KEY);
   players[offer.buyer].audit = players[offer.buyer].audit || []; players[offer.buyer].audit.unshift({t:Date.now(), msg:`Offer rejected for ${s.pet.name} by ${s.seller}`});
-  save(PLAYERS_KEY, players);
-  s.offers.splice(idx,1); save(MARKET_KEY, market);
+  s.offers.splice(idx,1); save(MARKET_KEY, market); save(PLAYERS_KEY, players);
   renderListings(); renderAudit();
 }
 
-/* -------------------------
-   Trades (bilateral)
-   ------------------------- */
+/* -----------------------
+  Trades (bilateral)
+   ----------------------- */
 document.getElementById('makeTradeBtn').addEventListener('click', ()=>{
   const to = document.getElementById('tradeTo').value.trim();
-  const offerCoins = parseInt(document.getElementById('offerCoins').value||0,10) || 0;
+  const offerCoins = parseInt(document.getElementById('offerCoins').value||0,10)||0;
   const offerPetId = (document.getElementById('offerPetId').value||'').trim() || null;
-  const reqCoins = parseInt(document.getElementById('requestCoins').value||0,10) || 0;
+  const reqCoins = parseInt(document.getElementById('requestCoins').value||0,10)||0;
   const reqPetId = (document.getElementById('requestPetId').value||'').trim() || null;
-  if(!currentUser) return alert('Login dulu (userName)');
-  if(!to || !players[to]) return alert('Target player tidak ditemukan');
+  if(!currentUser) return alert('Login dulu');
   players = load(PLAYERS_KEY);
+  if(!players[to]) return alert('Target player not found');
   const me = players[currentUser];
-  if(!me) return alert('Player not found');
-  if(me.coins < offerCoins) return alert('You do not have the offered coins');
-  if(offerPetId && !me.inventory.some(p=>p.id===offerPetId)) return alert('You do not own the offered pet');
-  const trades = load(TRADES_KEY);
-  const id = 'trade_' + Math.random().toString(36).slice(2,9);
-  trades[id] = { id, from: currentUser, to, offer:{coins:offerCoins, petId:offerPetId}, request:{coins:reqCoins, petId:reqPetId}, status:'pending', created:Date.now() };
+  if(me.coins < offerCoins) return alert('Anda tidak punya coin cukup');
+  if(offerPetId && !me.inventory.some(p=>p.id===offerPetId)) return alert('Anda tidak punya pet yang ditawarkan');
+  trades = load(TRADES_KEY);
+  const tid = 'trade_' + Math.random().toString(36).slice(2,9);
+  trades[tid] = { id:tid, from: currentUser, to, offer:{coins:offerCoins, petId:offerPetId}, request:{coins:reqCoins, petId:reqPetId}, status:'pending', created:Date.now() };
   save(TRADES_KEY, trades);
-  players[to].audit = players[to].audit || []; players[to].audit.unshift({t:Date.now(), msg:`Trade offer from ${currentUser}`});
-  save(PLAYERS_KEY, players); renderTrades(); renderAudit();
-  alert('Trade offer sent to ' + to);
+  players[to].audit = players[to].audit || []; players[to].audit.unshift({t:Date.now(), msg:`Trade offer dari ${currentUser}`});
+  save(PLAYERS_KEY, players);
+  alert('Trade offer terkirim ke ' + to);
+  renderTrades(); renderAudit();
 });
 
-/* render trades */
+/* Render trades */
 function renderTrades(){
   trades = load(TRADES_KEY); players = load(PLAYERS_KEY);
   const out = document.getElementById('tradesList'); out.innerHTML = '';
   const keys = Object.keys(trades);
-  if(keys.length === 0){ out.innerHTML = '<div class="small">No trades</div>'; return; }
+  if(keys.length===0){ out.innerHTML = '<div class="small">No trades</div>'; return; }
   keys.forEach(k=>{
     const t = trades[k];
     const div = document.createElement('div'); div.className='sale';
@@ -223,14 +212,14 @@ function renderTrades(){
   });
 }
 
-/* accept trade */
+/* Accept trade */
 function acceptTrade(id){
   trades = load(TRADES_KEY); players = load(PLAYERS_KEY);
   const t = trades[id]; if(!t) return alert('Trade not found');
   if(currentUser !== t.to) return alert('Only recipient can accept');
   const a = players[t.from], b = players[t.to];
   if(!a || !b) return alert('Players missing');
-  // validations
+  // validate resources:
   if(t.offer.coins && (a.coins||0) < t.offer.coins) return alert('Offeror lacks coins');
   if(t.request.coins && (b.coins||0) < t.request.coins) return alert('Recipient lacks requested coins');
   if(t.offer.petId && !a.inventory.some(p=>p.id===t.offer.petId)) return alert('Offeror lacks pet');
@@ -239,14 +228,9 @@ function acceptTrade(id){
   if(t.offer.coins){ a.coins -= t.offer.coins; b.coins = (b.coins||0) + t.offer.coins; }
   if(t.request.coins){ b.coins -= t.request.coins; a.coins = (a.coins||0) + t.request.coins; }
   // transfer pets
-  if(t.offer.petId){
-    const idx = a.inventory.findIndex(p=>p.id===t.offer.petId); if(idx>-1){ const pet=a.inventory.splice(idx,1)[0]; b.inventory.push(pet); }
-  }
-  if(t.request.petId){
-    const idx2 = b.inventory.findIndex(p=>p.id===t.request.petId); if(idx2>-1){ const pet2=b.inventory.splice(idx2,1)[0]; a.inventory.push(pet2); }
-  }
+  if(t.offer.petId){ const idx = a.inventory.findIndex(p=>p.id===t.offer.petId); if(idx>-1){ const pet=a.inventory.splice(idx,1)[0]; b.inventory.push(pet); } }
+  if(t.request.petId){ const idx2 = b.inventory.findIndex(p=>p.id===t.request.petId); if(idx2>-1){ const pet2=b.inventory.splice(idx2,1)[0]; a.inventory.push(pet2); } }
   t.status = 'accepted';
-  // audit
   a.audit = a.audit || []; a.audit.unshift({t:Date.now(), msg:`Trade executed with ${b.name} (id:${t.id})`});
   b.audit = b.audit || []; b.audit.unshift({t:Date.now(), msg:`Trade executed with ${a.name} (id:${t.id})`});
   save(PLAYERS_KEY, players); save(TRADES_KEY, trades);
@@ -257,7 +241,6 @@ function acceptTrade(id){
 function rejectTrade(id){ trades = load(TRADES_KEY); if(!trades[id]) return; trades[id].status='rejected'; save(TRADES_KEY, trades); renderTrades(); renderAudit(); }
 function cancelTrade(id){ trades = load(TRADES_KEY); if(!trades[id]) return; if(currentUser !== trades[id].from) return alert('Only creator can cancel'); trades[id].status='cancelled'; save(TRADES_KEY, trades); renderTrades(); renderAudit(); }
 
-/* Audit */
 function renderAudit(){
   document.getElementById('auditBox').innerHTML = '';
   if(!currentUser) return;
@@ -265,14 +248,11 @@ function renderAudit(){
   const pl = players[currentUser]; if(!pl || !pl.audit) return;
   pl.audit.slice(0,50).forEach(a=>{
     const d = new Date(a.t).toLocaleString();
-    const r = document.createElement('div'); r.className='small'; r.textContent = `${d} — ${a.msg}`;
-    document.getElementById('auditBox').appendChild(r);
+    const r = document.createElement('div'); r.className='small'; r.textContent = `${d} — ${a.msg}`; document.getElementById('auditBox').appendChild(r);
   });
 }
 
-/* autoupdate */
 setInterval(()=>{ renderListings(); renderTrades(); renderAudit(); }, 2000);
-/* initial */
 renderListings(); renderTrades(); renderAudit();
 </script>
 </body>
