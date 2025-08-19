@@ -1,27 +1,27 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamagotchi — Inventory</title>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tamagotchi — Inventory & Leaderboard</title>
 <style>
 body{background:linear-gradient(180deg,#071726,#06202a);color:#e6eef6;font-family:system-ui,Arial;margin:0;padding:18px}
-.panel{max-width:980px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
+.panel{max-width:1100px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
 h1{margin:0 0 10px}
 .petrow{display:flex;gap:12px;align-items:center;padding:8px;border-radius:8px;background:#0f1724;margin-bottom:8px}
 button{background:#10b981;border:0;padding:6px 10px;border-radius:6px;color:#042018;cursor:pointer}
-input{padding:6px;border-radius:6px;border:0}
+input,select{padding:6px;border-radius:6px;border:0}
 .small{font-size:13px;color:#9fb3b5}
 .linkbtn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
 .audit{max-height:160px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
-.icon{font-size:16px;margin-right:6px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.filterRow{display:flex;gap:8px;align-items:center;margin-top:8px}
 </style>
 </head>
 <body>
 <div class="panel">
-  <h1>Inventory — Pilih Pet & Jual</h1>
+  <h1>Inventory — Pilih Pet, Jual & Leaderboard</h1>
   <div>
-    Nama pemain: <input id="playerName" placeholder="Sama seperti Game" />
+    Nama pemain: <input id="playerName" placeholder="Masukkan nama (sama dgn Game)" />
     <button id="loadBtn">Load</button>
     <a class="linkbtn" href="index.html">← Kembali ke Game</a>
     <a class="linkbtn" href="marketplace.html">→ Marketplace</a>
@@ -29,40 +29,55 @@ input{padding:6px;border-radius:6px;border:0}
 
   <div id="inventoryList" style="margin-top:12px"></div>
 
-  <div style="margin-top:12px" class="small">Icons: <span class="icon">🍖</span> = makanan, <span class="icon">💰</span> = coin, <span class="icon">🐣</span> = pet</div>
+  <div style="margin-top:12px" class="small">Makanan 🍖 dan coin 💰 ditampilkan; owner dapat menjual pet langsung ke players via Marketplace.</div>
+
+  <hr style="border-color:rgba(255,255,255,0.04)">
+
+  <h2>🏆 Leaderboard</h2>
+  <div class="filterRow">
+    <input id="searchName" placeholder="Search name..." />
+    <input id="minLevel" type="number" placeholder="Min level" style="width:120px"/>
+    <select id="hasPet"><option value="any">Any pet</option><option value="with">Has pet</option><option value="without">No pet</option></select>
+    <select id="hasItem"><option value="any">Any item</option><option value="with">Has food</option><option value="without">No food</option></select>
+    <button id="applyFilterBtn">Apply</button>
+    <button id="clearFilterBtn">Clear</button>
+  </div>
+  <div id="leaderboard" style="margin-top:8px"></div>
 
   <div style="margin-top:12px">
-    <strong>Audit / History (recent)</strong>
+    <strong>Audit / History</strong>
     <div id="auditBox" class="audit"></div>
   </div>
 </div>
 
 <script>
-const PLAYERS_KEY = 'tama_players_v11';
-const MARKET_KEY = 'tama_market_v11';
+const PLAYERS_KEY = 'tama_players_v12';
+const MARKET_KEY = 'tama_market_v12';
 function load(k){ try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}} }
-function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 let players = load(PLAYERS_KEY), market = load(MARKET_KEY), current = null;
 
 document.getElementById('loadBtn').addEventListener('click', ()=>{
   const n = document.getElementById('playerName').value.trim(); if(!n) return alert('Masukkan nama');
-  players = load(PLAYERS_KEY);
-  if(!players[n]) return alert('Player tidak ditemukan (login di Game)');
+  players = load(PLAYERS_KEY); if(!players[n]) return alert('Player tidak ditemukan (login di Game)');
   current = n; renderInventory(); renderAudit();
 });
 
+/* render inventory */
 function renderInventory(){
   const wrap = document.getElementById('inventoryList'); wrap.innerHTML = '';
   if(!current) return;
   players = load(PLAYERS_KEY); market = load(MARKET_KEY);
   const pl = players[current];
-  if(!pl.inventory || pl.inventory.length===0){ wrap.innerHTML = '<div class="small">Belum punya pet</div>'; return; }
+  // summary
+  const summary = document.createElement('div'); summary.className='small';
+  summary.innerHTML = `<div>Coins: ${pl.coins} • Food: ${pl.foodCount} • Pets: ${pl.inventory.length}</div>`;
+  wrap.appendChild(summary);
+  if(!pl.inventory || pl.inventory.length===0){ wrap.innerHTML += '<div class="small">Belum punya pet</div>'; return; }
   pl.inventory.forEach(pet=>{
     const div = document.createElement('div'); div.className='petrow';
     div.innerHTML = `
-      <div style="width:260px"><strong>🐣 ${pet.name}</strong>
-        <div class="small">Evo:${pet.evo} Age:${pet.ageDays||0} Health:${pet.health||0} Alive:${pet.alive? 'Yes':'No'}</div>
-      </div>
+      <div style="width:280px"><strong>🐣 ${pet.name}</strong><div class="small">Level:${pet.level||1} • Evo:${pet.evo} • Age:${pet.ageDays||0} • Health:${pet.health||0}</div></div>
       <div style="flex:1">
         <button onclick="setActive('${pet.id}')">Set Active</button>
         <button onclick="sellPetPrompt('${pet.id}')">Jual Pet</button>
@@ -70,21 +85,16 @@ function renderInventory(){
     `;
     wrap.appendChild(div);
   });
-  renderSellerOffers();
 }
 
-function setActive(pid){
-  if(!current) return alert('Load player dulu');
-  players = load(PLAYERS_KEY);
-  players[current].activePetId = pid;
-  save(PLAYERS_KEY, players); alert('Active pet diupdate'); renderInventory();
-}
+/* set active */
+function setActive(pid){ if(!current) return alert('Load player dulu'); players = load(PLAYERS_KEY); players[current].activePetId = pid; save(PLAYERS_KEY, players); alert('Active pet updated'); renderInventory(); }
 
+/* sell pet prompt identical to previous */
 function sellPetPrompt(pid){
   if(!current) return alert('Load player dulu');
   const saleId = prompt('Masukkan sale id unik (contoh: sale_dragon01):'); if(!saleId) return;
-  market = load(MARKET_KEY);
-  if(market[saleId]) return alert('Sale id sudah dipakai');
+  market = load(MARKET_KEY); if(market[saleId]) return alert('Sale id sudah dipakai');
   const price = parseInt(prompt('Masukkan harga jual (coin):'),10); if(isNaN(price)||price<=0) return alert('Harga tidak valid');
   players = load(PLAYERS_KEY);
   const pl = players[current];
@@ -93,41 +103,71 @@ function sellPetPrompt(pid){
   const pet = pl.inventory.splice(idx,1)[0];
   market[saleId] = { id:saleId, seller: current, pet, price, offers: [] };
   if(pl.activePetId === pid) pl.activePetId = pl.inventory[0] ? pl.inventory[0].id : null;
-  save(PLAYERS_KEY, players); save(MARKET_KEY, market);
-  alert('Pet diposting: ' + saleId);
-  renderInventory(); renderAudit();
+  save(PLAYERS_KEY, players); save(MARKET_KEY, market); alert('Pet posted: '+saleId); renderInventory(); renderAudit();
 }
 
-function renderSellerOffers(){
-  market = load(MARKET_KEY);
-  document.querySelectorAll('[id^="offers_"]').forEach(n=>n.remove());
-  if(!current) return;
-  Object.values(market).forEach(l=>{
-    if(l.seller !== current) return;
-    // nothing else — badges shown in index
+/* Leaderboard */
+function buildLeaderboard(){
+  players = load(PLAYERS_KEY);
+  const arr = Object.values(players).map(p=>{
+    const pet = (p.inventory||[])[0] || null;
+    return { name: p.name, level: pet?pet.level||1:0, petName: pet?pet.name:'-', pets: p.inventory||[], foodCount: p.foodCount||0 };
+  });
+  // sort by level desc, then by pet.ageDays
+  arr.sort((a,b)=> (b.level - a.level) || ((b.pets[0]?.ageDays||0) - (a.pets[0]?.ageDays||0)) );
+  return arr;
+}
+
+function renderLeaderboard(filter){
+  const container = document.getElementById('leaderboard'); container.innerHTML = '';
+  const list = buildLeaderboard();
+  const q = document.getElementById('searchName').value.trim().toLowerCase();
+  const minLvl = parseInt(document.getElementById('minLevel').value||0,10) || 0;
+  const hasPetF = document.getElementById('hasPet').value;
+  const hasItemF = document.getElementById('hasItem').value;
+  const filtered = list.filter(item=>{
+    if(q && !item.name.toLowerCase().includes(q)) return false;
+    if(item.level < minLvl) return false;
+    if(hasPetF === 'with' && item.pets.length===0) return false;
+    if(hasPetF === 'without' && item.pets.length>0) return false;
+    if(hasItemF === 'with' && item.foodCount<=0) return false;
+    if(hasItemF === 'without' && item.foodCount>0) return false;
+    return true;
+  });
+  if(filtered.length===0){ container.innerHTML = '<div class="small">No players</div>'; return; }
+  filtered.forEach((p,i)=>{
+    const row = document.createElement('div'); row.className='petrow';
+    row.innerHTML = `<div style="width:420px">${i+1}. <strong>${p.name}</strong> — Lv ${p.level} • Pet: ${p.petName} • Food:${p.foodCount}</div>
+      <div style="flex:1"><button onclick="viewPlayer('${p.name}')">View</button></div>`;
+    container.appendChild(row);
   });
 }
 
+document.getElementById('applyFilterBtn').addEventListener('click', ()=> renderLeaderboard());
+document.getElementById('clearFilterBtn').addEventListener('click', ()=> { document.getElementById('searchName').value=''; document.getElementById('minLevel').value=''; document.getElementById('hasPet').value='any'; document.getElementById('hasItem').value='any'; renderLeaderboard(); });
+
+function viewPlayer(name){
+  players = load(PLAYERS_KEY);
+  const p = players[name];
+  if(!p) return alert('Player not found');
+  alert(`Player: ${name}\nCoins: ${p.coins}\nFood: ${p.foodCount}\nPets: ${p.inventory.map(x=>x.name+' (Lv'+(x.level||1)+')').join(', ')}`);
+}
+
+/* Audit */
 function renderAudit(){
   const box = document.getElementById('auditBox'); box.innerHTML = '';
   if(!current) return;
   players = load(PLAYERS_KEY);
   const pl = players[current];
   if(!pl || !pl.audit) { box.innerHTML = '<div class="small">No audit</div>'; return; }
-  pl.audit.slice(0,50).forEach(a=>{
-    const d = new Date(a.t).toLocaleString();
-    const row = document.createElement('div'); row.className='small'; row.textContent = `${d} — ${a.msg}`; box.appendChild(row);
-  });
+  pl.audit.slice(0,50).forEach(a=>{ const d=new Date(a.t).toLocaleString(); const r=document.createElement('div'); r.className='small'; r.textContent=`${d} — ${a.msg}`; box.appendChild(r); });
 }
 
-setInterval(()=>{ renderInventory(); renderAudit(); }, 2000);
+/* autos */
+setInterval(()=>{ renderInventory(); renderLeaderboard(); renderAudit(); }, 2000);
 
-/* autoload if only 1 player exists */
-(function init(){
-  players = load(PLAYERS_KEY);
-  const keys = Object.keys(players);
-  if(keys.length === 1){ current = keys[0]; document.getElementById('playerName').value = current; renderInventory(); renderAudit(); }
-})();
+/* auto-load single player if exists */
+(function init(){ players = load(PLAYERS_KEY); const keys = Object.keys(players); if(keys.length===1){ current=keys[0]; document.getElementById('playerName').value=current; renderInventory(); renderAudit(); } })();
 </script>
 </body>
 </html>
