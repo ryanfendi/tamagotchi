@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Panel - Tamagotchi</title>
+<style>
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+    .panel { background:#101a2b; padding:15px; margin:15px auto; width:90%; max-width:500px; border-radius:8px; }
+    input, button { padding:8px; margin:5px; border-radius:8px; }
+    button { background:#10b981; border:none; color:#fff; font-weight:bold; cursor:pointer; }
+</style>
+</head>
+<body>
+<h2>🔐 Owner Panel</h2>
+<div id="loginPanel" class="panel">
+    <h3>Login Owner</h3>
+    <input id="ownerID" placeholder="ID Owner"><br>
+    <input id="ownerPass" type="password" placeholder="Password"><br>
+    <button onclick="ownerLogin()">Login</button>
+</div>
+<div id="ownerPanel" class="panel" style="display:none;">
+    <h3>Selamat datang, Owner!</h3>
+    <p>Top-up Coin:</p>
+    <input id="targetPlayer" placeholder="Nama Player"><br>
+    <input id="amountCoin" type="number" placeholder="Jumlah Coin"><br>
+    <button onclick="topupCoin()">Kirim Coin</button>
+    
+    <hr>
+    <p>Upgrade Pet Level:</p>
+    <input id="targetLevelPlayer" placeholder="Nama Player"><br>
+    <input id="newLevel" type="number" placeholder="Level (max 1000)"><br>
+    <button onclick="upgradeLevel()">Upgrade Level</button>
+    
+    <hr>
+    <button onclick="logout()">Logout</button>
+</div>
+<div style="margin-top:10px;">
+    <button onclick="goTo('index.html')">🏠 Kembali ke Game</button>
+</div>
+<script>
+let players = JSON.parse(localStorage.getItem("players")||"{}");
+
+function ownerLogin(){
+    const id = document.getElementById("ownerID").value.trim();
+    const pass = document.getElementById("ownerPass").value.trim();
+    if(id==="owner" && pass==="MainGame123$"){
+        localStorage.setItem("ownerAuth","true");
+        document.getElementById("loginPanel").style.display="none";
+        document.getElementById("ownerPanel").style.display="block";
+    } else {
+        alert("ID atau Password salah!");
+    }
+}
+
+function topupCoin(){
+    const name=document.getElementById("targetPlayer").value.trim();
+    const amt=parseInt(document.getElementById("amountCoin").value);
+    if(!players[name]) return alert("Player tidak ditemukan!");
+    players[name].coins += amt;
+    save();
+    alert(`Top-up ${amt} coin ke ${name} berhasil!`);
+}
+
+function upgradeLevel(){
+    const name=document.getElementById("targetLevelPlayer").value.trim();
+    const level=parseInt(document.getElementById("newLevel").value);
+    if(!players[name]) return alert("Player tidak ditemukan!");
+    if(level>1000) return alert("Max level 1000");
+    players[name].pet.level = level;
+    save();
+    alert(`Level ${name} diatur ke ${level}`);
+}
+
+function save(){
+    localStorage.setItem("players",JSON.stringify(players));
+}
+
+function logout(){
+    localStorage.removeItem("ownerAuth");
+    location.reload();
+}
+
+function goTo(p){location.href=p;}
+
+// Jika sudah login sebelumnya
+if(localStorage.getItem("ownerAuth")==="true"){
+    document.getElementById("loginPanel").style.display="none";
+    document.getElementById("ownerPanel").style.display="block";
+}
+</script>
+</body>
+</html>
