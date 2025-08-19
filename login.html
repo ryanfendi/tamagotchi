@@ -22,11 +22,11 @@ a{color:#10b981;text-decoration:none;display:block;margin-top:10px;}
 </div>
 <script>
 function login(){
-    const email=document.getElementById("email").value.trim();
+    const email=document.getElementById("email").value.trim().toLowerCase();
     const pass=document.getElementById("password").value.trim();
     if(!email||!pass){alert("Isi email dan password!");return;}
     let players=JSON.parse(localStorage.getItem("players")||"{}");
-    let user=Object.values(players).find(p=>p.email===email && p.password===pass);
+    let user=Object.values(players).find(p=>p.email.toLowerCase()===email && p.password===pass);
     if(!user){alert("Email atau password salah!");return;}
     localStorage.setItem("currentPlayer",user.name);
     location.href="index.html";
