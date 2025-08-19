@@ -5,51 +5,47 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tamagotchi — Inventory</title>
 <style>
-  body{background:linear-gradient(180deg,#071726,#06202a);color:#e6eef6;font-family:system-ui,Arial;margin:0;padding:18px}
-  .panel{max-width:980px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
-  h1{margin:0 0 10px}
-  .petrow{display:flex;gap:12px;align-items:center;padding:8px;border-radius:8px;background:#0f1724;margin-bottom:8px}
-  button{background:#10b981;border:0;padding:6px 10px;border-radius:6px;color:#042018;cursor:pointer}
-  input{padding:6px;border-radius:6px;border:0}
-  .small{font-size:13px;color:#9fb3b5}
-  a.btn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
-  .badge{background:#ff5252;color:#fff;padding:2px 6px;border-radius:12px;font-size:12px;margin-left:6px}
-  .audit{max-height:160px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
+body{background:linear-gradient(180deg,#071726,#06202a);color:#e6eef6;font-family:system-ui,Arial;margin:0;padding:18px}
+.panel{max-width:980px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
+h1{margin:0 0 10px}
+.petrow{display:flex;gap:12px;align-items:center;padding:8px;border-radius:8px;background:#0f1724;margin-bottom:8px}
+button{background:#10b981;border:0;padding:6px 10px;border-radius:6px;color:#042018;cursor:pointer}
+input{padding:6px;border-radius:6px;border:0}
+.small{font-size:13px;color:#9fb3b5}
+.linkbtn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
+.audit{max-height:160px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
+.icon{font-size:16px;margin-right:6px}
 </style>
 </head>
 <body>
-  <div class="panel">
-    <h1>Inventory — Pilih Pet & Jual</h1>
-    <div>
-      Nama pemain: <input id="playerName" placeholder="Masukkan nama yang sama seperti Game" />
-      <button id="loadBtn">Load</button>
-      <a class="btn" href="index.html">Kembali ke Game</a>
-      <a class="btn" href="marketplace.html">Marketplace</a>
-    </div>
-
-    <div id="inventoryList" style="margin-top:12px"></div>
-
-    <div style="margin-top:12px" class="small">Catatan: Saat menjual pet, pet akan dipindahkan ke marketplace listing.</div>
-
-    <div style="margin-top:12px">
-      <strong>Audit / History (paling baru)</strong>
-      <div id="auditBox" class="audit"></div>
-    </div>
+<div class="panel">
+  <h1>Inventory — Pilih Pet & Jual</h1>
+  <div>
+    Nama pemain: <input id="playerName" placeholder="Sama seperti Game" />
+    <button id="loadBtn">Load</button>
+    <a class="linkbtn" href="index.html">← Kembali ke Game</a>
+    <a class="linkbtn" href="marketplace.html">→ Marketplace</a>
   </div>
 
-<script>
-const PLAYERS_KEY = 'tama_players_v10';
-const MARKET_KEY  = 'tama_market_v10';
-function load(k){ try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}} }
-function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  <div id="inventoryList" style="margin-top:12px"></div>
 
-let players = load(PLAYERS_KEY);
-let market = load(MARKET_KEY);
-let current = null;
+  <div style="margin-top:12px" class="small">Icons: <span class="icon">🍖</span> = makanan, <span class="icon">💰</span> = coin, <span class="icon">🐣</span> = pet</div>
+
+  <div style="margin-top:12px">
+    <strong>Audit / History (recent)</strong>
+    <div id="auditBox" class="audit"></div>
+  </div>
+</div>
+
+<script>
+const PLAYERS_KEY = 'tama_players_v11';
+const MARKET_KEY = 'tama_market_v11';
+function load(k){ try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}} }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+let players = load(PLAYERS_KEY), market = load(MARKET_KEY), current = null;
 
 document.getElementById('loadBtn').addEventListener('click', ()=>{
-  const n = document.getElementById('playerName').value.trim();
-  if(!n) return alert('Masukkan nama pemain');
+  const n = document.getElementById('playerName').value.trim(); if(!n) return alert('Masukkan nama');
   players = load(PLAYERS_KEY);
   if(!players[n]) return alert('Player tidak ditemukan (login di Game)');
   current = n; renderInventory(); renderAudit();
@@ -64,11 +60,12 @@ function renderInventory(){
   pl.inventory.forEach(pet=>{
     const div = document.createElement('div'); div.className='petrow';
     div.innerHTML = `
-      <div style="width:260px"><strong>${pet.name}</strong><div class="small">Evo:${pet.evo} Age:${pet.ageDays||0} Health:${pet.health||0} Alive:${pet.alive? 'Yes':'No'}</div></div>
+      <div style="width:260px"><strong>🐣 ${pet.name}</strong>
+        <div class="small">Evo:${pet.evo} Age:${pet.ageDays||0} Health:${pet.health||0} Alive:${pet.alive? 'Yes':'No'}</div>
+      </div>
       <div style="flex:1">
         <button onclick="setActive('${pet.id}')">Set Active</button>
         <button onclick="sellPetPrompt('${pet.id}')">Jual Pet</button>
-        <span id="offers_${pet.id}"></span>
       </div>
     `;
     wrap.appendChild(div);
@@ -80,9 +77,7 @@ function setActive(pid){
   if(!current) return alert('Load player dulu');
   players = load(PLAYERS_KEY);
   players[current].activePetId = pid;
-  save(PLAYERS_KEY, players);
-  alert('Active pet updated');
-  renderInventory();
+  save(PLAYERS_KEY, players); alert('Active pet diupdate'); renderInventory();
 }
 
 function sellPetPrompt(pid){
@@ -90,8 +85,7 @@ function sellPetPrompt(pid){
   const saleId = prompt('Masukkan sale id unik (contoh: sale_dragon01):'); if(!saleId) return;
   market = load(MARKET_KEY);
   if(market[saleId]) return alert('Sale id sudah dipakai');
-  const price = parseInt(prompt('Masukkan harga jual (coin):'),10);
-  if(isNaN(price)||price<=0) return alert('Harga tidak valid');
+  const price = parseInt(prompt('Masukkan harga jual (coin):'),10); if(isNaN(price)||price<=0) return alert('Harga tidak valid');
   players = load(PLAYERS_KEY);
   const pl = players[current];
   const idx = pl.inventory.findIndex(p=>p.id===pid);
@@ -100,23 +94,20 @@ function sellPetPrompt(pid){
   market[saleId] = { id:saleId, seller: current, pet, price, offers: [] };
   if(pl.activePetId === pid) pl.activePetId = pl.inventory[0] ? pl.inventory[0].id : null;
   save(PLAYERS_KEY, players); save(MARKET_KEY, market);
-  alert('Pet diposting ke marketplace: ' + saleId);
+  alert('Pet diposting: ' + saleId);
   renderInventory(); renderAudit();
 }
 
-/* seller offer management view (badges + lists) */
 function renderSellerOffers(){
   market = load(MARKET_KEY);
+  document.querySelectorAll('[id^="offers_"]').forEach(n=>n.remove());
   if(!current) return;
-  Object.keys(market).forEach(id=>{
-    const l = market[id];
+  Object.values(market).forEach(l=>{
     if(l.seller !== current) return;
-    const el = document.getElementById('offers_' + l.pet.id);
-    if(el) el.innerHTML = (l.offers && l.offers.length) ? `<span class="badge">${l.offers.length}</span>` : '';
+    // nothing else — badges shown in index
   });
 }
 
-/* Audit view */
 function renderAudit(){
   const box = document.getElementById('auditBox'); box.innerHTML = '';
   if(!current) return;
@@ -125,15 +116,13 @@ function renderAudit(){
   if(!pl || !pl.audit) { box.innerHTML = '<div class="small">No audit</div>'; return; }
   pl.audit.slice(0,50).forEach(a=>{
     const d = new Date(a.t).toLocaleString();
-    const row = document.createElement('div'); row.className='small'; row.textContent = `${d} — ${a.msg}`;
-    box.appendChild(row);
+    const row = document.createElement('div'); row.className='small'; row.textContent = `${d} — ${a.msg}`; box.appendChild(row);
   });
 }
 
-/* refresh every 2s */
 setInterval(()=>{ renderInventory(); renderAudit(); }, 2000);
 
-/* try autoload if only 1 player exists */
+/* autoload if only 1 player exists */
 (function init(){
   players = load(PLAYERS_KEY);
   const keys = Object.keys(players);
