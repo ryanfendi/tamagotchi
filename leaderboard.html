@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Leaderboard - Tamagotchi</title>
 <style>
-body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
+body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:0;}
 .panel{background:#101a2b;padding:10px;margin:10px auto;width:95%;max-width:700px;border-radius:8px;}
-input{padding:8px;width:80%;border-radius:6px;margin-bottom:10px;}
+input{padding:8px;width:80%;border-radius:6px;margin-bottom:10px;border:none;}
 button{background:#10b981;border:none;padding:8px;margin:4px;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer;}
 .table{width:100%;border-collapse:collapse;margin-top:10px;}
 th,td{border:1px solid #333;padding:6px;}
+.current{background:#10b98133;} /* highlight current player */
 </style>
 </head>
 <body>
@@ -46,20 +47,32 @@ let players = JSON.parse(localStorage.getItem("players")||"{}");
 
 function renderLeaderboard(){
     const search=document.getElementById("search").value.toLowerCase();
-    let data=Object.values(players).sort((a,b)=>b.pet.level-a.pet.level);
+    
+    let data = Object.values(players).map(p=>{
+        const pet = p.pet || {name:'—', level:0};
+        const inventory = p.inventory || [];
+        const name = p.name || p.username || '—';
+        return {...p, pet, inventory, name};
+    });
+
     if(search){
-        data=data.filter(p=>p.name.toLowerCase().includes(search));
+        data = data.filter(p=>p.name.toLowerCase().includes(search));
     }
+
+    data.sort((a,b)=>b.pet.level - a.pet.level);
+
     const body=document.getElementById("leaderboardBody");
-    body.innerHTML="";
+    body.innerHTML = "";
+
     data.forEach((p,i)=>{
+        const highlight = (p.name.toLowerCase() === currentPlayerName.toLowerCase()) ? "current" : "";
         body.innerHTML+=`
-        <tr>
+        <tr class="${highlight}">
             <td>${i+1}</td>
             <td>${p.name}</td>
             <td>${p.pet.level}</td>
             <td>${p.pet.name}</td>
-            <td>${p.coins}</td>
+            <td>${p.coins||0}</td>
             <td>${p.inventory.length}</td>
         </tr>`;
     });
