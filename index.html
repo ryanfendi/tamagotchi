@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamagotchi Pixel++ Ekspresi</title>
+<title>Tamagotchi Pixel Online</title>
 <style>
     body {
         background: linear-gradient(135deg, #89cff0, #ffffff);
@@ -12,126 +12,139 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 100vh;
+        min-height: 100vh;
         margin: 0;
         text-align: center;
     }
-    h1 {
-        color: #333;
-        font-size: 22px;
-        margin-bottom: 10px;
-    }
+    h1 { font-size: 20px; }
     .pet-container {
-        position: relative;
-        width: 180px;
-        height: 180px;
+        width: 180px; height: 180px;
         background: #fefefe;
         border: 6px solid #333;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
+        margin-bottom: 10px;
     }
-    .pet-wrapper {
-        animation: idle 3s infinite;
-        position: relative;
+    .pet {
+        display: grid;
+        grid-template-columns: repeat(16, 8px);
+        grid-template-rows: repeat(16, 8px);
     }
-    .pet-base {
-        width: 96px;
-        height: 96px;
-        image-rendering: pixelated;
-        background-size: cover;
+    .pixel { width: 8px; height: 8px; }
+    .stats, .coins { font-size: 14px; margin: 6px 0; }
+    .bars { width: 200px; margin: 8px 0; }
+    .bar { height: 14px; background: #ddd; margin: 4px 0; border-radius: 3px; overflow: hidden; }
+    .bar-inner { height: 100%; transition: width 0.5s; }
+    .green { background: #4CAF50; }
+    .red { background: #E91E63; }
+    .buttons { display: flex; gap: 6px; margin-top: 8px; }
+    button { padding: 6px 10px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    .marketplace {
+        margin-top: 20px; padding: 10px;
+        background: #fff; border: 2px solid #333; width: 240px;
     }
-    @keyframes idle {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
-    }
-    .stats {
-        margin-top: 10px;
-        font-size: 14px;
-    }
-    .buttons {
-        display: flex;
-        gap: 10px;
-        margin-top: 15px;
-    }
-    button {
-        font-size: 12px;
-        padding: 8px 12px;
-        background: #333;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background 0.3s;
-    }
-    button:hover {
-        background: #555;
+    .item {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 6px; font-size: 12px;
     }
 </style>
 </head>
 <body>
-    <h1>Tamagotchi Pixel++</h1>
-    <div class="pet-container">
-        <div class="pet-wrapper">
-            <div class="pet-base" id="pet"></div>
-        </div>
+<h1>Tamagotchi Pixel Online</h1>
+<div class="coins">💰 Coin: <span id="coins">100</span></div>
+<div class="pet-container"><div class="pet" id="pet"></div></div>
+<div class="stats" id="stats">❤️ 100 | 🍖 100</div>
+<div class="bars">
+    <div class="bar"><div class="bar-inner green" id="health-bar"></div></div>
+    <div class="bar"><div class="bar-inner red" id="hunger-bar"></div></div>
+</div>
+<div class="buttons">
+    <button onclick="feed()">Makan</button>
+    <button onclick="play()">Main</button>
+    <button onclick="sleep()">Tidur</button>
+</div>
+
+<div class="marketplace">
+    <h3>Marketplace</h3>
+    <div id="market-items">
+        <div class="item"><span>🍎 Makanan (+20)</span> <button onclick="buyItem('food')">10💰</button></div>
+        <div class="item"><span>🧸 Mainan (+15)</span> <button onclick="buyItem('toy')">15💰</button></div>
+        <div class="item"><span>💊 Obat (+30)</span> <button onclick="buyItem('medicine')">25💰</button></div>
     </div>
-    <div class="stats" id="stats">❤️: 100 | 🍖: 100 | 🙂</div>
-    <div class="buttons">
-        <button onclick="feed()">Beri Makan</button>
-        <button onclick="play()">Main</button>
-        <button onclick="sleep()">Tidur</button>
-    </div>
+</div>
 
 <script>
 const pet = document.getElementById("pet");
 const stats = document.getElementById("stats");
+const healthBar = document.getElementById("health-bar");
+const hungerBar = document.getElementById("hunger-bar");
+const coinsEl = document.getElementById("coins");
 
-// Sprite URL (bisa diganti dengan gambar custom)
-const sprites = {
-    happy: "https://i.ibb.co/9qHLr7z/pet-happy.png",
-    sad: "https://i.ibb.co/rcX3xw8/pet-hungry.png",
-    sick: "https://i.ibb.co/pdh8JMy/pet-sick.png",
-    angry: "https://i.ibb.co/gvH5xn7/pet-angry.png",
-    sleep: "https://i.ibb.co/jWkpR2w/pet-sleep.png"
+const COLORS = {
+    stage1: "#FFD966",
+    stage2: "#66FF66",
+    stage3: "#66CCFF",
+    eye: "#000",
+    eyeBlink: "#fff",
+    mouth: "#C21807",
+    mouthOpen: "#FF0000",
+    bg: "#fff"
 };
 
-let data = JSON.parse(localStorage.getItem("tamagotchi")) || {
+let data = {
     health: 100,
     hunger: 100,
+    coins: 100,
+    evoStage: 1,
     sleeping: false
 };
 
-function updatePet() {
-    let emoji = "🙂";
-    if (data.sleeping) {
-        pet.style.backgroundImage = `url('${sprites.sleep}')`;
-        emoji = "💤";
-    } else if (data.hunger < 20 && data.health < 20) {
-        pet.style.backgroundImage = `url('${sprites.angry}')`;
-        emoji = "😡";
-    } else if (data.hunger < 40) {
-        pet.style.backgroundImage = `url('${sprites.sad}')`;
-        emoji = "😢";
-    } else if (data.health < 40) {
-        pet.style.backgroundImage = `url('${sprites.sick}')`;
-        emoji = "🤢";
-    } else {
-        pet.style.backgroundImage = `url('${sprites.happy}')`;
-        emoji = "😊";
-    }
+let evoTimer = 0;
 
-    stats.textContent = `❤️: ${data.health} | 🍖: ${data.hunger} | ${emoji}`;
-    localStorage.setItem("tamagotchi", JSON.stringify(data));
+function createSprite(stage, blink=false, talk=false) {
+    const pixels = [];
+    for (let i = 0; i < 256; i++) {
+        let color = COLORS.bg;
+        let bodyColor = COLORS.stage1;
+        if (stage === 2) bodyColor = COLORS.stage2;
+        if (stage === 3) bodyColor = COLORS.stage3;
+
+        if (i > 35 && i < 220 && i % 16 > 2 && i % 16 < 13) color = bodyColor;
+        if (i === 75 || i === 78 || i === 139 || i === 142) color = blink ? COLORS.eyeBlink : COLORS.eye;
+        if (i === 187 || i === 188) color = talk ? COLORS.mouthOpen : COLORS.mouth;
+
+        pixels.push(color);
+    }
+    return pixels;
+}
+
+function renderPet(blink=false, talk=false) {
+    pet.innerHTML = "";
+    const pixels = createSprite(data.evoStage, blink, talk);
+    pixels.forEach(c => {
+        const div = document.createElement("div");
+        div.classList.add("pixel");
+        div.style.backgroundColor = c;
+        pet.appendChild(div);
+    });
+}
+
+function updateUI() {
+    stats.textContent = `❤️ ${data.health} | 🍖 ${data.hunger}`;
+    healthBar.style.width = data.health + "%";
+    hungerBar.style.width = data.hunger + "%";
+    coinsEl.textContent = data.coins;
 }
 
 function feed() {
-    if (!data.sleeping) {
+    if (!data.sleeping && data.coins >= 0) {
         data.hunger = Math.min(100, data.hunger + 20);
     }
-    updatePet();
+    renderPet(false, true);
+    setTimeout(() => renderPet(false, false), 500);
+    updateUI();
 }
 
 function play() {
@@ -139,24 +152,48 @@ function play() {
         data.health = Math.min(100, data.health + 10);
         data.hunger = Math.max(0, data.hunger - 5);
     }
-    updatePet();
+    renderPet(false, true);
+    setTimeout(() => renderPet(false, false), 500);
+    updateUI();
 }
 
 function sleep() {
     data.sleeping = !data.sleeping;
-    updatePet();
+    updateUI();
 }
 
-// Penurunan otomatis
+function buyItem(item) {
+    let cost = 0;
+    if (item === 'food') cost = 10;
+    if (item === 'toy') cost = 15;
+    if (item === 'medicine') cost = 25;
+
+    if (data.coins >= cost) {
+        data.coins -= cost;
+        if (item === 'food') data.hunger = Math.min(100, data.hunger + 20);
+        if (item === 'toy') data.health = Math.min(100, data.health + 15);
+        if (item === 'medicine') data.health = Math.min(100, data.health + 30);
+        updateUI();
+    } else {
+        alert("Coin tidak cukup!");
+    }
+}
+
 setInterval(() => {
     if (!data.sleeping) {
         data.hunger = Math.max(0, data.hunger - 1);
         data.health = Math.max(0, data.health - (data.hunger === 0 ? 2 : 0));
     }
-    updatePet();
+    evoTimer += 3;
+    if (evoTimer >= 60 && data.evoStage === 1) data.evoStage = 2;
+    if (evoTimer >= 120 && data.evoStage === 2) data.evoStage = 3;
+
+    renderPet();
+    updateUI();
 }, 3000);
 
-updatePet();
+renderPet();
+updateUI();
 </script>
 </body>
 </html>
