@@ -3,82 +3,142 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamagotchi Pixel — Inventory</title>
+<title>Tamagotchi — Inventory</title>
 <style>
-body{background:#071726;color:#fff;font-family:sans-serif;text-align:center;}
-.btn{background:#10b981;color:#042018;padding:8px;margin:5px;border-radius:6px;border:0;cursor:pointer;}
-.btn.alt{background:#06b6d4;}
-.inventory-list{margin:10px auto;max-width:400px;text-align:left;}
-.item{background:#0f1724;margin-bottom:8px;padding:8px;border-radius:6px;}
-.link-nav{margin-top:10px;}
-a{color:#10b981;text-decoration:none;font-weight:bold;}
+  body{background:linear-gradient(180deg,#071726,#06202a);color:#e6eef6;font-family:system-ui,Arial;margin:0;padding:18px}
+  .panel{max-width:980px;margin:0 auto;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
+  h1{margin:0 0 10px}
+  .petrow{display:flex;gap:12px;align-items:center;padding:8px;border-radius:8px;background:#0f1724;margin-bottom:8px}
+  button{background:#10b981;border:0;padding:6px 10px;border-radius:6px;color:#042018;cursor:pointer}
+  input{padding:6px;border-radius:6px;border:0}
+  .small{font-size:13px;color:#9fb3b5}
+  a.btn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
+  .badge{background:#ff5252;color:#fff;padding:2px 6px;border-radius:12px;font-size:12px;margin-left:6px}
+  .audit{max-height:160px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
 </style>
 </head>
 <body>
-<h1>📦 Inventory</h1>
-<div id="inventory" class="inventory-list"></div>
-<div class="link-nav">
-  <a href="index.html">🏠 Game</a> | 
-  <a href="marketplace.html">🛒 Marketplace</a>
-</div>
+  <div class="panel">
+    <h1>Inventory — Pilih Pet & Jual</h1>
+    <div>
+      Nama pemain: <input id="playerName" placeholder="Masukkan nama yang sama seperti Game" />
+      <button id="loadBtn">Load</button>
+      <a class="btn" href="index.html">Kembali ke Game</a>
+      <a class="btn" href="marketplace.html">Marketplace</a>
+    </div>
+
+    <div id="inventoryList" style="margin-top:12px"></div>
+
+    <div style="margin-top:12px" class="small">Catatan: Saat menjual pet, pet akan dipindahkan ke marketplace listing.</div>
+
+    <div style="margin-top:12px">
+      <strong>Audit / History (paling baru)</strong>
+      <div id="auditBox" class="audit"></div>
+    </div>
+  </div>
+
 <script>
-const PLAYER_KEY = 'tama_player_v3';
-const MARKET_KEY = 'tama_market_v3';
-function loadPlayer(){ return JSON.parse(localStorage.getItem(PLAYER_KEY)) || null; }
-function savePlayer(obj){ localStorage.setItem(PLAYER_KEY, JSON.stringify(obj)); }
-function loadMarket(){ return JSON.parse(localStorage.getItem(MARKET_KEY)) || {}; }
-function saveMarket(obj){ localStorage.setItem(MARKET_KEY, JSON.stringify(obj)); }
+const PLAYERS_KEY = 'tama_players_v10';
+const MARKET_KEY  = 'tama_market_v10';
+function load(k){ try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}} }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 
-let player = loadPlayer();
-let market = loadMarket();
+let players = load(PLAYERS_KEY);
+let market = load(MARKET_KEY);
+let current = null;
 
-if(!player.inventory) player.inventory = [];
-// Tambahkan pet aktif ke inventory jika belum ada
-if(player.activePet && !player.inventory.find(p=>p.id==='active')){
-  player.inventory.push({id:'active', name:'Pet Kamu', evo:player.activePet.evo, alive:player.activePet.alive});
-}
-
-const invDiv = document.getElementById('inventory');
+document.getElementById('loadBtn').addEventListener('click', ()=>{
+  const n = document.getElementById('playerName').value.trim();
+  if(!n) return alert('Masukkan nama pemain');
+  players = load(PLAYERS_KEY);
+  if(!players[n]) return alert('Player tidak ditemukan (login di Game)');
+  current = n; renderInventory(); renderAudit();
+});
 
 function renderInventory(){
-  invDiv.innerHTML = '';
-  if(player.inventory.length === 0){
-    invDiv.innerHTML = '<div>Tidak ada pet</div>';
-    return;
-  }
-  player.inventory.forEach((pet, i)=>{
-    const div = document.createElement('div');
-    div.className='item';
+  const wrap = document.getElementById('inventoryList'); wrap.innerHTML = '';
+  if(!current) return;
+  players = load(PLAYERS_KEY); market = load(MARKET_KEY);
+  const pl = players[current];
+  if(!pl.inventory || pl.inventory.length===0){ wrap.innerHTML = '<div class="small">Belum punya pet</div>'; return; }
+  pl.inventory.forEach(pet=>{
+    const div = document.createElement('div'); div.className='petrow';
     div.innerHTML = `
-      <div><strong>${pet.name}</strong> - ${pet.alive?'Hidup':'Mati'}</div>
-      <button class="btn" onclick="setActive(${i})">Jadikan Aktif</button>
-      <button class="btn alt" onclick="sellPet(${i})">Jual ke Market</button>
+      <div style="width:260px"><strong>${pet.name}</strong><div class="small">Evo:${pet.evo} Age:${pet.ageDays||0} Health:${pet.health||0} Alive:${pet.alive? 'Yes':'No'}</div></div>
+      <div style="flex:1">
+        <button onclick="setActive('${pet.id}')">Set Active</button>
+        <button onclick="sellPetPrompt('${pet.id}')">Jual Pet</button>
+        <span id="offers_${pet.id}"></span>
+      </div>
     `;
-    invDiv.appendChild(div);
+    wrap.appendChild(div);
+  });
+  renderSellerOffers();
+}
+
+function setActive(pid){
+  if(!current) return alert('Load player dulu');
+  players = load(PLAYERS_KEY);
+  players[current].activePetId = pid;
+  save(PLAYERS_KEY, players);
+  alert('Active pet updated');
+  renderInventory();
+}
+
+function sellPetPrompt(pid){
+  if(!current) return alert('Load player dulu');
+  const saleId = prompt('Masukkan sale id unik (contoh: sale_dragon01):'); if(!saleId) return;
+  market = load(MARKET_KEY);
+  if(market[saleId]) return alert('Sale id sudah dipakai');
+  const price = parseInt(prompt('Masukkan harga jual (coin):'),10);
+  if(isNaN(price)||price<=0) return alert('Harga tidak valid');
+  players = load(PLAYERS_KEY);
+  const pl = players[current];
+  const idx = pl.inventory.findIndex(p=>p.id===pid);
+  if(idx === -1) return alert('Pet tidak ditemukan');
+  const pet = pl.inventory.splice(idx,1)[0];
+  market[saleId] = { id:saleId, seller: current, pet, price, offers: [] };
+  if(pl.activePetId === pid) pl.activePetId = pl.inventory[0] ? pl.inventory[0].id : null;
+  save(PLAYERS_KEY, players); save(MARKET_KEY, market);
+  alert('Pet diposting ke marketplace: ' + saleId);
+  renderInventory(); renderAudit();
+}
+
+/* seller offer management view (badges + lists) */
+function renderSellerOffers(){
+  market = load(MARKET_KEY);
+  if(!current) return;
+  Object.keys(market).forEach(id=>{
+    const l = market[id];
+    if(l.seller !== current) return;
+    const el = document.getElementById('offers_' + l.pet.id);
+    if(el) el.innerHTML = (l.offers && l.offers.length) ? `<span class="badge">${l.offers.length}</span>` : '';
   });
 }
 
-function setActive(i){
-  const pet = player.inventory[i];
-  player.activePet = pet;
-  savePlayer(player);
-  alert('Pet aktif diganti!');
+/* Audit view */
+function renderAudit(){
+  const box = document.getElementById('auditBox'); box.innerHTML = '';
+  if(!current) return;
+  players = load(PLAYERS_KEY);
+  const pl = players[current];
+  if(!pl || !pl.audit) { box.innerHTML = '<div class="small">No audit</div>'; return; }
+  pl.audit.slice(0,50).forEach(a=>{
+    const d = new Date(a.t).toLocaleString();
+    const row = document.createElement('div'); row.className='small'; row.textContent = `${d} — ${a.msg}`;
+    box.appendChild(row);
+  });
 }
 
-function sellPet(i){
-  const pet = player.inventory[i];
-  const price = prompt('Masukkan harga jual:');
-  if(!price) return;
-  const id = 'sale_'+Date.now();
-  market[id] = {id,seller:player.name||'Player',price:parseInt(price),pet,offers:[]};
-  saveMarket(market);
-  player.inventory.splice(i,1);
-  savePlayer(player);
-  renderInventory();
-  alert('Pet diposting di marketplace!');
-}
+/* refresh every 2s */
+setInterval(()=>{ renderInventory(); renderAudit(); }, 2000);
 
-renderInventory();
+/* try autoload if only 1 player exists */
+(function init(){
+  players = load(PLAYERS_KEY);
+  const keys = Object.keys(players);
+  if(keys.length === 1){ current = keys[0]; document.getElementById('playerName').value = current; renderInventory(); renderAudit(); }
+})();
 </script>
 </body>
 </html>
