@@ -3,162 +3,363 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamagotchi Pixel — Game</title>
+<title>Tamagotchi — Game</title>
 <style>
-  body {margin:0;background:#071726;color:#fff;font-family:sans-serif;text-align:center;}
-  h1 {margin:10px 0;}
-  canvas {background:#0b1220;margin:10px auto;display:block;image-rendering:pixelated;}
-  .btn {background:#10b981;color:#042018;border:0;padding:10px;margin:5px;border-radius:8px;font-weight:bold;cursor:pointer;}
-  .btn.alt {background:#06b6d4;}
-  .stats {margin-top:10px;}
-  .link-nav {margin:10px;display:flex;justify-content:center;gap:8px;}
-  .link-nav a {color:#10b981;text-decoration:none;font-weight:bold;}
+  :root{--bg:#071722;--card:#0f1724;--muted:#9fb3b5;--accent:#10b981}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071726,#06202a);font-family:system-ui,Arial;color:#e6eef6}
+  .wrap{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:1fr 380px;gap:16px;padding:12px}
+  .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  h1{margin:0 0 8px;font-size:18px}
+  canvas{background:#08121a;border-radius:8px;display:block;margin:8px auto;image-rendering:pixelated}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+  button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
+  .secondary{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#042018}
+  input[type=text], input[type=number]{padding:6px;border-radius:6px;border:0}
+  .small{font-size:13px;color:var(--muted)}
+  a.btn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
+  .box{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-top:8px}
+  .badge{background:#ff5252;color:#fff;padding:2px 6px;border-radius:12px;font-size:12px;margin-left:6px}
+  .logline{font-size:12px;margin-bottom:6px}
 </style>
 </head>
 <body>
-<h1>🐣 Tamagotchi Pixel</h1>
-<canvas id="canvas" width="128" height="128" style="width:256px;height:256px"></canvas>
-<div>
-  <button class="btn" id="feedBtn">🍎 Feed (500 coins)</button>
-  <button class="btn alt" id="sleepBtn">💤 Sleep</button>
-</div>
-<div style="margin-top:8px;">
-  <button class="btn" id="tapBtn">👆 Tap for Coins (+1)</button>
-  <button class="btn alt" id="topupBtn">💳 Top-Up Coins</button>
-</div>
-<div class="stats">
-  Coins: <span id="coinsText">0</span> | HP: <span id="hpText">1000</span> | Status: <span id="statusText">Hidup</span>
-</div>
-<div class="link-nav">
-  <a href="inventory.html">📦 Inventory</a>
-  <a href="marketplace.html">🛒 Marketplace</a>
-</div>
+  <div class="wrap">
+    <div class="panel">
+      <h1>🐣 Tamagotchi — Game</h1>
+      <div style="text-align:center">
+        <canvas id="canvas" width="128" height="128" style="width:320px;height:320px"></canvas>
+      </div>
+
+      <div class="controls">
+        <input id="nameInput" type="text" placeholder="Nama pemain (unik)" />
+        <button id="startBtn">Start / Login</button>
+        <label class="small"><input id="devChk" type="checkbox"> DEV_MODE</label>
+      </div>
+
+      <div class="controls" style="margin-top:10px">
+        <button id="tapBtn" title="Tap untuk dapat coin">Tap (+1 coin)</button>
+        <button id="topupOwnerBtn" class="secondary" title="Kirim coin ke player lain">Owner Top-Up → Player</button>
+      </div>
+
+      <div class="controls" style="margin-top:8px">
+        <button id="buyFoodBtn" class="secondary">Beli Makanan (500💰)</button>
+        <button id="feedBtn">Feed (pakai 1 makanan)</button>
+        <button id="sleepBtn">Toggle Sleep</button>
+      </div>
+
+      <div class="box">
+        <div class="small">Active Player: <strong id="currentName">—</strong></div>
+        <div style="display:flex;gap:12px;margin-top:6px">
+          <div class="small">Coins: <strong id="coinText">0</strong></div>
+          <div class="small">Food: <strong id="foodText">0</strong></div>
+          <div class="small">SleepToday: <strong id="sleepCountText">0</strong></div>
+          <div class="small">FeedsToday: <strong id="feedCountText">0</strong></div>
+        </div>
+        <div style="margin-top:6px" class="small">Active Pet: <strong id="activePetName">—</strong> | Health: <strong id="healthText">—</strong></div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <a class="btn" href="inventory.html">Inventory <span id="badgeInventory" class="badge" style="display:none">0</span></a>
+        <a class="btn" href="marketplace.html">Marketplace <span id="badgeMarket" class="badge" style="display:none">0</span></a>
+        <a class="btn" href="trades.html">Trades <span id="badgeTrades" class="badge" style="display:none">0</span></a>
+      </div>
+
+      <div class="box" style="margin-top:10px">
+        <div class="small"><strong>Log / Audit (recent)</strong></div>
+        <div id="audit" class="small" style="min-height:80px; max-height:200px; overflow:auto"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-top:0">Aturan Harian & Health</h2>
+      <div class="small">
+        <ul>
+          <li>Makan minimal <strong>3× per hari</strong>, interval minimal <strong>4 jam</strong> antar makan (DEV=1 menit).</li>
+          <li>Tidur minimal <strong>1× per hari</strong> (24 jam window, DEV=30s).</li>
+          <li>Jika hari sebelumnya makan ≥3 & tidur ≥1 → health +50 (maks 1000).</li>
+          <li>Jika makan <3 → health −200. Jika tidur <1 → health −100. Health ≤0 → pet mati.</li>
+          <li>Owner dapat mengirim coin ke player lain (Top-Up).</li>
+          <li>Tap canvas memberikan coin (+1 each).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
 <script>
-const CANVAS = document.getElementById('canvas');
-const CTX = CANVAS.getContext('2d');
+/* ---------------------------
+   STORAGE KEYS & HELPERS
+   --------------------------- */
+const PLAYERS_KEY = 'tama_players_v10';
+const MARKET_KEY  = 'tama_market_v10';
+const TRADES_KEY  = 'tama_trades_v10';
+function load(k){ try{ return JSON.parse(localStorage.getItem(k)||'{}') }catch{return {} } }
+function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+function now(){ return Date.now(); }
+function dateStr(ts){ const d=new Date(ts); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+function $id(id){ return document.getElementById(id); }
+
+/* ---------------------------
+   STATE
+   --------------------------- */
+let players = load(PLAYERS_KEY);
+let market = load(MARKET_KEY);
+let trades = load(TRADES_KEY);
+let currentUser = null;
+let T = { FEED_INTERVAL_MS: 4*3600*1000, DAY_MS: 24*3600*1000, SLEEP_WINDOW_MS: 24*3600*1000 };
+
+/* DEV toggle */
+$id('devChk').addEventListener('change', (e)=>{
+  if(e.target.checked){ T = { FEED_INTERVAL_MS:60*1000, DAY_MS:30*1000, SLEEP_WINDOW_MS:30*1000 }; pushAudit(currentUser, 'DEV mode ON'); }
+  else { T = { FEED_INTERVAL_MS:4*3600*1000, DAY_MS:24*3600*1000, SLEEP_WINDOW_MS:24*3600*1000 }; pushAudit(currentUser, 'DEV mode OFF'); }
+});
+
+/* ---------------------------
+   PLAYER/PET MODEL
+   --------------------------- */
+function makePlayer(name){
+  const pid = `${name}_pet_${Math.random().toString(36).slice(2,7)}`;
+  const pet = { id: pid, name: 'Chick', evo:0, alive:true, lastFeed: now(), feedTimestamps:[now()], sleepTimestamps:[], ageDays:0, health:800, sleeping:false };
+  players[name] = { name, coins:500, foodCount:0, activePetId: pid, inventory:[pet], _lastDailyChecked: null, audit: [] };
+  save(PLAYERS_KEY, players);
+  return players[name];
+}
+
+/* ---------------------------
+   AUDIT / LOG helpers
+   --------------------------- */
+function pushAudit(playerName, msg){
+  if(!playerName) return;
+  players = load(PLAYERS_KEY);
+  if(!players[playerName]) return;
+  players[playerName].audit = players[playerName].audit || [];
+  players[playerName].audit.unshift({ t: now(), msg });
+  // keep max 200
+  if(players[playerName].audit.length>200) players[playerName].audit.length = 200;
+  save(PLAYERS_KEY, players);
+}
+
+/* ---------------------------
+   Current player helpers
+   --------------------------- */
+function getPlayer(name){ players = load(PLAYERS_KEY); return players[name] || null; }
+function getCurrent(){ players = load(PLAYERS_KEY); return currentUser ? players[currentUser] : null; }
+function getActivePet(pl){ if(!pl) return null; return (pl.inventory||[]).find(x=>x.id === pl.activePetId) || pl.inventory[0] || null }
+
+/* ---------------------------
+   UI events
+   --------------------------- */
+$id('startBtn').addEventListener('click', ()=>{
+  const name = $id('nameInput').value.trim();
+  if(!name) return alert('Isi nama pemain');
+  if(!players[name]) makePlayer(name);
+  currentUser = name;
+  renderAll();
+  pushAudit(currentUser, `Login`);
+});
+
+$id('tapBtn').addEventListener('click', ()=>{
+  const pl = getCurrent(); if(!pl) return alert('Login dulu');
+  pl.coins = (pl.coins||0) + 1;
+  save(PLAYERS_KEY, players);
+  pushAudit(currentUser, 'Tap +1 coin');
+  renderAll();
+});
+
+$id('topupOwnerBtn').addEventListener('click', ()=>{
+  const owner = getCurrent(); if(!owner) return alert('Login sebagai owner (sender)');
+  const to = prompt('Masukkan nama player tujuan (must exist):'); if(!to) return;
+  if(!players[to]) return alert('Player tujuan tidak ditemukan');
+  const amt = parseInt(prompt('Jumlah coin top-up:'),10); if(isNaN(amt)||amt<=0) return alert('Jumlah tidak valid');
+  if((owner.coins||0) < amt) return alert('Owner tidak punya coin cukup');
+  owner.coins -= amt; players[to].coins = (players[to].coins||0) + amt;
+  pushAudit(owner.name, `Top-up ${amt} → ${to}`);
+  pushAudit(to, `Menerima top-up ${amt} dari ${owner.name}`);
+  save(PLAYERS_KEY, players);
+  renderAll();
+});
+
+$id('buyFoodBtn').addEventListener('click', ()=>{
+  const pl = getCurrent(); if(!pl) return alert('Login dulu');
+  if((pl.coins||0) < 500) return alert('Coin tidak cukup (500) untuk beli makanan');
+  pl.coins -= 500; pl.foodCount = (pl.foodCount||0) + 1;
+  pushAudit(currentUser, 'Beli makanan 1x (-500)');
+  save(PLAYERS_KEY, players); renderAll();
+});
+
+$id('feedBtn').addEventListener('click', ()=>{
+  const pl = getCurrent(); if(!pl) return alert('Login dulu');
+  const pet = getActivePet(pl); if(!pet) return alert('No active pet'); if(!pet.alive) return alert('Pet mati');
+  if((pl.foodCount||0) <= 0) return alert('Tidak ada makanan (beli dulu)');
+  const last = pet.lastFeed || 0;
+  if(last && (now() - last) < T.FEED_INTERVAL_MS) {
+    const s = Math.ceil((T.FEED_INTERVAL_MS - (now() - last))/1000);
+    return alert('Terlalu cepat memberi makan. Tunggu: ' + s + 's (DEV mode dipercepat)');
+  }
+  pl.foodCount -= 1; pet.lastFeed = now(); pet.feedTimestamps = pet.feedTimestamps || []; pet.feedTimestamps.push(pet.lastFeed);
+  pet.health = Math.min(1000, (pet.health||0) + 20);
+  pushAudit(currentUser, `Feed pet ${pet.name}`);
+  save(PLAYERS_KEY, players); renderAll();
+});
+
+$id('sleepBtn').addEventListener('click', ()=>{
+  const pl = getCurrent(); if(!pl) return alert('Login dulu');
+  const pet = getActivePet(pl); if(!pet) return alert('No active pet');
+  pet.sleeping = !pet.sleeping;
+  if(pet.sleeping){
+    pet.sleepTimestamps = pet.sleepTimestamps || []; pet.sleepTimestamps.push(now());
+    pushAudit(currentUser, `Pet ${pet.name} mulai tidur`);
+    // auto wake after short for demo
+    setTimeout(()=>{ pet.sleeping = false; save(PLAYERS_KEY, players); renderAll(); pushAudit(currentUser, `Pet ${pet.name} bangun (auto)`); }, 6000);
+  } else {
+    pushAudit(currentUser, `Pet ${pet.name} bangun`);
+  }
+  save(PLAYERS_KEY, players); renderAll();
+});
+
+/* ---------------------------
+   DAILY evaluation for all players (applies health changes based on previous day)
+   --------------------------- */
+function evaluateDailyForPlayer(pl){
+  if(!pl) return;
+  const pet = getActivePet(pl);
+  if(!pet) return;
+  const today = dateStr(now());
+  if(pl._lastDailyChecked === today) return;
+  const prevStart = new Date(new Date(now() - T.DAY_MS).toDateString()).getTime();
+  const prevEnd = prevStart + T.DAY_MS;
+  const feedsPrev = (pet.feedTimestamps||[]).filter(t => t >= prevStart && t < prevEnd).length;
+  const sleepsPrev = (pet.sleepTimestamps||[]).filter(t => t >= prevStart && t < prevEnd).length;
+  if(feedsPrev >= 3 && sleepsPrev >= 1){
+    pet.health = Math.min(1000, (pet.health||0) + 50);
+    pet.ageDays = (pet.ageDays||0) + 1;
+    pushAudit(pl.name, `Daily OK: feeds=${feedsPrev}, sleeps=${sleepsPrev} → health +50`);
+  } else {
+    if(feedsPrev < 3){ pet.health = (pet.health||0) - 200; pushAudit(pl.name, `Daily FAIL: feeds=${feedsPrev} → health -200`); }
+    if(sleepsPrev < 1){ pet.health = (pet.health||0) - 100; pushAudit(pl.name, `Daily FAIL: sleeps=${sleepsPrev} → health -100`); }
+    if((pet.health||0) <= 0){ pet.alive = false; pushAudit(pl.name, `Pet ${pet.name} mati (health <= 0)`); }
+  }
+  pl._lastDailyChecked = today; save(PLAYERS_KEY, players);
+}
+
+/* run daily checks periodically */
+setInterval(()=> {
+  players = load(PLAYERS_KEY);
+  Object.values(players).forEach(p=> evaluateDailyForPlayer(p));
+  renderAll();
+}, 10_000);
+
+/* ---------------------------
+   DRAW pet on canvas (simple)
+   --------------------------- */
+const CANV = $id('canvas'), CTX = CANV.getContext('2d');
 CTX.imageSmoothingEnabled = false;
+let frame = 0, posX = 20, dir = 1, jump = 0, blink = 0;
 
-// UI refs
-const feedBtn = document.getElementById('feedBtn');
-const sleepBtn = document.getElementById('sleepBtn');
-const tapBtn = document.getElementById('tapBtn');
-const topupBtn = document.getElementById('topupBtn');
-const coinsText = document.getElementById('coinsText');
-const hpText = document.getElementById('hpText');
-const statusText = document.getElementById('statusText');
-
-// Storage Keys
-const PLAYER_KEY = 'tama_player_v3';
-
-// Load Player
-function loadPlayer(){
-  try { return JSON.parse(localStorage.getItem(PLAYER_KEY)) || null; } catch(e){ return null; }
-}
-function savePlayer(obj){
-  localStorage.setItem(PLAYER_KEY, JSON.stringify(obj));
+function detectMood(pet){
+  if(!pet) return 'idle';
+  if(!pet.alive) return 'dead';
+  if(pet.sleeping) return 'sleep';
+  const since = now() - (pet.lastFeed || 0);
+  if(since < T.FEED_INTERVAL_MS*0.6) return 'happy';
+  if(since < T.FEED_INTERVAL_MS*1.2) return 'idle';
+  if(since < T.DAY_MS/2) return 'hungry';
+  return 'sad';
 }
 
-// Create default player
-function defaultPlayer(){
-  return {
-    coins: 0,
-    hp: 1000,
-    feedCountToday: 0,
-    lastFeed: null,
-    lastDay: localDateStr(Date.now()),
-    activePet: { evo:0, alive:true },
-  };
-}
-
-let player = loadPlayer() || defaultPlayer();
-savePlayer(player);
-
-function localDateStr(ts){
-  const d = new Date(ts);
-  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
-}
-
-// Update UI
-function updateUI(){
-  coinsText.textContent = player.coins;
-  hpText.textContent = player.hp;
-  statusText.textContent = player.activePet.alive ? "Hidup" : "Mati";
-}
-
-// Check daily
-function checkDaily(){
-  const today = localDateStr(Date.now());
-  if(player.lastDay !== today){
-    // Cek feed count kemarin
-    if(player.feedCountToday < 3){
-      player.hp -= 200; // kurang HP kalau ga makan cukup
-    } else {
-      player.hp += 50; // bonus kalau makan cukup
-      if(player.hp > 1000) player.hp = 1000;
-    }
-    if(player.hp <= 0){
-      player.activePet.alive = false;
-    }
-    player.feedCountToday = 0;
-    player.lastDay = today;
-    savePlayer(player);
-  }
-}
-
-// Animasi pet (pixel style)
-function drawPet(){
-  CTX.fillStyle = '#08121a'; CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
-  if(!player.activePet.alive){
-    CTX.fillStyle = 'red';
-    CTX.font = '10px monospace';
-    CTX.fillText('PET MATI', 20, 64);
-    return;
-  }
-  // Pet shape
-  CTX.fillStyle = '#ffd07a';
-  CTX.fillRect(44,44,40,40);
+function draw(){
+  frame++; posX += dir;
+  if(posX > 60) dir = -1;
+  if(posX < 10) dir = 1;
+  const pl = getCurrent(); const pet = getActivePet(pl);
+  CTX.clearRect(0,0,128,128);
+  CTX.fillStyle = '#08121a'; CTX.fillRect(0,0,128,128);
+  if(!pet){ CTX.fillStyle='#9fb3b5'; CTX.font='10px monospace'; CTX.fillText('No active pet',18,64); return; }
+  const mood = detectMood(pet);
+  let baseY = 40 + Math.sin(frame/8)*2;
+  if(jump>0){ baseY -= (Math.sin((jump/12)*Math.PI)*18); jump--; }
+  const col = pet.evo >= 5 ? '#77c8ff' : pet.evo >=2 ? '#7dff7a' : '#ffd07a';
+  CTX.fillStyle = col; CTX.fillRect(posX, baseY, 48, 36);
   CTX.fillStyle = '#111';
-  CTX.fillRect(52,54,6,6);
-  CTX.fillRect(66,54,6,6);
-  CTX.fillStyle = '#ffb4a2';
-  CTX.fillRect(58,66,10,4);
+  if(mood === 'sleep'){ CTX.fillStyle = '#3bd4cf'; CTX.fillRect(posX+10, baseY+6, 6, 6); CTX.fillRect(posX+30, baseY+6, 6, 6); }
+  else if(mood === 'happy'){ CTX.fillRect(posX+10, baseY+8, 6, 6); CTX.fillRect(posX+30, baseY+8, 6, 6); CTX.fillStyle = '#ffb4a2'; CTX.fillRect(posX+18, baseY+22, 12, 6); }
+  else if(mood === 'hungry'){ CTX.fillRect(posX+10, baseY+8, 6, 6); CTX.fillRect(posX+30, baseY+8, 6, 6); CTX.fillStyle = '#ff5555'; CTX.fillRect(posX+18, baseY+20, 12, 8); }
+  else if(mood === 'dead'){ CTX.fillStyle='#444'; CTX.fillRect(posX+10, baseY+10, 28, 6); }
+  else { CTX.fillStyle = '#111'; CTX.fillRect(posX+10, baseY+8, 6, 6); CTX.fillRect(posX+30, baseY+8, 6, 6); CTX.fillStyle = '#333'; CTX.fillRect(posX+18, baseY+22, 12, 4); }
 }
 
+/* small periodic updater to autojump after feed */
 setInterval(()=>{
-  checkDaily();
-  updateUI();
-  drawPet();
-},1000);
+  const pl = getCurrent(); const pet = getActivePet(pl);
+  if(pet && pet.lastFeed && now() - pet.lastFeed < 5000) jump = 12;
+}, 1000);
 
-// Buttons
-feedBtn.addEventListener('click', ()=>{
-  if(!player.activePet.alive) return alert('Pet mati!');
-  if(player.coins < 500) return alert('Coin kurang! Butuh 500.');
-  player.coins -= 500;
-  player.feedCountToday += 1;
-  player.lastFeed = Date.now();
-  savePlayer(player);
-  updateUI();
-});
+/* ---------------------------
+   Notification badges
+   --------------------------- */
+function updateBadges(){
+  players = load(PLAYERS_KEY); market = load(MARKET_KEY); trades = load(TRADES_KEY);
+  // Inventory badge: number of offers for current user as seller
+  const invBadge = $id('badgeInventory'); const mktBadge = $id('badgeMarket'); const tBadge = $id('badgeTrades');
+  if(!currentUser){ invBadge.style.display='none'; mktBadge.style.display='none'; tBadge.style.display='none'; return; }
+  const sellerOffers = Object.values(market).filter(l=> (l.seller === currentUser) && (l.offers && l.offers.length>0)).length;
+  if(sellerOffers>0){ invBadge.style.display='inline-block'; invBadge.textContent = sellerOffers; } else { invBadge.style.display='none'; }
+  // marketplace: number of listings (not by me)
+  const otherListings = Object.values(market).filter(l=> l.seller !== currentUser).length;
+  if(otherListings>0){ mktBadge.style.display='inline-block'; mktBadge.textContent = otherListings; } else { mktBadge.style.display='none'; }
+  // trades: pending trades where currentUser is 'to'
+  const pendingTrades = Object.values(trades).filter(t=> t.to === currentUser && t.status === 'pending').length;
+  if(pendingTrades>0){ tBadge.style.display='inline-block'; tBadge.textContent = pendingTrades; } else { tBadge.style.display='none'; }
+}
 
-sleepBtn.addEventListener('click', ()=>{
-  alert('Pet tidur sebentar...');
-});
+/* ---------------------------
+   Audit display
+   --------------------------- */
+function renderAudit(){
+  const out = $id('audit'); out.innerHTML = '';
+  if(!currentUser) return;
+  const pl = getPlayer(currentUser); if(!pl) return;
+  (pl.audit||[]).slice(0,30).forEach(item=>{
+    const d = new Date(item.t).toLocaleString();
+    const div = document.createElement('div'); div.className='logline'; div.textContent = `${d} — ${item.msg}`;
+    out.appendChild(div);
+  });
+}
 
-tapBtn.addEventListener('click', ()=>{
-  player.coins += 1;
-  savePlayer(player);
-  updateUI();
-});
+/* ---------------------------
+   Main renderAll
+   --------------------------- */
+function renderAll(){
+  players = load(PLAYERS_KEY); market = load(MARKET_KEY); trades = load(TRADES_KEY);
+  $id('currentName').textContent = currentUser || '—';
+  const pl = getCurrent();
+  $id('coinText').textContent = pl ? (pl.coins||0) : '—';
+  $id('foodText').textContent = pl ? (pl.foodCount||0) : '—';
+  const pet = getActivePet(pl);
+  $id('activePetName').textContent = pet ? pet.name : '—';
+  $id('healthText').textContent = pet ? (pet.health||0) : '—';
+  // counts today
+  if(pl && pet){
+    const dayStart = new Date(new Date(now()).toDateString()).getTime();
+    const feedsToday = (pet.feedTimestamps||[]).filter(t=>t>=dayStart).length;
+    const sleepsToday = (pet.sleepTimestamps||[]).filter(t=>t>=dayStart).length;
+    $id('feedCountText').innerText = feedsToday;
+    $id('sleepCountText').innerText = sleepsToday;
+  } else { $id('feedCountText').innerText = '-'; $id('sleepCountText').innerText = '-'; }
+  updateBadges();
+  renderAudit();
+  save(PLAYERS_KEY, players);
+  save(MARKET_KEY, market);
+  save(TRADES_KEY, trades);
+}
 
-topupBtn.addEventListener('click', ()=>{
-  player.coins += 1000;
-  savePlayer(player);
-  updateUI();
-});
+/* drawing loop */
+setInterval(()=>{ draw(); renderAll(); }, 350);
 
-updateUI();
-drawPet();
+/* autologin first player if available */
+(function init(){
+  const keys = Object.keys(players);
+  if(keys.length>0){ currentUser = keys[0]; renderAll(); pushAudit(currentUser, 'Auto-login'); }
+})();
 </script>
 </body>
 </html>
