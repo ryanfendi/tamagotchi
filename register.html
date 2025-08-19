@@ -24,7 +24,7 @@ a{color:#10b981;text-decoration:none;display:block;margin-top:10px;}
 <script>
 function register(){
     const name=document.getElementById("name").value.trim();
-    const email=document.getElementById("email").value.trim();
+    const email=document.getElementById("email").value.trim().toLowerCase();
     const pass=document.getElementById("password").value.trim();
     if(!name||!email||!pass){alert("Isi semua data!");return;}
     let players=JSON.parse(localStorage.getItem("players")||"{}");
