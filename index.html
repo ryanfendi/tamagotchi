@@ -5,220 +5,229 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tamagotchi — Game</title>
 <style>
-  :root{--bg:#071722;--card:#0f1724;--muted:#9fb3b5;--accent:#10b981}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071726,#06202a);font-family:system-ui,Arial;color:#e6eef6}
-  .wrap{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:1fr 380px;gap:16px;padding:12px}
-  .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
-  h1{margin:0 0 8px;font-size:18px}
-  canvas{background:#08121a;border-radius:8px;display:block;margin:8px auto;image-rendering:pixelated}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
-  button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
-  .secondary{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#042018}
-  input[type=text], input[type=number]{padding:6px;border-radius:6px;border:0}
-  .small{font-size:13px;color:var(--muted)}
-  a.btn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
-  .box{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-top:8px}
-  .badge{background:#ff5252;color:#fff;padding:2px 6px;border-radius:12px;font-size:12px;margin-left:6px}
-  .logline{font-size:12px;margin-bottom:6px}
+:root{--bg:#071722;--card:#0f1724;--muted:#9fb3b5;--accent:#10b981}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#071726,#06202a);font-family:system-ui,Arial;color:#e6eef6}
+.container{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:1fr 380px;gap:16px;padding:12px}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+h1{margin:0 0 8px;font-size:18px}
+canvas{background:#08121a;border-radius:8px;display:block;margin:8px auto;image-rendering:pixelated}
+.controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
+.secondary{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#042018}
+.small{font-size:13px;color:var(--muted)}
+.badge{background:#ff5252;color:#fff;padding:2px 6px;border-radius:12px;font-size:12px;margin-left:6px}
+.box{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-top:8px}
+.row{display:flex;gap:8px;align-items:center}
+.linkbtn{display:inline-block;background:#06b6d4;padding:6px 10px;border-radius:6px;color:#042018;text-decoration:none;margin-top:6px}
+.audit{max-height:160px;overflow:auto;background:#071826;padding:8px;border-radius:6px;margin-top:8px}
+.icon{font-size:18px;margin-right:6px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>🐣 Tamagotchi — Game</h1>
-      <div style="text-align:center">
-        <canvas id="canvas" width="128" height="128" style="width:320px;height:320px"></canvas>
-      </div>
-
-      <div class="controls">
-        <input id="nameInput" type="text" placeholder="Nama pemain (unik)" />
-        <button id="startBtn">Start / Login</button>
-        <label class="small"><input id="devChk" type="checkbox"> DEV_MODE</label>
-      </div>
-
-      <div class="controls" style="margin-top:10px">
-        <button id="tapBtn" title="Tap untuk dapat coin">Tap (+1 coin)</button>
-        <button id="topupOwnerBtn" class="secondary" title="Kirim coin ke player lain">Owner Top-Up → Player</button>
-      </div>
-
-      <div class="controls" style="margin-top:8px">
-        <button id="buyFoodBtn" class="secondary">Beli Makanan (500💰)</button>
-        <button id="feedBtn">Feed (pakai 1 makanan)</button>
-        <button id="sleepBtn">Toggle Sleep</button>
-      </div>
-
-      <div class="box">
-        <div class="small">Active Player: <strong id="currentName">—</strong></div>
-        <div style="display:flex;gap:12px;margin-top:6px">
-          <div class="small">Coins: <strong id="coinText">0</strong></div>
-          <div class="small">Food: <strong id="foodText">0</strong></div>
-          <div class="small">SleepToday: <strong id="sleepCountText">0</strong></div>
-          <div class="small">FeedsToday: <strong id="feedCountText">0</strong></div>
-        </div>
-        <div style="margin-top:6px" class="small">Active Pet: <strong id="activePetName">—</strong> | Health: <strong id="healthText">—</strong></div>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <a class="btn" href="inventory.html">Inventory <span id="badgeInventory" class="badge" style="display:none">0</span></a>
-        <a class="btn" href="marketplace.html">Marketplace <span id="badgeMarket" class="badge" style="display:none">0</span></a>
-        <a class="btn" href="trades.html">Trades <span id="badgeTrades" class="badge" style="display:none">0</span></a>
-      </div>
-
-      <div class="box" style="margin-top:10px">
-        <div class="small"><strong>Log / Audit (recent)</strong></div>
-        <div id="audit" class="small" style="min-height:80px; max-height:200px; overflow:auto"></div>
-      </div>
+<div class="container">
+  <div class="panel">
+    <h1>🐣 Tamagotchi — Game</h1>
+    <div style="text-align:center">
+      <canvas id="canvas" width="128" height="128" style="width:320px;height:320px"></canvas>
     </div>
 
-    <div class="panel">
-      <h2 style="margin-top:0">Aturan Harian & Health</h2>
-      <div class="small">
-        <ul>
-          <li>Makan minimal <strong>3× per hari</strong>, interval minimal <strong>4 jam</strong> antar makan (DEV=1 menit).</li>
-          <li>Tidur minimal <strong>1× per hari</strong> (24 jam window, DEV=30s).</li>
-          <li>Jika hari sebelumnya makan ≥3 & tidur ≥1 → health +50 (maks 1000).</li>
-          <li>Jika makan <3 → health −200. Jika tidur <1 → health −100. Health ≤0 → pet mati.</li>
-          <li>Owner dapat mengirim coin ke player lain (Top-Up).</li>
-          <li>Tap canvas memberikan coin (+1 each).</li>
-        </ul>
+    <div class="controls">
+      <input id="nameInput" type="text" placeholder="Nama pemain (unik)" />
+      <button id="startBtn">Start / Login</button>
+      <label class="small"><input id="devChk" type="checkbox"> DEV_MODE</label>
+    </div>
+
+    <div class="controls" style="margin-top:10px">
+      <button id="tapBtn">🔸 Tap (+1 coin)</button>
+      <button id="topupOwnerBtn" class="secondary">🏦 Owner Top-Up → Player</button>
+    </div>
+
+    <div class="controls" style="margin-top:8px">
+      <button id="buyFoodBtn" class="secondary">🍖 Beli Makanan (500💰)</button>
+      <button id="feedBtn">🍽️ Feed (pakai 1 makanan)</button>
+      <button id="sleepBtn">💤 Sleep</button>
+    </div>
+
+    <div class="box">
+      <div class="small">Player: <strong id="currentName">—</strong></div>
+      <div class="row" style="margin-top:6px">
+        <div class="small">💰 <strong id="coinText">0</strong></div>
+        <div class="small">🍖 Food: <strong id="foodText">0</strong></div>
+        <div class="small">🛌 SleepsToday: <strong id="sleepCountText">0</strong></div>
+        <div class="small">🍽️ FeedsToday: <strong id="feedCountText">0</strong></div>
       </div>
+      <div style="margin-top:6px" class="small">Active Pet: <strong id="activePetName">—</strong> | ❤️ Health: <strong id="healthText">—</strong></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <a class="linkbtn" href="inventory.html">📦 Inventory <span id="badgeInv" class="badge" style="display:none">0</span></a>
+      <a class="linkbtn" href="marketplace.html">🛒 Marketplace <span id="badgeMkt" class="badge" style="display:none">0</span></a>
+      <a class="linkbtn" href="marketplace.html#trades">🔁 Trades <span id="badgeT" class="badge" style="display:none">0</span></a>
+    </div>
+
+    <div class="box" style="margin-top:10px">
+      <div class="small"><strong>Audit / Recent</strong></div>
+      <div id="audit" class="audit"></div>
     </div>
   </div>
 
+  <div class="panel">
+    <h2 style="margin-top:0">Rules & Owner</h2>
+    <div class="small">
+      <ul>
+        <li>Makan minimal <strong>3×/hari</strong>. Interval makan minimal <strong>4 jam</strong> (DEV=1 menit).</li>
+        <li>Tidur minimal <strong>1×/hari</strong> (24 jam window; DEV=30s).</li>
+        <li>Makanan harus dibeli (500 coin). Food ditampilkan sebagai <span class="icon">🍖</span>.</li>
+        <li>Jika lalu: makan≥3 & tidur≥1 → health +50; jika gagal → health dikurangi (makan -200 / tidur -100). Health ≤0 → pet mati.</li>
+        <li>Owner account (username <code>owner</code>) punya <strong>coin unlimited</strong> — top-up tidak memotong saldo owner.</li>
+        <li>Icons digunakan di trade & menu (makanan 🍖, coin 💰, pet 🐣).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <script>
-/* ---------------------------
-   STORAGE KEYS & HELPERS
-   --------------------------- */
-const PLAYERS_KEY = 'tama_players_v10';
-const MARKET_KEY  = 'tama_market_v10';
-const TRADES_KEY  = 'tama_trades_v10';
-function load(k){ try{ return JSON.parse(localStorage.getItem(k)||'{}') }catch{return {} } }
+/* -----------------------
+  Storage keys & helpers
+   ----------------------- */
+const PLAYERS_KEY = 'tama_players_v11';
+const MARKET_KEY  = 'tama_market_v11';
+const TRADES_KEY  = 'tama_trades_v11';
+
+function load(k){ try{ return JSON.parse(localStorage.getItem(k)||'{}') }catch{ return {} } }
 function save(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
 function now(){ return Date.now(); }
-function dateStr(ts){ const d=new Date(ts); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+function dateStr(ts){ const d = new Date(ts); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
 function $id(id){ return document.getElementById(id); }
+function pushAudit(name, msg){
+  if(!name) return;
+  const players = load(PLAYERS_KEY);
+  if(!players[name]) return;
+  players[name].audit = players[name].audit || [];
+  players[name].audit.unshift({ t: now(), msg });
+  if(players[name].audit.length>200) players[name].audit.length = 200;
+  save(PLAYERS_KEY, players);
+}
 
-/* ---------------------------
-   STATE
-   --------------------------- */
+/* -----------------------
+  Config & DEV
+   ----------------------- */
 let players = load(PLAYERS_KEY);
 let market = load(MARKET_KEY);
 let trades = load(TRADES_KEY);
 let currentUser = null;
-let T = { FEED_INTERVAL_MS: 4*3600*1000, DAY_MS: 24*3600*1000, SLEEP_WINDOW_MS: 24*3600*1000 };
+let T = { FEED_INTERVAL_MS: 4*3600*1000, DAY_MS: 24*3600*1000, SLEEP_MS: 24*3600*1000 };
 
-/* DEV toggle */
 $id('devChk').addEventListener('change', (e)=>{
-  if(e.target.checked){ T = { FEED_INTERVAL_MS:60*1000, DAY_MS:30*1000, SLEEP_WINDOW_MS:30*1000 }; pushAudit(currentUser, 'DEV mode ON'); }
-  else { T = { FEED_INTERVAL_MS:4*3600*1000, DAY_MS:24*3600*1000, SLEEP_WINDOW_MS:24*3600*1000 }; pushAudit(currentUser, 'DEV mode OFF'); }
+  if(e.target.checked) T = { FEED_INTERVAL_MS:60*1000, DAY_MS:30*1000, SLEEP_MS:30*1000 };
+  else T = { FEED_INTERVAL_MS:4*3600*1000, DAY_MS:24*3600*1000, SLEEP_MS:24*3600*1000 };
 });
 
-/* ---------------------------
-   PLAYER/PET MODEL
-   --------------------------- */
+/* -----------------------
+  Player & Pet creation
+   ----------------------- */
 function makePlayer(name){
   const pid = `${name}_pet_${Math.random().toString(36).slice(2,7)}`;
-  const pet = { id: pid, name: 'Chick', evo:0, alive:true, lastFeed: now(), feedTimestamps:[now()], sleepTimestamps:[], ageDays:0, health:800, sleeping:false };
-  players[name] = { name, coins:500, foodCount:0, activePetId: pid, inventory:[pet], _lastDailyChecked: null, audit: [] };
+  const pet = { id:pid, name:'Chick', evo:0, alive:true, lastFeed:now(), feedTimestamps:[now()], sleepTimestamps:[], ageDays:0, health:800, sleeping:false };
+  players[name] = { name, coins: 500, foodCount:0, activePetId: pid, inventory:[pet], _lastDailyChecked:null, audit:[] };
   save(PLAYERS_KEY, players);
   return players[name];
 }
 
-/* ---------------------------
-   AUDIT / LOG helpers
-   --------------------------- */
-function pushAudit(playerName, msg){
-  if(!playerName) return;
-  players = load(PLAYERS_KEY);
-  if(!players[playerName]) return;
-  players[playerName].audit = players[playerName].audit || [];
-  players[playerName].audit.unshift({ t: now(), msg });
-  // keep max 200
-  if(players[playerName].audit.length>200) players[playerName].audit.length = 200;
-  save(PLAYERS_KEY, players);
-}
-
-/* ---------------------------
-   Current player helpers
-   --------------------------- */
-function getPlayer(name){ players = load(PLAYERS_KEY); return players[name] || null; }
+function getPlayer(n){ players = load(PLAYERS_KEY); return players[n] || null; }
 function getCurrent(){ players = load(PLAYERS_KEY); return currentUser ? players[currentUser] : null; }
-function getActivePet(pl){ if(!pl) return null; return (pl.inventory||[]).find(x=>x.id === pl.activePetId) || pl.inventory[0] || null }
+function getActivePet(pl){ if(!pl) return null; return (pl.inventory||[]).find(p=>p.id===pl.activePetId) || pl.inventory[0] || null; }
 
-/* ---------------------------
-   UI events
-   --------------------------- */
+/* -----------------------
+  UI actions
+   ----------------------- */
 $id('startBtn').addEventListener('click', ()=>{
   const name = $id('nameInput').value.trim();
-  if(!name) return alert('Isi nama pemain');
+  if(!name) return alert('Masukkan nama pemain unik');
   if(!players[name]) makePlayer(name);
   currentUser = name;
+  pushAudit(currentUser, 'Login');
   renderAll();
-  pushAudit(currentUser, `Login`);
 });
 
 $id('tapBtn').addEventListener('click', ()=>{
   const pl = getCurrent(); if(!pl) return alert('Login dulu');
-  pl.coins = (pl.coins||0) + 1;
+  if(currentUser === 'owner'){
+    // owner unlimited but still show coins optionally
+    pl.coins = Infinity;
+  } else {
+    pl.coins = (pl.coins||0) + 1;
+  }
   save(PLAYERS_KEY, players);
   pushAudit(currentUser, 'Tap +1 coin');
   renderAll();
 });
 
+/* Owner Top-Up to other player (owner has unlimited coins) */
 $id('topupOwnerBtn').addEventListener('click', ()=>{
-  const owner = getCurrent(); if(!owner) return alert('Login sebagai owner (sender)');
-  const to = prompt('Masukkan nama player tujuan (must exist):'); if(!to) return;
+  const owner = getCurrent(); if(!owner) return alert('Login dulu as owner to top-up others');
+  const to = prompt('Masukkan nama player tujuan:'); if(!to) return;
+  players = load(PLAYERS_KEY);
   if(!players[to]) return alert('Player tujuan tidak ditemukan');
-  const amt = parseInt(prompt('Jumlah coin top-up:'),10); if(isNaN(amt)||amt<=0) return alert('Jumlah tidak valid');
-  if((owner.coins||0) < amt) return alert('Owner tidak punya coin cukup');
-  owner.coins -= amt; players[to].coins = (players[to].coins||0) + amt;
-  pushAudit(owner.name, `Top-up ${amt} → ${to}`);
-  pushAudit(to, `Menerima top-up ${amt} dari ${owner.name}`);
-  save(PLAYERS_KEY, players);
-  renderAll();
-});
-
-$id('buyFoodBtn').addEventListener('click', ()=>{
-  const pl = getCurrent(); if(!pl) return alert('Login dulu');
-  if((pl.coins||0) < 500) return alert('Coin tidak cukup (500) untuk beli makanan');
-  pl.coins -= 500; pl.foodCount = (pl.foodCount||0) + 1;
-  pushAudit(currentUser, 'Beli makanan 1x (-500)');
+  const amt = parseInt(prompt('Masukkan jumlah coin:'),10); if(isNaN(amt)||amt<=0) return alert('Jumlah tidak valid');
+  if(currentUser !== 'owner'){
+    if((owner.coins||0) < amt) return alert('Anda tidak punya coin cukup untuk top-up');
+    owner.coins -= amt;
+  } // if owner = 'owner' we do NOT deduct
+  players[to].coins = (players[to].coins||0) + amt;
+  pushAudit(currentUser, `Top-up ${amt} → ${to}`);
+  pushAudit(to, `Menerima top-up ${amt} dari ${currentUser}`);
   save(PLAYERS_KEY, players); renderAll();
 });
 
+/* Buy food 500 coin */
+$id('buyFoodBtn').addEventListener('click', ()=>{
+  const pl = getCurrent(); if(!pl) return alert('Login dulu');
+  if(currentUser !== 'owner' && (pl.coins||0) < 500) return alert('Coin tidak cukup (500)');
+  if(currentUser !== 'owner') pl.coins -= 500; // owner can "buy" without paying? We still count food to owner
+  pl.foodCount = (pl.foodCount||0) + 1;
+  pushAudit(currentUser, 'Beli makanan 🍖 (-500)');
+  save(PLAYERS_KEY, players); renderAll();
+});
+
+/* Feed: consumes 1 food; enforces FEED_INTERVAL_MS */
 $id('feedBtn').addEventListener('click', ()=>{
   const pl = getCurrent(); if(!pl) return alert('Login dulu');
-  const pet = getActivePet(pl); if(!pet) return alert('No active pet'); if(!pet.alive) return alert('Pet mati');
+  const pet = getActivePet(pl); if(!pet) return alert('Tidak ada pet aktif');
+  if(!pet.alive) return alert('Pet sudah mati');
   if((pl.foodCount||0) <= 0) return alert('Tidak ada makanan (beli dulu)');
   const last = pet.lastFeed || 0;
   if(last && (now() - last) < T.FEED_INTERVAL_MS) {
-    const s = Math.ceil((T.FEED_INTERVAL_MS - (now() - last))/1000);
-    return alert('Terlalu cepat memberi makan. Tunggu: ' + s + 's (DEV mode dipercepat)');
+    const remaining = Math.ceil((T.FEED_INTERVAL_MS - (now()-last))/1000);
+    return alert('Terlalu cepat memberi makan. Tunggu: ' + remaining + 's (DEV mode mempercepat)');
   }
-  pl.foodCount -= 1; pet.lastFeed = now(); pet.feedTimestamps = pet.feedTimestamps || []; pet.feedTimestamps.push(pet.lastFeed);
+  pl.foodCount -= 1;
+  pet.lastFeed = now();
+  pet.feedTimestamps = pet.feedTimestamps || []; pet.feedTimestamps.push(pet.lastFeed);
   pet.health = Math.min(1000, (pet.health||0) + 20);
   pushAudit(currentUser, `Feed pet ${pet.name}`);
   save(PLAYERS_KEY, players); renderAll();
 });
 
+/* Sleep toggle: record timestamp */
 $id('sleepBtn').addEventListener('click', ()=>{
   const pl = getCurrent(); if(!pl) return alert('Login dulu');
   const pet = getActivePet(pl); if(!pet) return alert('No active pet');
   pet.sleeping = !pet.sleeping;
   if(pet.sleeping){
     pet.sleepTimestamps = pet.sleepTimestamps || []; pet.sleepTimestamps.push(now());
-    pushAudit(currentUser, `Pet ${pet.name} mulai tidur`);
-    // auto wake after short for demo
-    setTimeout(()=>{ pet.sleeping = false; save(PLAYERS_KEY, players); renderAll(); pushAudit(currentUser, `Pet ${pet.name} bangun (auto)`); }, 6000);
+    pushAudit(currentUser, `Pet ${pet.name} tidur`);
+    // auto wake for demo
+    setTimeout(()=>{ pet.sleeping=false; save(PLAYERS_KEY, players); renderAll(); pushAudit(currentUser, `Pet ${pet.name} bangun (auto)`); }, 6000);
   } else {
     pushAudit(currentUser, `Pet ${pet.name} bangun`);
   }
   save(PLAYERS_KEY, players); renderAll();
 });
 
-/* ---------------------------
-   DAILY evaluation for all players (applies health changes based on previous day)
-   --------------------------- */
+/* -----------------------
+  Daily evaluation
+   ----------------------- */
 function evaluateDailyForPlayer(pl){
   if(!pl) return;
   const pet = getActivePet(pl);
@@ -232,28 +241,29 @@ function evaluateDailyForPlayer(pl){
   if(feedsPrev >= 3 && sleepsPrev >= 1){
     pet.health = Math.min(1000, (pet.health||0) + 50);
     pet.ageDays = (pet.ageDays||0) + 1;
-    pushAudit(pl.name, `Daily OK: feeds=${feedsPrev}, sleeps=${sleepsPrev} → health +50`);
+    pushAudit(pl.name, `Daily OK (feeds:${feedsPrev}, sleeps:${sleepsPrev}) → health +50`);
   } else {
-    if(feedsPrev < 3){ pet.health = (pet.health||0) - 200; pushAudit(pl.name, `Daily FAIL: feeds=${feedsPrev} → health -200`); }
-    if(sleepsPrev < 1){ pet.health = (pet.health||0) - 100; pushAudit(pl.name, `Daily FAIL: sleeps=${sleepsPrev} → health -100`); }
+    if(feedsPrev < 3){ pet.health = (pet.health||0) - 200; pushAudit(pl.name, `Daily FAIL: feeds ${feedsPrev} → health -200`); }
+    if(sleepsPrev < 1){ pet.health = (pet.health||0) - 100; pushAudit(pl.name, `Daily FAIL: sleeps ${sleepsPrev} → health -100`); }
     if((pet.health||0) <= 0){ pet.alive = false; pushAudit(pl.name, `Pet ${pet.name} mati (health <= 0)`); }
   }
-  pl._lastDailyChecked = today; save(PLAYERS_KEY, players);
+  pl._lastDailyChecked = today;
+  save(PLAYERS_KEY, players);
 }
 
-/* run daily checks periodically */
+/* run daily check periodically (10s interval for DEV-friendly) */
 setInterval(()=> {
   players = load(PLAYERS_KEY);
-  Object.values(players).forEach(p=> evaluateDailyForPlayer(p));
+  Object.values(players).forEach(p => evaluateDailyForPlayer(p));
   renderAll();
-}, 10_000);
+}, 10000);
 
-/* ---------------------------
-   DRAW pet on canvas (simple)
-   --------------------------- */
+/* -----------------------
+  Draw simple pixel pet + mood
+   ----------------------- */
 const CANV = $id('canvas'), CTX = CANV.getContext('2d');
 CTX.imageSmoothingEnabled = false;
-let frame = 0, posX = 20, dir = 1, jump = 0, blink = 0;
+let frame = 0, posX = 20, dir = 1, jump = 0;
 
 function detectMood(pet){
   if(!pet) return 'idle';
@@ -287,57 +297,52 @@ function draw(){
   else { CTX.fillStyle = '#111'; CTX.fillRect(posX+10, baseY+8, 6, 6); CTX.fillRect(posX+30, baseY+8, 6, 6); CTX.fillStyle = '#333'; CTX.fillRect(posX+18, baseY+22, 12, 4); }
 }
 
-/* small periodic updater to autojump after feed */
+/* auto-jump when recently fed */
 setInterval(()=>{
   const pl = getCurrent(); const pet = getActivePet(pl);
   if(pet && pet.lastFeed && now() - pet.lastFeed < 5000) jump = 12;
-}, 1000);
+},1000);
 
-/* ---------------------------
-   Notification badges
-   --------------------------- */
+/* -----------------------
+  Badges & Audit rendering
+   ----------------------- */
 function updateBadges(){
   players = load(PLAYERS_KEY); market = load(MARKET_KEY); trades = load(TRADES_KEY);
-  // Inventory badge: number of offers for current user as seller
-  const invBadge = $id('badgeInventory'); const mktBadge = $id('badgeMarket'); const tBadge = $id('badgeTrades');
-  if(!currentUser){ invBadge.style.display='none'; mktBadge.style.display='none'; tBadge.style.display='none'; return; }
-  const sellerOffers = Object.values(market).filter(l=> (l.seller === currentUser) && (l.offers && l.offers.length>0)).length;
-  if(sellerOffers>0){ invBadge.style.display='inline-block'; invBadge.textContent = sellerOffers; } else { invBadge.style.display='none'; }
-  // marketplace: number of listings (not by me)
+  if(!currentUser){ $id('badgeInv').style.display='none'; $id('badgeMkt').style.display='none'; $id('badgeT').style.display='none'; return; }
+  // seller offers count
+  const sellerOffers = Object.values(market).filter(l=> l.seller === currentUser && l.offers && l.offers.length>0).length;
+  if(sellerOffers>0){ $id('badgeInv').style.display='inline-block'; $id('badgeInv').textContent = sellerOffers; } else { $id('badgeInv').style.display='none'; }
+  // marketplace other listings
   const otherListings = Object.values(market).filter(l=> l.seller !== currentUser).length;
-  if(otherListings>0){ mktBadge.style.display='inline-block'; mktBadge.textContent = otherListings; } else { mktBadge.style.display='none'; }
-  // trades: pending trades where currentUser is 'to'
-  const pendingTrades = Object.values(trades).filter(t=> t.to === currentUser && t.status === 'pending').length;
-  if(pendingTrades>0){ tBadge.style.display='inline-block'; tBadge.textContent = pendingTrades; } else { tBadge.style.display='none'; }
+  if(otherListings>0){ $id('badgeMkt').style.display='inline-block'; $id('badgeMkt').textContent = otherListings; } else { $id('badgeMkt').style.display='none'; }
+  // trades pending to me
+  const pending = Object.values(trades).filter(t=> t.to === currentUser && t.status==='pending').length;
+  if(pending>0){ $id('badgeT').style.display='inline-block'; $id('badgeT').textContent = pending; } else { $id('badgeT').style.display='none'; }
 }
 
-/* ---------------------------
-   Audit display
-   --------------------------- */
 function renderAudit(){
-  const out = $id('audit'); out.innerHTML = '';
+  $id('audit').innerHTML = '';
   if(!currentUser) return;
-  const pl = getPlayer(currentUser); if(!pl) return;
-  (pl.audit||[]).slice(0,30).forEach(item=>{
-    const d = new Date(item.t).toLocaleString();
-    const div = document.createElement('div'); div.className='logline'; div.textContent = `${d} — ${item.msg}`;
-    out.appendChild(div);
+  players = load(PLAYERS_KEY);
+  const pl = players[currentUser]; if(!pl || !pl.audit) return;
+  pl.audit.slice(0,50).forEach(a=>{
+    const d = new Date(a.t).toLocaleString();
+    const row = document.createElement('div'); row.className='small'; row.textContent = `${d} — ${a.msg}`; $id('audit').appendChild(row);
   });
 }
 
-/* ---------------------------
-   Main renderAll
-   --------------------------- */
+/* -----------------------
+  Main renderAll
+   ----------------------- */
 function renderAll(){
   players = load(PLAYERS_KEY); market = load(MARKET_KEY); trades = load(TRADES_KEY);
   $id('currentName').textContent = currentUser || '—';
   const pl = getCurrent();
-  $id('coinText').textContent = pl ? (pl.coins||0) : '—';
+  $id('coinText').textContent = pl ? ((currentUser==='owner' && pl.coins===Infinity) ? '∞' : (pl.coins||0)) : '—';
   $id('foodText').textContent = pl ? (pl.foodCount||0) : '—';
   const pet = getActivePet(pl);
   $id('activePetName').textContent = pet ? pet.name : '—';
   $id('healthText').textContent = pet ? (pet.health||0) : '—';
-  // counts today
   if(pl && pet){
     const dayStart = new Date(new Date(now()).toDateString()).getTime();
     const feedsToday = (pet.feedTimestamps||[]).filter(t=>t>=dayStart).length;
@@ -345,18 +350,16 @@ function renderAll(){
     $id('feedCountText').innerText = feedsToday;
     $id('sleepCountText').innerText = sleepsToday;
   } else { $id('feedCountText').innerText = '-'; $id('sleepCountText').innerText = '-'; }
-  updateBadges();
-  renderAudit();
-  save(PLAYERS_KEY, players);
-  save(MARKET_KEY, market);
-  save(TRADES_KEY, trades);
+  updateBadges(); renderAudit();
+  save(PLAYERS_KEY, players); save(MARKET_KEY, market); save(TRADES_KEY, trades);
 }
 
-/* drawing loop */
+/* loop: draw + render */
 setInterval(()=>{ draw(); renderAll(); }, 350);
 
-/* autologin first player if available */
+/* autologin if exists */
 (function init(){
+  players = load(PLAYERS_KEY);
   const keys = Object.keys(players);
   if(keys.length>0){ currentUser = keys[0]; renderAll(); pushAudit(currentUser, 'Auto-login'); }
 })();
