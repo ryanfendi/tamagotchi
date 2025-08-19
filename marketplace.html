@@ -5,17 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Marketplace — Tamagotchi</title>
 <style>
-:root{--bg:#071726;--accent:#10b981;--muted:#9fb3b5}
-html,body{margin:0;padding:0;background:var(--bg);font-family:system-ui,Arial;color:#e6eef6}
+body{background:#0b1220;color:#fff;font-family:system-ui,Arial;text-align:center;margin:0;padding:0}
 .wrap{max-width:900px;margin:20px auto;padding:16px}
 .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-h2{margin-top:0}
-.item{background:#101a2b;padding:12px;border-radius:8px;margin-top:10px}
-button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700;margin:4px}
+button{background:linear-gradient(180deg,#10b981,#06a77a);border:0;color:#042018;padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:700;margin:4px}
 button.secondary{background:linear-gradient(180deg,#06b6d4,#0891b2)}
 a.link{display:inline-block;background:#06b6d4;padding:8px 10px;border-radius:8px;color:#042018;text-decoration:none;margin:4px}
-.small{font-size:13px;color:var(--muted)}
-.offers{background:#0b1b29;margin-top:6px;padding:6px;border-radius:6px;font-size:13px}
+.item{background:#101a2b;padding:10px;border-radius:8px;margin-top:8px;text-align:left}
+.small{font-size:13px;color:#9fb3b5}
 </style>
 </head>
 <body>
@@ -24,10 +21,11 @@ a.link{display:inline-block;background:#06b6d4;padding:8px 10px;border-radius:8p
     <h2>🛒 Marketplace</h2>
     <div class="small">Player: <strong id="playerName">—</strong> | Coin: <span id="coinText">0</span></div>
 
-    <div id="marketList" style="margin-top:14px">Loading...</div>
+    <h3 style="margin-top:16px">Pet Dijual</h3>
+    <div id="marketList" class="small muted">Loading...</div>
 
     <div style="margin-top:16px">
-      <a class="link" href="index.html">⬅ Game</a>
+      <a class="link" href="index.html">⬅ Kembali ke Game</a>
       <a class="link" href="inventory.html">📦 Inventory</a>
       <a class="link" href="leaderboard.html">🏆 Leaderboard</a>
       <a class="link" href="chat.html">💬 Chat</a>
@@ -36,132 +34,116 @@ a.link{display:inline-block;background:#06b6d4;padding:8px 10px;border-radius:8p
 </div>
 
 <script>
-function loadPlayers(){return JSON.parse(localStorage.getItem('players')||'{}');}
-function savePlayers(p){localStorage.setItem('players',JSON.stringify(p));}
-function getCurrentUsername(){return (localStorage.getItem('currentPlayer')||'').toString().trim().toLowerCase();}
-const players=loadPlayers();
-const currentUsername=getCurrentUsername();
-if(!currentUsername||!players[currentUsername]){localStorage.removeItem('currentPlayer');location.href='login.html';}
-let currentPlayer=players[currentUsername];
-const playerNameEl=document.getElementById('playerName');
-const coinText=document.getElementById('coinText');
-const marketList=document.getElementById('marketList');
-function initUI(){
-  playerNameEl.textContent=currentUsername;
-  coinText.textContent=currentPlayer.coins||0;
-  renderMarket();
+function loadPlayers(){ return JSON.parse(localStorage.getItem('players')||'{}'); }
+function savePlayers(p){ localStorage.setItem('players',JSON.stringify(p)); }
+function getCurrentUsername(){ return (localStorage.getItem('currentPlayer')||'').toString().trim().toLowerCase(); }
+const players = loadPlayers();
+const currentUsername = getCurrentUsername();
+if(!currentUsername || !players[currentUsername]){
+  localStorage.removeItem('currentPlayer'); location.href='login.html';
 }
-function loadMarket(){return JSON.parse(localStorage.getItem('market')||'{}');}
-function saveMarket(m){localStorage.setItem('market',JSON.stringify(m));}
+let currentPlayer = players[currentUsername];
+document.getElementById('playerName').textContent = currentUsername;
+document.getElementById('coinText').textContent = currentPlayer.coins||0;
+
+function loadMarket(){
+  return JSON.parse(localStorage.getItem('market')||'{}');
+}
 
 function renderMarket(){
-  const market=loadMarket();
-  const keys=Object.keys(market);
-  if(keys.length===0){marketList.innerHTML='<div class="small">Belum ada item dijual.</div>';return;}
-  marketList.innerHTML=keys.map(id=>{
-    const itm=market[id];
-    const isSeller=(itm.seller===currentUsername);
-    let html=`
-      <div class="item">
-        <div><strong>${itm.item.name}</strong> • Lv ${itm.item.level||1} • ❤️ ${itm.item.health||1000}</div>
-        <div class="small">Harga: ${itm.price} | Seller: ${itm.seller}</div>
+  const market = loadMarket();
+  const keys = Object.keys(market);
+  const container = document.getElementById('marketList');
+  if(keys.length===0){ container.innerHTML='<div>Tidak ada pet dijual</div>'; return; }
+  container.innerHTML = '';
+  keys.forEach(k=>{
+    const m = market[k];
+    const div = document.createElement('div');
+    div.className='item';
+    div.innerHTML = `
+      <div><strong>${m.item.name}</strong> • Lv ${m.item.level} • Seller: ${m.seller} • Price: ${m.price}💰</div>
     `;
-    if(isSeller){
-      html+=`<div>
-        <button onclick="removeItem('${id}')">Hapus</button>
-      </div>`;
-      if(itm.offers&&itm.offers.length>0){
-        html+=`<div class="offers"><strong>Tawaran:</strong>`;
-        itm.offers.forEach((of,i)=>{
-          html+=`<div>${of.buyer}: ${of.price}
-            <button onclick="acceptOffer('${id}',${i})">✔</button>
-            <button onclick="rejectOffer('${id}',${i})">✖</button>
-          </div>`;
-        });
-        html+='</div>';
+    // if buyer
+    if(m.seller !== currentUsername){
+      const buyBtn = document.createElement('button'); buyBtn.textContent='Beli';
+      buyBtn.onclick = ()=> buyPet(k);
+      const offerBtn = document.createElement('button'); offerBtn.textContent='Tawar'; offerBtn.className='secondary';
+      offerBtn.onclick = ()=> offerPet(k);
+      div.appendChild(buyBtn); div.appendChild(offerBtn);
+    } else {
+      // seller: see offers
+      if(m.offers && m.offers.length>0){
+        const offersDiv = document.createElement('div'); offersDiv.className='small';
+        offersDiv.innerHTML = 'Tawaran: '+ m.offers.map((o,idx)=>`<div>${o.buyer} → ${o.price}💰 <button onclick="acceptOffer('${k}',${idx})">Accept</button> <button onclick="rejectOffer('${k}',${idx})">Reject</button></div>`).join('');
+        div.appendChild(offersDiv);
       }
-    }else{
-      html+=`<div>
-        <button onclick="buyItem('${id}')">Beli (${itm.price})</button>
-        <button class="secondary" onclick="offer('${id}')">Tawar</button>
-      </div>`;
     }
-    html+='</div>';
-    return html;
-  }).join('');
+    container.appendChild(div);
+  });
 }
 
-window.buyItem=function(id){
-  const market=loadMarket();
-  const itm=market[id];
-  if(!itm)return;
-  if((currentPlayer.coins||0)<itm.price)return alert('Coin tidak cukup.');
-  currentPlayer.coins-=itm.price;
-  currentPlayer.inventory=currentPlayer.inventory||[];
-  currentPlayer.inventory.push(itm.item);
-  const seller=players[itm.seller];
-  if(seller){seller.coins=(seller.coins||0)+itm.price;}
+function buyPet(id){
+  const market = loadMarket();
+  const m = market[id];
+  if(!m) return alert('Pet tidak ditemukan.');
+  if(m.seller===currentUsername) return alert('Tidak bisa beli pet sendiri.');
+  if(currentPlayer.coins < m.price) return alert('Coin tidak cukup.');
+  currentPlayer.coins -= m.price;
+  currentPlayer.inventory.push({...m.item, type:'pet'});
   delete market[id];
-  saveMarket(market);
-  persist();
-  alert('Berhasil membeli pet!');
-  initUI();
-};
-
-window.offer=function(id){
-  const price=parseInt(prompt('Masukkan tawaran harga:'),10);
-  if(!price||price<=0)return;
-  const market=loadMarket();
-  const itm=market[id];
-  if(!itm)return;
-  itm.offers=itm.offers||[];
-  itm.offers.push({buyer:currentUsername,price});
-  saveMarket(market);
+  localStorage.setItem('market',JSON.stringify(market));
+  savePlayersObject();
+  alert(`Berhasil beli pet ${m.item.name} dari ${m.seller}`);
   renderMarket();
-};
+}
 
-window.removeItem=function(id){
-  const market=loadMarket();
+function offerPet(id){
+  const price = parseInt(prompt('Masukkan harga tawaran:'),10);
+  if(!price || price<=0) return alert('Harga tidak valid.');
+  const market = loadMarket();
+  const m = market[id];
+  if(!m.offers) m.offers=[];
+  m.offers.push({buyer:currentUsername, price});
+  localStorage.setItem('market',JSON.stringify(market));
+  alert('Tawaran dikirim ke seller.');
+  renderMarket();
+}
+
+function acceptOffer(id,idx){
+  const market = loadMarket();
+  const m = market[id];
+  const offer = m.offers[idx];
+  if(!offer) return;
+  const buyer = players[offer.buyer];
+  if(!buyer){ alert('Buyer tidak ditemukan'); return; }
+  if(buyer.coins < offer.price){ alert('Buyer tidak cukup coin'); return; }
+  buyer.coins -= offer.price;
+  buyer.inventory.push({...m.item, type:'pet'});
+  currentPlayer.coins += offer.price;
+  // remove pet from market
   delete market[id];
-  saveMarket(market);
+  localStorage.setItem('market',JSON.stringify(market));
+  savePlayersObject();
+  alert(`Tawaran diterima! Pet dikirim ke ${offer.buyer}`);
   renderMarket();
-};
+}
 
-window.acceptOffer=function(id,idx){
-  const market=loadMarket();
-  const itm=market[id];
-  if(!itm||!itm.offers||!itm.offers[idx])return;
-  const offer=itm.offers[idx];
-  const buyer=players[offer.buyer];
-  if(!buyer)return alert('Buyer tidak ditemukan.');
-  if((buyer.coins||0)<offer.price)return alert('Buyer tidak punya cukup coin.');
-  buyer.coins-=offer.price;
-  buyer.inventory=buyer.inventory||[];
-  buyer.inventory.push(itm.item);
-  const seller=players[itm.seller];
-  if(seller){seller.coins=(seller.coins||0)+offer.price;}
-  delete market[id];
-  saveMarket(market);
-  savePlayers(players);
-  alert('Tawaran diterima. Item berpindah ke buyer.');
+function rejectOffer(id,idx){
+  const market = loadMarket();
+  const m = market[id];
+  if(!m.offers || !m.offers[idx]) return;
+  m.offers.splice(idx,1);
+  localStorage.setItem('market',JSON.stringify(market));
   renderMarket();
-};
+}
 
-window.rejectOffer=function(id,idx){
-  const market=loadMarket();
-  const itm=market[id];
-  if(!itm||!itm.offers)return;
-  itm.offers.splice(idx,1);
-  saveMarket(market);
-  renderMarket();
-};
-
-function persist(){
-  const all=loadPlayers();
-  all[currentUsername]=currentPlayer;
+function savePlayersObject(){
+  const all = loadPlayers();
+  all[currentUsername] = currentPlayer;
   savePlayers(all);
 }
-initUI();
+
+renderMarket();
 </script>
 </body>
 </html>
