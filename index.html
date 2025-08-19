@@ -1,116 +1,164 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamagotchi Pixel Game</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tamagotchi Pixel — Game</title>
 <style>
-  body{background:#08121a;color:#fff;font-family:sans-serif;text-align:center;padding:10px}
-  canvas{background:#111;border-radius:8px;margin:10px auto;display:block;image-rendering:pixelated}
-  button{padding:8px 12px;margin:6px;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
-  .green{background:#10b981;color:#042018}
-  .blue{background:#3b82f6;color:#fff}
-  .nav{margin-top:10px}
+  body {margin:0;background:#071726;color:#fff;font-family:sans-serif;text-align:center;}
+  h1 {margin:10px 0;}
+  canvas {background:#0b1220;margin:10px auto;display:block;image-rendering:pixelated;}
+  .btn {background:#10b981;color:#042018;border:0;padding:10px;margin:5px;border-radius:8px;font-weight:bold;cursor:pointer;}
+  .btn.alt {background:#06b6d4;}
+  .stats {margin-top:10px;}
+  .link-nav {margin:10px;display:flex;justify-content:center;gap:8px;}
+  .link-nav a {color:#10b981;text-decoration:none;font-weight:bold;}
 </style>
 </head>
 <body>
 <h1>🐣 Tamagotchi Pixel</h1>
-<canvas id="gameCanvas" width="128" height="128" style="width:256px;height:256px"></canvas>
-<div>Nama: <span id="playerName">-</span></div>
-<div>Koin: <span id="coins">0</span></div>
+<canvas id="canvas" width="128" height="128" style="width:256px;height:256px"></canvas>
 <div>
-  <button id="feedBtn" class="green">🍎 Feed</button>
-  <button id="sleepBtn" class="blue">💤 Sleep</button>
+  <button class="btn" id="feedBtn">🍎 Feed (500 coins)</button>
+  <button class="btn alt" id="sleepBtn">💤 Sleep</button>
 </div>
-<div>
-  <button id="tapBtn">👆 Tap (Coin)</button>
-  <button id="topupBtn">💰 Top-Up 100</button>
+<div style="margin-top:8px;">
+  <button class="btn" id="tapBtn">👆 Tap for Coins (+1)</button>
+  <button class="btn alt" id="topupBtn">💳 Top-Up Coins</button>
 </div>
-<div class="nav">
-  <a href="inventory.html"><button>📦 Inventory</button></a>
-  <a href="marketplace.html"><button>🏪 Marketplace</button></a>
+<div class="stats">
+  Coins: <span id="coinsText">0</span> | HP: <span id="hpText">1000</span> | Status: <span id="statusText">Hidup</span>
+</div>
+<div class="link-nav">
+  <a href="inventory.html">📦 Inventory</a>
+  <a href="marketplace.html">🛒 Marketplace</a>
 </div>
 <script>
-const canvas=document.getElementById('gameCanvas');
-const ctx=canvas.getContext('2d');
-ctx.imageSmoothingEnabled=false;
+const CANVAS = document.getElementById('canvas');
+const CTX = CANVAS.getContext('2d');
+CTX.imageSmoothingEnabled = false;
 
-let player=JSON.parse(localStorage.getItem('player')||'null');
-if(!player){
-  player={name:prompt('Masukkan nama:'),coins:0,activePet:null,inventory:[]};
-  // buat pet awal
-  const pet={id:'pet'+Date.now(),name:'Chick',age:0,happy:true,status:'idle'};
-  player.activePet=pet.id;
-  player.inventory.push(pet);
-  localStorage.setItem('player',JSON.stringify(player));
+// UI refs
+const feedBtn = document.getElementById('feedBtn');
+const sleepBtn = document.getElementById('sleepBtn');
+const tapBtn = document.getElementById('tapBtn');
+const topupBtn = document.getElementById('topupBtn');
+const coinsText = document.getElementById('coinsText');
+const hpText = document.getElementById('hpText');
+const statusText = document.getElementById('statusText');
+
+// Storage Keys
+const PLAYER_KEY = 'tama_player_v3';
+
+// Load Player
+function loadPlayer(){
+  try { return JSON.parse(localStorage.getItem(PLAYER_KEY)) || null; } catch(e){ return null; }
+}
+function savePlayer(obj){
+  localStorage.setItem(PLAYER_KEY, JSON.stringify(obj));
 }
 
-document.getElementById('playerName').innerText=player.name;
-document.getElementById('coins').innerText=player.coins;
+// Create default player
+function defaultPlayer(){
+  return {
+    coins: 0,
+    hp: 1000,
+    feedCountToday: 0,
+    lastFeed: null,
+    lastDay: localDateStr(Date.now()),
+    activePet: { evo:0, alive:true },
+  };
+}
 
-function save(){localStorage.setItem('player',JSON.stringify(player));}
+let player = loadPlayer() || defaultPlayer();
+savePlayer(player);
 
-function drawPet(){
-  ctx.clearRect(0,0,128,128);
-  ctx.fillStyle='#111';ctx.fillRect(0,0,128,128);
-  const pet=player.inventory.find(p=>p.id===player.activePet);
-  if(!pet){ctx.fillStyle='#fff';ctx.fillText('No Pet',40,64);return;}
-  let color=pet.status==='sleep'?'#888':'#ffd07a';
-  ctx.fillStyle=color;
-  ctx.fillRect(40,50,48,48);
-  ctx.fillStyle='#000';
-  if(pet.status==='happy'){
-    ctx.fillRect(52,64,6,6);
-    ctx.fillRect(66,64,6,6);
-    ctx.fillStyle='#ff69b4';
-    ctx.fillRect(58,76,12,4);
-  }else if(pet.status==='sad'){
-    ctx.fillRect(52,64,6,6);
-    ctx.fillRect(66,64,6,6);
-    ctx.fillStyle='#00f';
-    ctx.fillRect(58,76,12,2);
-  }else if(pet.status==='sleep'){
-    ctx.fillStyle='#000';
-    ctx.fillRect(50,64,24,4);
-  }else{
-    ctx.fillRect(52,64,6,6);
-    ctx.fillRect(66,64,6,6);
+function localDateStr(ts){
+  const d = new Date(ts);
+  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+}
+
+// Update UI
+function updateUI(){
+  coinsText.textContent = player.coins;
+  hpText.textContent = player.hp;
+  statusText.textContent = player.activePet.alive ? "Hidup" : "Mati";
+}
+
+// Check daily
+function checkDaily(){
+  const today = localDateStr(Date.now());
+  if(player.lastDay !== today){
+    // Cek feed count kemarin
+    if(player.feedCountToday < 3){
+      player.hp -= 200; // kurang HP kalau ga makan cukup
+    } else {
+      player.hp += 50; // bonus kalau makan cukup
+      if(player.hp > 1000) player.hp = 1000;
+    }
+    if(player.hp <= 0){
+      player.activePet.alive = false;
+    }
+    player.feedCountToday = 0;
+    player.lastDay = today;
+    savePlayer(player);
   }
 }
 
+// Animasi pet (pixel style)
+function drawPet(){
+  CTX.fillStyle = '#08121a'; CTX.fillRect(0,0,CANVAS.width,CANVAS.height);
+  if(!player.activePet.alive){
+    CTX.fillStyle = 'red';
+    CTX.font = '10px monospace';
+    CTX.fillText('PET MATI', 20, 64);
+    return;
+  }
+  // Pet shape
+  CTX.fillStyle = '#ffd07a';
+  CTX.fillRect(44,44,40,40);
+  CTX.fillStyle = '#111';
+  CTX.fillRect(52,54,6,6);
+  CTX.fillRect(66,54,6,6);
+  CTX.fillStyle = '#ffb4a2';
+  CTX.fillRect(58,66,10,4);
+}
+
+setInterval(()=>{
+  checkDaily();
+  updateUI();
+  drawPet();
+},1000);
+
+// Buttons
+feedBtn.addEventListener('click', ()=>{
+  if(!player.activePet.alive) return alert('Pet mati!');
+  if(player.coins < 500) return alert('Coin kurang! Butuh 500.');
+  player.coins -= 500;
+  player.feedCountToday += 1;
+  player.lastFeed = Date.now();
+  savePlayer(player);
+  updateUI();
+});
+
+sleepBtn.addEventListener('click', ()=>{
+  alert('Pet tidur sebentar...');
+});
+
+tapBtn.addEventListener('click', ()=>{
+  player.coins += 1;
+  savePlayer(player);
+  updateUI();
+});
+
+topupBtn.addEventListener('click', ()=>{
+  player.coins += 1000;
+  savePlayer(player);
+  updateUI();
+});
+
+updateUI();
 drawPet();
-
-// feed
-feedBtn.onclick=()=>{
-  const pet=player.inventory.find(p=>p.id===player.activePet);
-  pet.status='happy';
-  drawPet();
-  setTimeout(()=>{pet.status='idle';drawPet();},2000);
-  save();
-};
-
-// sleep
-sleepBtn.onclick=()=>{
-  const pet=player.inventory.find(p=>p.id===player.activePet);
-  pet.status='sleep';
-  drawPet();
-  setTimeout(()=>{pet.status='idle';drawPet();},4000);
-  save();
-};
-
-// tap farming
-let tapBtn=document.getElementById('tapBtn');
-tapBtn.onclick=()=>{
-  player.coins+=1;
-  document.getElementById('coins').innerText=player.coins;
-  save();
-};
-
-document.getElementById('topupBtn').onclick=()=>{
-  player.coins+=100;
-  document.getElementById('coins').innerText=player.coins;
-  save();
-};
 </script>
 </body>
 </html>
