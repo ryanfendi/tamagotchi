@@ -1,379 +1,116 @@
-<!doctype html>
-<html lang="id">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tamagotchi Pixel Pet — Fixed</title>
+  <meta charset="UTF-8">
+  <title>Tamagotchi Game</title>
   <style>
-    body { margin:0; background:#0f1720; color:#eef; font-family: Inter, Arial, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px }
-    .game-box{ width:420px; background:linear-gradient(180deg,#111827,#0b1220); padding:18px; border-radius:12px; box-shadow:0 6px 24px rgba(2,6,23,.6)}
-    h2{margin:0 0 8px 0;font-size:18px}
-    canvas{ background:#04121a; image-rendering:pixelated; display:block; margin:8px auto; border-radius:8px }
-    .bars{ margin-top:8px }
-    .bar{ background:#0b1220; padding:6px; border-radius:8px; margin:6px 0 }
-    .bar-inner{ height:10px; background:linear-gradient(90deg,#10b981,#34d399); width:50%; border-radius:6px }
-    .controls{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px }
-    button{ background:#0ea5e9; border:0; padding:8px 10px; border-radius:8px; color:white; cursor:pointer }
-    button.alt{ background:#6366f1 }
-    .meta{ display:flex; justify-content:space-between; margin-top:10px; font-size:13px }
-    .small{ font-size:12px; color:#9aa6b2 }
-    footer{ margin-top:10px; font-size:12px; color:#8b98a6; text-align:center }
-    input[type=file]{ display:none }
-    .row{ display:flex; gap:8px; align-items:center }
-    label.inline{ font-size:13px; color:#cfe9f8 }
-    .setting{ background:#06131a; padding:8px; border-radius:8px; margin-top:8px }
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #87CEFA, #ffffff);
+    }
+    #pet {
+      width: 100px;
+      height: 100px;
+      margin: 20px auto;
+      background-image: url('https://i.ibb.co/mh2T0Qk/cute-pet.gif'); /* karakter lucu */
+      background-size: cover;
+      animation: bounce 1s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background: #ffcc00;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #ffaa00;
+    }
+    #stats {
+      margin-top: 15px;
+      font-size: 18px;
+      background: #fff8dc;
+      padding: 10px;
+      border-radius: 10px;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
-  <div class="game-box">
-    <h2>🐾 Tamagotchi Pixel Pet — Fixed</h2>
+  <h1>🐣 Tamagotchi Lucu</h1>
+  <div id="pet"></div>
 
-    <canvas id="petCanvas" width="32" height="32" style="width:260px;height:260px"></canvas>
-
-    <div class="bars">
-      <div class="bar">🍎 Hunger <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="hungerBar" class="bar-inner"></div></div></div>
-      <div class="bar">😊 Happiness <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="happyBar" class="bar-inner"></div></div></div>
-      <div class="bar">⚡ Energy <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="energyBar" class="bar-inner"></div></div></div>
-      <div class="bar">🧼 Clean <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="cleanBar" class="bar-inner"></div></div></div>
-      <div class="bar">⭐ Level <span id="levelTxt" style="float:right">1</span>
-        <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="xpBar" class="bar-inner" style="background:linear-gradient(90deg,#f59e0b,#f97316)"></div></div>
-      </div>
-    </div>
-
-    <div class="controls">
-      <button id="feedBtn">Feed 🍎</button>
-      <button id="playBtn">Play 🎮</button>
-      <button id="sleepBtn">Sleep 😴</button>
-      <button id="cleanBtn">Clean 🧼</button>
-      <button id="giveXPBtn" class="alt">Give XP +5</button>
-    </div>
-
-    <div class="meta">
-      <div class="small">Umur: <span id="ageTxt">0s</span></div>
-      <div class="small">Mood: <span id="moodTxt">happy</span></div>
-    </div>
-
-    <div class="setting">
-      <div class="row"><label class="inline">Tick interval (detik):</label><input id="tickRange" type="range" min="1" max="60" value="5"><span id="tickLabel">5</span>s</div>
-      <div class="row" style="margin-top:6px"><input id="useExternal" type="checkbox"><label class="inline">Gunakan suara eksternal jika diunggah</label></div>
-      <div class="row" style="margin-top:6px">
-        <label for="feedSound" style="background:#10b981;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Upload Feed Sound</label>
-        <input id="feedSound" type="file" accept="audio/*">
-        <label for="playSound" style="background:#06b6d4;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Upload Play Sound</label>
-        <input id="playSound" type="file" accept="audio/*">
-      </div>
-    </div>
-
-    <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">
-      <button id="exportBtn">Export Save</button>
-      <label for="importFile" style="background:#10b981;padding:8px 10px;border-radius:8px;color:white;cursor:pointer">Import Save</label>
-      <input id="importFile" type="file" accept="application/json" />
-    </div>
-
-    <div style="text-align:center;margin-top:8px"><button id="resetBtn" style="background:#ef4444">Reset</button></div>
-
-    <footer>Audio: WebAudio + optional external audio. Leveling & achievement sederhana.</footer>
+  <div>
+    <button onclick="feed()">🍎 Makan</button>
+    <button onclick="play()">⚽ Main</button>
   </div>
 
-<script>
-/*
-  Semua kode dijalankan setelah DOM siap -> menghindari masalah 'element null' atau onclick yang tidak ditemukan.
-*/
-window.addEventListener('DOMContentLoaded', () => {
-  // --- Audio (WebAudio fallback + external files)
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  const audioCtx = AudioContext ? new AudioContext() : null;
-  const externalSounds = { feed: null, play: null };
-  let useExternal = false;
+  <div id="stats">
+    <p>❤️ Health: <span id="health">100</span></p>
+    <p>😊 Happiness: <span id="happy">100</span></p>
+    <p>⭐ Level: <span id="level">1</span> (EXP: <span id="exp">0</span>)</p>
+    <p>⏳ Age: <span id="age">0</span> menit</p>
+  </div>
 
-  function beep(freq=440, dur=0.12, type='sine', vol=0.12){
-    if(!audioCtx) return;
-    try{
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = type; o.frequency.value = freq;
-      g.gain.value = vol;
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start();
-      setTimeout(()=> o.stop(), dur*1000);
-    }catch(e){ console.warn('beep failed', e); }
-  }
-  function playEffect(name){
-    if(useExternal && externalSounds[name]){
-      try{ const a = new Audio(externalSounds[name]); a.play().catch(()=>{}); return; }catch(e){ console.warn(e); }
+  <script>
+    let health = parseInt(localStorage.getItem("health")) || 100;
+    let happy = parseInt(localStorage.getItem("happy")) || 100;
+    let level = parseInt(localStorage.getItem("level")) || 1;
+    let exp = parseInt(localStorage.getItem("exp")) || 0;
+    let age = parseInt(localStorage.getItem("age")) || 0;
+
+    function updateStats() {
+      document.getElementById("health").innerText = health;
+      document.getElementById("happy").innerText = happy;
+      document.getElementById("level").innerText = level;
+      document.getElementById("exp").innerText = exp;
+      document.getElementById("age").innerText = age;
+
+      localStorage.setItem("health", health);
+      localStorage.setItem("happy", happy);
+      localStorage.setItem("level", level);
+      localStorage.setItem("exp", exp);
+      localStorage.setItem("age", age);
     }
-    if(!audioCtx) return;
-    if(name==='feed') beep(880,0.08,'triangle',0.08);
-    else if(name==='play') beep(1200,0.09,'sawtooth',0.09);
-    else if(name==='sleep') beep(220,0.14,'sine',0.06);
-    else if(name==='clean') beep(650,0.07,'square',0.07);
-    else if(name==='levelup'){ beep(1500,0.18,'sine',0.16); setTimeout(()=>beep(1800,0.12,'sine',0.12),120); }
-  }
 
-  function saveExternalSounds(){ try{ localStorage.setItem('tama_sounds', JSON.stringify(externalSounds)); }catch(e){console.warn(e);} }
-  function loadExternalSounds(){ try{ const s = localStorage.getItem('tama_sounds'); if(s){ const obj = JSON.parse(s); externalSounds.feed = obj.feed || null; externalSounds.play = obj.play || null;} }catch(e){console.warn(e);} }
+    function feed() {
+      health = Math.min(100, health + 10);
+      exp += 5;
+      checkLevel();
+      updateStats();
+    }
 
-  // --- Game state
-  const defaultPet = { hunger:80, happy:80, energy:80, clean:80, xp:0, level:1, alive:true, age:0, mood:'happy', name:'Tama', achievements:[] };
-  let pet = JSON.parse(JSON.stringify(defaultPet));
+    function play() {
+      happy = Math.min(100, happy + 10);
+      exp += 5;
+      checkLevel();
+      updateStats();
+    }
 
-  const ACHIEVEMENTS = [
-    { id:'first_feed', name:'First Feed', check: s => s.xp >= 5 },
-    { id:'level_5', name:'Reached Level 5', check: s => s.level >= 5 },
-    { id:'old_pet', name:'Umur 300s', check: s => s.age >= 300 }
-  ];
-
-  // --- DOM refs
-  const canvas = document.getElementById('petCanvas');
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-
-  const hungerBar = document.getElementById('hungerBar');
-  const happyBar = document.getElementById('happyBar');
-  const energyBar = document.getElementById('energyBar');
-  const cleanBar = document.getElementById('cleanBar');
-  const xpBar = document.getElementById('xpBar');
-  const levelTxt = document.getElementById('levelTxt');
-  const ageTxt = document.getElementById('ageTxt');
-  const moodTxt = document.getElementById('moodTxt');
-
-  const feedBtn = document.getElementById('feedBtn');
-  const playBtn = document.getElementById('playBtn');
-  const sleepBtn = document.getElementById('sleepBtn');
-  const cleanBtn = document.getElementById('cleanBtn');
-  const giveXPBtn = document.getElementById('giveXPBtn');
-
-  const tickRange = document.getElementById('tickRange');
-  const tickLabel = document.getElementById('tickLabel');
-  const useExternalChk = document.getElementById('useExternal');
-  const feedSoundInput = document.getElementById('feedSound');
-  const playSoundInput = document.getElementById('playSound');
-
-  const exportBtn = document.getElementById('exportBtn');
-  const importFile = document.getElementById('importFile');
-  const resetBtn = document.getElementById('resetBtn');
-
-  // --- drawing
-  function buildSprite(mood){
-    const c = { bg:'#04121a', body:'#7bd389', eye:'#111', light:'#fff', dirty:'#6b5b3b', sleep:'#8b8b8b' };
-    const grid = Array.from({ length:16 }, ()=> Array(16).fill(c.bg));
-    for(let y=6;y<13;y++) for(let x=4;x<12;x++) grid[y][x] = c.body;
-    if(mood === 'happy'){ grid[7][6]=grid[7][9]=c.eye; grid[9][7]=c.light; }
-    else if(mood === 'sad'){ grid[7][6]=grid[7][9]=c.eye; }
-    else if(mood === 'sleep'){ for(let x=6;x<=9;x++) grid[7][x] = c.sleep; }
-    else if(mood === 'dirty'){ for(let p=0;p<10;p++){ grid[8+Math.floor(Math.random()*4)][5+Math.floor(Math.random()*6)] = c.dirty; } }
-    return grid;
-  }
-  function drawPet(){
-    const size = 16;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const s = buildSprite(pet.mood);
-    for(let y=0;y<size;y++){
-      for(let x=0;x<size;x++){
-        ctx.fillStyle = s[y][x] || '#04121a';
-        ctx.fillRect(x, y, 1, 1);
+    function checkLevel() {
+      if (exp >= level * 20) {
+        exp = 0;
+        level++;
+        alert("🎉 Tamagotchi naik ke level " + level + "!");
       }
     }
-  }
 
-  // --- UI update
-  function updateUI(){
-    hungerBar.style.width = clamp(pet.hunger) + '%';
-    happyBar.style.width = clamp(pet.happy) + '%';
-    energyBar.style.width = clamp(pet.energy) + '%';
-    cleanBar.style.width = clamp(pet.clean) + '%';
-    xpBar.style.width = xpPercent() + '%';
-    levelTxt.innerText = pet.level;
-    ageTxt.innerText = pet.age + 's';
-    moodTxt.innerText = pet.mood;
-  }
-  function clamp(v){ return Math.max(0, Math.min(100, Math.round(v))); }
-  function xpToNext(){ return Math.floor(10 * Math.pow(1.4, pet.level - 1)); }
-  function xpPercent(){ return Math.round((pet.xp / xpToNext()) * 100); }
+    // umur bertambah tiap 1 menit
+    setInterval(() => {
+      age++;
+      health = Math.max(0, health - 2);
+      happy = Math.max(0, happy - 2);
+      updateStats();
+    }, 60000);
 
-  // --- actions
-  function giveXP(amount){ pet.xp += amount; checkLevelUp(); save(); render(); }
-  function feed(){
-    if(!pet.alive) return;
-    pet.hunger = Math.min(100, pet.hunger + 20);
-    pet.happy = Math.min(100, pet.happy + 5);
-    giveXP(8);
-    playEffect('feed');
-    animateEat();
-    checkAchievements();
-    save(); render();
-  }
-  function playAction(){
-    if(!pet.alive) return;
-    pet.happy = Math.min(100, pet.happy + 18);
-    pet.energy = Math.max(0, pet.energy - 12);
-    giveXP(10);
-    playEffect('play');
-    save(); render();
-  }
-  function sleepAction(){
-    if(!pet.alive) return;
-    pet.energy = Math.min(100, pet.energy + 40);
-    pet.hunger = Math.max(0, pet.hunger - 8);
-    giveXP(5);
-    playEffect('sleep');
-    save(); render();
-  }
-  function cleanAction(){
-    if(!pet.alive) return;
-    pet.clean = Math.min(100, pet.clean + 40);
-    pet.happy = Math.min(100, pet.happy + 6);
-    giveXP(6);
-    playEffect('clean');
-    save(); render();
-  }
-
-  function animateEat(){
-    const old = pet.mood;
-    pet.mood = 'happy';
-    let t = 0;
-    const id = setInterval(()=> {
-      t++;
-      canvas.style.transform = (t % 2 === 0) ? 'scale(1.06)' : 'scale(1)';
-      if(t > 6){ clearInterval(id); canvas.style.transform='scale(1)'; pet.mood = old; render(); }
-    }, 80);
-  }
-
-  // --- leveling & achievements
-  function checkLevelUp(){
-    while(pet.xp >= xpToNext()){
-      pet.xp -= xpToNext();
-      pet.level += 1;
-      playEffect('levelup');
-      pet.hunger = Math.min(100, pet.hunger + 6);
-      pet.happy = Math.min(100, pet.happy + 6);
-      console.log('LEVEL UP!', pet.level);
-    }
-    checkAchievements();
-    save(); render();
-  }
-  function checkAchievements(){
-    ACHIEVEMENTS.forEach(a=>{
-      if(!pet.achievements.includes(a.id) && a.check(pet)){
-        pet.achievements.push(a.id);
-        console.log('Achievement unlocked:', a.name);
-        playEffect('levelup');
-      }
-    });
-  }
-
-  // --- tick
-  function updateMood(){
-    if(!pet.alive){ pet.mood='dead'; return; }
-    if(pet.energy < 20) pet.mood = 'sleep';
-    else if(pet.hunger < 30) pet.mood = 'sad';
-    else if(pet.clean < 30) pet.mood = 'dirty';
-    else pet.mood = pet.happy > 60 ? 'happy' : 'neutral';
-  }
-
-  let ticker = null;
-  function startTicker(){
-    if(ticker) clearInterval(ticker);
-    const sec = Number(tickRange.value) || 5;
-    tickLabel.innerText = sec;
-    ticker = setInterval(()=> {
-      if(!pet.alive) return;
-      pet.hunger = Math.max(0, pet.hunger - (Math.random()*4 + 2));
-      pet.happy = Math.max(0, pet.happy - (Math.random()*2 + 0.5));
-      pet.energy = Math.max(0, pet.energy - (Math.random()*3 + 0.5));
-      pet.clean = Math.max(0, pet.clean - (Math.random()*1.2 + 0.2));
-      pet.age += 1;
-      if(pet.hunger <= 0 || pet.energy <= 0){ pet.alive = false; playEffect('feed'); console.log('Pet died'); }
-      updateMood();
-      checkAchievements();
-      save(); render();
-    }, sec * 1000);
-  }
-
-  // --- save/load/export/import
-  function save(){
-    try{ localStorage.setItem('tamaSave', JSON.stringify(pet)); localStorage.setItem('tama_useExternal', JSON.stringify(useExternal)); }catch(e){ console.warn(e); }
-  }
-  function loadSave(){
-    try{
-      const s = localStorage.getItem('tamaSave');
-      const ue = localStorage.getItem('tama_useExternal');
-      if(ue) useExternal = JSON.parse(ue);
-      useExternalChk.checked = !!useExternal;
-      loadExternalSounds();
-      return s ? JSON.parse(s) : null;
-    }catch(e){ console.warn(e); return null; }
-  }
-  function exportSave(){
-    try{
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(pet));
-      const a = document.createElement('a'); a.href = dataStr; a.download = 'tama-save.json'; document.body.appendChild(a); a.click(); a.remove();
-    }catch(e){ console.warn(e); }
-  }
-  function importSaveFile(file){
-    if(!file) return;
-    const r = new FileReader();
-    r.onload = ev => {
-      try{
-        const obj = JSON.parse(ev.target.result);
-        pet = Object.assign({}, defaultPet, obj);
-        save(); render();
-        alert('Save diimport.');
-      }catch(err){ alert('File tidak valid'); console.warn(err); }
-    };
-    r.readAsText(file);
-  }
-  function resetSave(){
-    if(confirm('Reset save?')){
-      pet = JSON.parse(JSON.stringify(defaultPet));
-      save(); render();
-    }
-  }
-
-  // --- external sound upload handlers
-  function handleSoundUpload(key, file){
-    if(!file) return;
-    const r = new FileReader();
-    r.onload = ev => {
-      externalSounds[key] = ev.target.result;
-      saveExternalSounds();
-      alert('Suara ' + key + ' disimpan (dalam browser).');
-    };
-    r.readAsDataURL(file);
-  }
-
-  // --- wire events
-  feedBtn.addEventListener('click', feed);
-  playBtn.addEventListener('click', playAction);
-  sleepBtn.addEventListener('click', sleepAction);
-  cleanBtn.addEventListener('click', cleanAction);
-  giveXPBtn.addEventListener('click', ()=> giveXP(5));
-
-  tickRange.addEventListener('input', ()=> { tickLabel.innerText = tickRange.value; startTicker(); });
-
-  useExternalChk.addEventListener('change', (e)=> { useExternal = e.target.checked; save(); });
-
-  feedSoundInput.addEventListener('change', (e)=> handleSoundUpload('feed', e.target.files[0]));
-  playSoundInput.addEventListener('change', (e)=> handleSoundUpload('play', e.target.files[0]));
-
-  exportBtn.addEventListener('click', exportSave);
-  importFile.addEventListener('change', (e)=> importSaveFile(e.target.files[0]));
-  resetBtn.addEventListener('click', resetSave);
-
-  // --- init
-  loadExternalSounds();
-  const loaded = loadSave();
-  if(loaded) pet = loaded;
-  updateMood(); startTicker(); render();
-
-  // resume audio on first user gesture (some browsers block autoplay)
-  window.addEventListener('click', ()=> {
-    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
-  }, { once: true });
-
-  // helpful message
-  console.log('Tamagotchi initialized. Jika ada error, buka Console (F12) dan copy error ke chat.');
-});
-</script>
+    updateStats();
+  </script>
 </body>
 </html>
