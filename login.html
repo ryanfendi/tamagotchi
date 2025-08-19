@@ -1,36 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login Tamagotchi</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Login — Tamagotchi</title>
 <style>
-body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
-.panel{background:#101a2b;padding:15px;margin:50px auto;width:90%;max-width:400px;border-radius:8px;}
-input{padding:10px;margin:8px;width:90%;border-radius:6px;}
-button{background:#10b981;border:none;color:#fff;padding:10px;width:95%;border-radius:6px;font-weight:bold;margin-top:10px;}
-a{color:#10b981;text-decoration:none;display:block;margin-top:10px;}
+body{background:#0b1220;color:#fff;font-family:system-ui,Arial;text-align:center;padding-top:40px}
+.panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block}
+input,button{padding:10px;margin:6px;border-radius:8px;border:0}
+button{background:#10b981;color:#042018;font-weight:700;cursor:pointer}
+.small{font-size:13px;color:#9fb3b5}
 </style>
 </head>
 <body>
-<h2>🔐 Login Tamagotchi</h2>
-<div class="panel">
-    <input type="text" id="username" placeholder="Username (ID)"><br>
-    <input type="password" id="password" placeholder="Password"><br>
-    <button onclick="login()">Login</button>
-    <a href="register.html">Belum punya akun? Daftar di sini</a>
-</div>
+  <div class="panel">
+    <h2>🔐 Login (username)</h2>
+    <input id="username" placeholder="Username (ID)" /><br/>
+    <input id="password" type="password" placeholder="Password" /><br/>
+    <button id="loginBtn">Login</button>
+    <div class="small">Belum punya akun? <a href="register.html">Daftar</a></div>
+    <div id="msg" class="small"></div>
+  </div>
+
 <script>
-function login(){
-    const username=document.getElementById("username").value.trim().toLowerCase();
-    const pass=document.getElementById("password").value.trim();
-    if(!username||!pass){alert("Isi username dan password!");return;}
-    let players=JSON.parse(localStorage.getItem("players")||"{}");
-    let user=players[username];
-    if(!user || user.password!==pass){alert("Username atau password salah!");return;}
-    localStorage.setItem("currentPlayer",user.name);
-    location.href="index.html";
-}
+document.getElementById('loginBtn').addEventListener('click', ()=> {
+  const raw = document.getElementById('username').value || '';
+  const username = raw.toString().trim().toLowerCase();
+  const password = (document.getElementById('password').value || '').toString();
+  if(!username || !password){ alert('Isi username & password'); return; }
+  const players = JSON.parse(localStorage.getItem('players')||'{}');
+  const user = players[username];
+  if(!user || user.password !== password){
+    // helpful debug info (remove in production)
+    console.log('login attempt', {username, password});
+    console.log('players keys:', Object.keys(players));
+    alert('Username atau password salah');
+    return;
+  }
+  // success
+  localStorage.setItem('currentPlayer', username);
+  location.href = 'index.html';
+});
 </script>
 </body>
 </html>
