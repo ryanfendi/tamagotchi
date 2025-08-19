@@ -5,42 +5,74 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Leaderboard - Tamagotchi</title>
 <style>
-    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
-    .panel{background:#101a2b;padding:10px;margin:10px auto;width:90%;max-width:600px;border-radius:8px;}
-    input{padding:6px;margin:6px;}
-    .list-item{background:#1a2436;padding:8px;margin:6px;border-radius:8px;}
+body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;}
+.panel{background:#101a2b;padding:10px;margin:10px auto;width:95%;max-width:700px;border-radius:8px;}
+input{padding:8px;width:80%;border-radius:6px;margin-bottom:10px;}
+button{background:#10b981;border:none;padding:8px;margin:4px;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer;}
+.table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{border:1px solid #333;padding:6px;}
 </style>
 </head>
 <body>
 <h2>🏆 Leaderboard</h2>
-<input id="search" placeholder="Cari pemain..." oninput="renderBoard()">
-<div id="board" class="panel"></div>
+<div class="panel">
+    <input type="text" id="search" placeholder="Cari nama..." onkeyup="renderLeaderboard()">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Nama</th>
+                <th>Level</th>
+                <th>Pet Aktif</th>
+                <th>Coin</th>
+                <th>Jumlah Item</th>
+            </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+    </table>
+</div>
 <div style="margin-top:10px;">
     <button onclick="goTo('index.html')">🏠 Home</button>
     <button onclick="goTo('inventory.html')">📦 Inventory</button>
     <button onclick="goTo('marketplace.html')">🛒 Marketplace</button>
     <button onclick="goTo('chat.html')">💬 Chat</button>
+    <button onclick="logout()">🚪 Logout</button>
 </div>
 <script>
-let players=JSON.parse(localStorage.getItem("players")||"{}");
-function renderBoard(){
-    const div=document.getElementById("board");
+let currentPlayerName = localStorage.getItem("currentPlayer");
+if(!currentPlayerName) location.href="login.html";
+
+let players = JSON.parse(localStorage.getItem("players")||"{}");
+
+function renderLeaderboard(){
     const search=document.getElementById("search").value.toLowerCase();
-    let arr=Object.values(players);
-    arr.sort((a,b)=>b.pet.level-a.pet.level);
-    div.innerHTML="";
-    arr.forEach(p=>{
-        if(search && !p.name.toLowerCase().includes(search))return;
-        div.innerHTML+=`
-        <div class="list-item">
-            <b>${p.name}</b> | Level: ${p.pet.level} | Coin: ${p.coins}<br>
-            Pet Aktif: ${p.pet.name||'None'}<br>
-            Barang: ${p.inventory.length} item
-        </div>`;
+    let data=Object.values(players).sort((a,b)=>b.pet.level-a.pet.level);
+    if(search){
+        data=data.filter(p=>p.name.toLowerCase().includes(search));
+    }
+    const body=document.getElementById("leaderboardBody");
+    body.innerHTML="";
+    data.forEach((p,i)=>{
+        body.innerHTML+=`
+        <tr>
+            <td>${i+1}</td>
+            <td>${p.name}</td>
+            <td>${p.pet.level}</td>
+            <td>${p.pet.name}</td>
+            <td>${p.coins}</td>
+            <td>${p.inventory.length}</td>
+        </tr>`;
     });
 }
-renderBoard();
+
+function logout(){
+    localStorage.removeItem("currentPlayer");
+    location.href="login.html";
+}
+
 function goTo(p){location.href=p;}
+
+renderLeaderboard();
 </script>
 </body>
 </html>
