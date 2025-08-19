@@ -1,156 +1,181 @@
 <!doctype html>
-
 <html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tamagotchi Pixel Pet</title>
+  <title>Tamagotchi Pixel Pet (Enhanced v2)</title>
   <style>
-    body {
-      margin: 0;
-      background: #101820;
-      color: #f2f2f2;
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .game-box {
-      background: #1a2733;
-      padding: 20px;
-      border-radius: 12px;
-      width: 360px;
-      text-align: center;
-    }
-    canvas {
-      image-rendering: pixelated;
-      background: #000;
-      margin-bottom: 12px;
-      border-radius: 8px;
-    }
-    .bars { margin: 10px 0; text-align: left; }
-    .bar {
-      background: #333;
-      border-radius: 6px;
-      overflow: hidden;
-      margin: 4px 0;
-    }
-    .bar-fill {
-      height: 10px;
-      background: limegreen;
-      width: 50%;
-    }
-    button {
-      padding: 8px 12px;
-      margin: 5px;
-      border: none;
-      border-radius: 6px;
-      background: #00aaff;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover { background: #0088cc; }
-    footer {
-      margin-top: 8px;
-      font-size: 12px;
-      color: #aaa;
-    }
+    body { margin:0; background:#0f1720; color:#eef; font-family: Inter, Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh }
+    .game-box{ width:420px; background:linear-gradient(180deg,#111827,#0b1220); padding:18px; border-radius:12px; box-shadow:0 6px 24px rgba(2,6,23,.6)}
+    h2{margin:0 0 8px 0;font-size:18px}
+    canvas{ background:#04121a; image-rendering:pixelated; display:block; margin:8px auto; border-radius:8px }
+    .bars{ margin-top:8px }
+    .bar{ background:#0b1220; padding:6px; border-radius:8px; margin:6px 0 }
+    .bar-inner{ height:10px; background:linear-gradient(90deg,#10b981,#34d399); width:50%; border-radius:6px }
+    .controls{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:8px }
+    button{ background:#0ea5e9; border:0; padding:8px 10px; border-radius:8px; color:white; cursor:pointer }
+    button.alt{ background:#6366f1 }
+    .meta{ display:flex; justify-content:space-between; margin-top:10px; font-size:13px }
+    .small{ font-size:12px; color:#9aa6b2 }
+    footer{ margin-top:10px; font-size:12px; color:#8b98a6; text-align:center }
+    input[type=file]{ display:none }
+    .row{ display:flex; gap:8px; align-items:center }
+    label.inline{ font-size:13px; color:#cfe9f8 }
+    .setting{ background:#06131a; padding:8px; border-radius:8px; margin-top:8px }
   </style>
 </head>
 <body>
   <div class="game-box">
-    <h2>🐾 Tamagotchi Pixel Pet</h2>
-    <canvas id="petCanvas" width="16" height="16"></canvas><div class="bars">
-  <div>🍎 Hunger<div class="bar"><div id="hunger" class="bar-fill"></div></div></div>
-  <div>😊 Happiness<div class="bar"><div id="happy" class="bar-fill"></div></div></div>
-  <div>⚡ Energy<div class="bar"><div id="energy" class="bar-fill"></div></div></div>
-  <div>🧼 Clean<div class="bar"><div id="clean" class="bar-fill"></div></div></div>
-</div>
+    <h2>🐾 Tamagotchi Pixel Pet — Enhanced v2</h2>
 
-<div>
-  <button onclick="feed()">Feed</button>
-  <button onclick="play()">Play</button>
-  <button onclick="sleep()">Sleep</button>
-  <button onclick="cleanPet()">Clean</button>
-</div>
+    <canvas id="petCanvas" width="32" height="32" style="width:260px;height:260px"></canvas>
 
-<p id="status">Status: Sehat dan Bahagia</p>
-<footer>Progress tersimpan otomatis (localStorage)</footer>
+    <div class="bars">
+      <div class="bar">🍎 Hunger <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="hungerBar" class="bar-inner"></div></div></div>
+      <div class="bar">😊 Happiness <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="happyBar" class="bar-inner"></div></div></div>
+      <div class="bar">⚡ Energy <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="energyBar" class="bar-inner"></div></div></div>
+      <div class="bar">🧼 Clean <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="cleanBar" class="bar-inner"></div></div></div>
+      <div class="bar">⭐ Level <span id="levelTxt" style="float:right">1</span>
+        <div style="height:8px;background:#051018;border-radius:6px;margin-top:6px"><div id="xpBar" class="bar-inner" style="background:linear-gradient(90deg,#f59e0b,#f97316)"></div></div>
+      </div>
+    </div>
 
-  </div>  <script>
-    const canvas = document.getElementById('petCanvas');
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
+    <div class="controls">
+      <button onclick="feed()">Feed 🍎</button>
+      <button onclick="play()">Play 🎮</button>
+      <button onclick="sleep()">Sleep 😴</button>
+      <button onclick="cleanPet()">Clean 🧼</button>
+      <button class="alt" onclick="giveXP(5)">Give XP +5</button>
+    </div>
 
-    let pet = load() || {
-      hunger: 80,
-      happy: 80,
-      energy: 80,
-      clean: 80,
-      alive: true,
-      age: 0,
-      mood: 'happy'
-    };
+    <div class="meta">
+      <div class="small">Umur: <span id="ageTxt">0s</span></div>
+      <div class="small">Mood: <span id="moodTxt">happy</span></div>
+    </div>
 
-    function drawPet() {
-      const sprite = getSprite(pet.mood);
-      for (let y = 0; y < 16; y++) {
-        for (let x = 0; x < 16; x++) {
-          ctx.fillStyle = sprite[y][x] || '#000';
-          ctx.fillRect(x, y, 1, 1);
-        }
-      }
-    }
+    <div class="setting">
+      <div class="row"><label class="inline">Tick interval (detik):</label><input id="tickRange" type="range" min="1" max="60" value="5" oninput="updateTickLabel()"><span id="tickLabel">5</span>s</div>
+      <div class="row" style="margin-top:6px"><input id="useExternal" type="checkbox"><label class="inline">Gunakan suara eksternal jika diunggah</label></div>
+      <div class="row" style="margin-top:6px">
+        <label for="feedSound" style="background:#10b981;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Upload Feed Sound</label>
+        <input id="feedSound" type="file" accept="audio/*" onchange="loadExternalSound('feed',event)">
+        <label for="playSound" style="background:#06b6d4;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Upload Play Sound</label>
+        <input id="playSound" type="file" accept="audio/*" onchange="loadExternalSound('play',event)">
+      </div>
+    </div>
 
-    function getSprite(mood) {
-      const c = { body: '#6cf', happy: '#fff', sad: '#00f', sleep: '#888', dirty: '#964B00' };
-      let face = Array.from({ length: 16 }, () => Array(16).fill('#000'));
-      for (let y = 6; y < 13; y++) for (let x = 4; x < 12; x++) face[y][x] = c.body;
-      if (mood === 'happy') { face[7][6] = face[7][9] = c.happy; face[9][7] = c.happy; }
-      else if (mood === 'sad') { face[7][6] = face[7][9] = c.sad; }
-      else if (mood === 'sleep') { face[7][6] = face[7][7] = face[7][8] = c.sleep; }
-      else if (mood === 'dirty') { face[9][7] = c.dirty; }
-      return face;
-    }
+    <div style="display:flex;gap:6px;justify-content:center;margin-top:8px">
+      <button onclick="exportSave()">Export Save</button>
+      <label for="importFile" style="background:#10b981;padding:8px 10px;border-radius:8px;color:white;cursor:pointer">Import Save</label>
+      <input id="importFile" type="file" accept="application/json" onchange="importSave(event)" />
+    </div>
 
-    function updateBars() {
-      document.getElementById('hunger').style.width = pet.hunger + '%';
-      document.getElementById('happy').style.width = pet.happy + '%';
-      document.getElementById('energy').style.width = pet.energy + '%';
-      document.getElementById('clean').style.width = pet.clean + '%';
-    }
+    <div style="text-align:center;margin-top:8px"><button onclick="resetSave()" style="background:#ef4444">Reset</button></div>
 
-    function setMood() {
-      if (!pet.alive) return pet.mood = 'dead';
-      if (pet.energy < 20) pet.mood = 'sleep';
-      else if (pet.hunger < 30) pet.mood = 'sad';
-      else if (pet.clean < 30) pet.mood = 'dirty';
-      else pet.mood = pet.happy > 60 ? 'happy' : 'neutral';
-    }
+    <footer>Audio: WebAudio + optional external audio. Leveling & achievement sederhana.</footer>
+  </div>
 
-    function feed() { pet.hunger = Math.min(100, pet.hunger + 20); render(); save(); }
-    function play() { pet.happy = Math.min(100, pet.happy + 20); pet.energy -= 10; render(); save(); }
-    function sleep() { pet.energy = Math.min(100, pet.energy + 30); pet.hunger -= 5; render(); save(); }
-    function cleanPet() { pet.clean = Math.min(100, pet.clean + 30); render(); save(); }
+<script>
+// ----------------- Audio system: WebAudio + optional external audio files -----------------
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const externalSounds = { feed: null, play: null };
+let useExternal = false;
 
-    function tick() {
-      if (!pet.alive) return;
-      pet.hunger -= 2; pet.happy -= 1; pet.energy -= 1; pet.clean -= 0.5; pet.age++;
-      if (pet.hunger <= 0 || pet.energy <= 0) { pet.alive = false; document.getElementById('status').innerText = '💀 Pet meninggal'; }
-      setMood(); save(); render();
-    }
+function beep(frequency=440, duration=0.12, type='sine', volume=0.12){
+  try{
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = frequency;
+    g.gain.value = volume;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    setTimeout(()=>{ o.stop(); }, duration*1000);
+  }catch(e){ }
+}
+function playEffect(name){
+  // prefer external if enabled and available
+  if(useExternal && externalSounds[name]){
+    try{ const a = new Audio(externalSounds[name]); a.play(); return; }catch(e){}
+  }
+  if(!audioCtx) return;
+  if(name==='feed'){ beep(880,0.08,'triangle',0.08); }
+  else if(name==='play'){ beep(1200,0.09,'sawtooth',0.09); }
+  else if(name==='sleep'){ beep(220,0.14,'sine',0.06); }
+  else if(name==='clean'){ beep(650,0.07,'square',0.07); }
+  else if(name==='levelup'){ beep(1500,0.18,'sine',0.16); setTimeout(()=>beep(1800,0.12,'sine',0.12),120); }
+}
 
-    function render() {
-      updateBars();
-      drawPet();
-      if (pet.alive) document.getElementById('status').innerText = `Umur: ${pet.age}s | Mood: ${pet.mood}`;
-    }
+function loadExternalSound(key,event){
+  const f = event.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = e=>{ externalSounds[key] = e.target.result; saveExternalSounds(); alert('Suara '+key+' disimpan sebagai file eksternal.'); };
+  r.readAsDataURL(f);
+}
+function saveExternalSounds(){ try{ localStorage.setItem('tama_sounds', JSON.stringify(externalSounds)); }catch(e){} }
+function loadExternalSounds(){ try{ const s = localStorage.getItem('tama_sounds'); if(s) Object.assign(externalSounds, JSON.parse(s)); }catch(e){} }
 
-    function save() { localStorage.setItem('tamaSave', JSON.stringify(pet)); }
-    function load() { let s = localStorage.getItem('tamaSave'); return s ? JSON.parse(s) : null; }
+// ----------------- Game State -----------------
+const defaultPet = { hunger:80, happy:80, energy:80, clean:80, xp:0, level:1, alive:true, age:0, mood:'happy', name:'Tama', achievements:[] }
+let pet = loadSave() || JSON.parse(JSON.stringify(defaultPet));
 
-    setInterval(tick, 5000);
-    render();
-  </script></body>
+const ACHIEVEMENTS = [ { id:'first_feed', name:'First Feed', check: s=> s.xp>=5 }, { id:'level_5', name:'Reached Level 5', check: s=> s.level>=5 }, { id:'old_pet', name:'Umur 300s', check: s=> s.age>=300 } ];
+
+// ----------------- Canvas Pixel Sprite -----------------
+const canvas = document.getElementById('petCanvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+function drawPet(){ const size=16; ctx.clearRect(0,0,canvas.width,canvas.height); const sprite=buildSprite(pet.mood); for(let y=0;y<size;y++){ for(let x=0;x<size;x++){ ctx.fillStyle = sprite[y][x] || '#04121a'; ctx.fillRect(x,y,1,1); } } }
+function buildSprite(mood){ const c={bg:'#04121a',body:'#7bd389',eye:'#111',light:'#fff',dirty:'#6b5b3b',sleep:'#8b8b8b'}; const grid=Array.from({length:16},()=>Array(16).fill(c.bg)); for(let y=6;y<13;y++) for(let x=4;x<12;x++) grid[y][x]=c.body; if(mood==='happy'){ grid[7][6]=grid[7][9]=c.eye; grid[9][7]=c.light; } else if(mood==='sad'){ grid[7][6]=grid[7][9]=c.eye; } else if(mood==='sleep'){ for(let x=6;x<=9;x++) grid[7][x]=c.sleep; } else if(mood==='dirty'){ for(let p=0;p<10;p++){ grid[8+Math.floor(Math.random()*4)][5+Math.floor(Math.random()*6)] = c.dirty } } return grid; }
+
+// ----------------- UI Update -----------------
+function updateUI(){ document.getElementById('hungerBar').style.width = clamp(pet.hunger)+'%'; document.getElementById('happyBar').style.width = clamp(pet.happy)+'%'; document.getElementById('energyBar').style.width = clamp(pet.energy)+'%'; document.getElementById('cleanBar').style.width = clamp(pet.clean)+'%'; document.getElementById('xpBar').style.width = xpPercent() + '%'; document.getElementById('levelTxt').innerText = pet.level; document.getElementById('ageTxt').innerText = pet.age + 's'; document.getElementById('moodTxt').innerText = pet.mood; }
+function clamp(v){ return Math.max(0, Math.min(100, Math.round(v))); }
+function xpToNext(){ return Math.floor(10 * Math.pow(1.4, pet.level-1)); }
+function xpPercent(){ return Math.round((pet.xp / xpToNext())*100); }
+
+// ----------------- Actions -----------------
+function feed(){ if(!pet.alive) return; pet.hunger = Math.min(100, pet.hunger + 20); pet.happy = Math.min(100, pet.happy + 5); giveXP(8); playEffect('feed'); animateEat(); log('Feed'); checkAchievements(); save(); render(); }
+function play(){ if(!pet.alive) return; pet.happy = Math.min(100, pet.happy + 18); pet.energy = Math.max(0, pet.energy - 12); giveXP(10); playEffect('play'); save(); render(); }
+function sleep(){ if(!pet.alive) return; pet.energy = Math.min(100, pet.energy + 40); pet.hunger = Math.max(0, pet.hunger - 8); giveXP(5); playEffect('sleep'); save(); render(); }
+function cleanPet(){ if(!pet.alive) return; pet.clean = Math.min(100, pet.clean + 40); pet.happy = Math.min(100, pet.happy + 6); giveXP(6); playEffect('clean'); save(); render(); }
+function giveXP(amount){ pet.xp += amount; checkLevelUp(); }
+function animateEat(){ const old=pet.mood; pet.mood='happy'; let t=0; const id=setInterval(()=>{ t++; if(t%2===0) canvas.style.transform='scale(1.06)'; else canvas.style.transform='scale(1)'; if(t>6){ clearInterval(id); canvas.style.transform='scale(1)'; pet.mood=old; render(); } },80); }
+
+// ----------------- Leveling -----------------
+function checkLevelUp(){ while(pet.xp >= xpToNext()){ pet.xp -= xpToNext(); pet.level += 1; playEffect('levelup'); pet.hunger = Math.min(100, pet.hunger + 6); pet.happy = Math.min(100, pet.happy + 6); log('LEVEL UP! ' + pet.level); } checkAchievements(); save(); render(); }
+
+// ----------------- Tick -----------------
+let tickInterval = Number(document.getElementById('tickRange').value) * 1000;
+function tick(){ if(!pet.alive) return; pet.hunger = Math.max(0, pet.hunger - (Math.random()*4 + 2)); pet.happy = Math.max(0, pet.happy - (Math.random()*2 + 0.5)); pet.energy = Math.max(0, pet.energy - (Math.random()*3 + 0.5)); pet.clean = Math.max(0, pet.clean - (Math.random()*1.2 + 0.2)); pet.age += 1; if(pet.hunger<=0 || pet.energy<=0){ pet.alive=false; playEffect('feed'); log('Pet meninggal'); } updateMood(); checkAchievements(); save(); render(); }
+let ticker = setInterval(tick, tickInterval);
+function updateTickLabel(){ const v = Number(document.getElementById('tickRange').value); document.getElementById('tickLabel').innerText = v; clearInterval(ticker); ticker = setInterval(tick, v*1000); }
+
+function updateMood(){ if(!pet.alive){ pet.mood='dead'; return; } if(pet.energy<20) pet.mood='sleep'; else if(pet.hunger<30) pet.mood='sad'; else if(pet.clean<30) pet.mood='dirty'; else pet.mood = pet.happy>60 ? 'happy' : 'neutral'; }
+
+// ----------------- Save / Load / Export / Import -----------------
+function save(){ try{ localStorage.setItem('tamaSave', JSON.stringify(pet)); localStorage.setItem('tama_useExternal', JSON.stringify(useExternal)); }catch(e){} }
+function loadSave(){ try{ const s = localStorage.getItem('tamaSave'); const ue = localStorage.getItem('tama_useExternal'); if(ue) useExternal = JSON.parse(ue); document.getElementById('useExternal').checked = !!useExternal; loadExternalSounds(); return s? JSON.parse(s): null; }catch(e){return null} }
+function exportSave(){ const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(pet)); const dl = document.createElement('a'); dl.setAttribute('href', dataStr); dl.setAttribute('download','tama-save.json'); document.body.appendChild(dl); dl.click(); dl.remove(); }
+function importSave(e){ const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = ev=>{ try{ const obj = JSON.parse(ev.target.result); pet = Object.assign({}, defaultPet, obj); save(); render(); alert('Save diimport.'); }catch(err){ alert('File tidak valid'); } }; r.readAsText(f); }
+function resetSave(){ if(confirm('Reset save?')){ pet = JSON.parse(JSON.stringify(defaultPet)); save(); render(); } }
+
+// ----------------- Achievements -----------------
+function checkAchievements(){ ACHIEVEMENTS.forEach(a=>{ if(!pet.achievements.includes(a.id) && a.check(pet)){ pet.achievements.push(a.id); log('Achievement unlocked: ' + a.name); playEffect('levelup'); } }); }
+
+// ----------------- Helpers & Init -----------------
+function log(t){ console.log('[TAMA]',t); }
+function render(){ updateUI(); drawPet(); }
+function xpToNext(){ return Math.floor(10 * Math.pow(1.4, pet.level-1)); }
+
+// load external sounds and settings
+loadExternalSounds();
+// bind checkbox
+document.getElementById('useExternal').addEventListener('change', (e)=>{ useExternal = e.target.checked; save(); });
+// load saved state
+pet = loadSave() || pet;
+updateTickLabel(); updateMood(); render(); save();
+
+// autoplay unlock on first user gesture for some browsers
+window.addEventListener('click', ()=>{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); },{ once:true });
+</script>
+</body>
 </html>
