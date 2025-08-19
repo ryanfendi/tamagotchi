@@ -31,13 +31,9 @@ document.getElementById('loginBtn').addEventListener('click', ()=> {
   const players = JSON.parse(localStorage.getItem('players')||'{}');
   const user = players[username];
   if(!user || user.password !== password){
-    // helpful debug info (remove in production)
-    console.log('login attempt', {username, password});
-    console.log('players keys:', Object.keys(players));
     alert('Username atau password salah');
     return;
   }
-  // success
   localStorage.setItem('currentPlayer', username);
   location.href = 'index.html';
 });
