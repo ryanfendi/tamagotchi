@@ -1,474 +1,155 @@
-<!doctype html>
-<html lang="id">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tamagotchi — Feed & Marketplace (Fixed)</title>
-<style>
-  body{font-family:system-ui,Arial;background:#0b1220;color:#e6eef6;display:flex;align-items:flex-start;gap:20px;padding:24px}
-  .col{background:linear-gradient(180deg,#071726,#0b2933);padding:16px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.6)}
-  .wide{flex:1;min-width:360px}
-  h2{margin:0 0 10px 0}
-  #petDisplay{font-size:72px;text-align:center;padding:6px;margin-bottom:8px}
-  button{padding:8px 12px;border-radius:8px;border:0;cursor:pointer;background:#10b981;color:#042018;margin:6px}
-  button.danger{background:#ef4444;color:#fff}
-  input[type=text]{padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-  .small{font-size:13px;color:#a6c9cb;margin-top:8px}
-  ul{padding-left:16px}
-  .market-item{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-bottom:8px}
-  .muted{color:#7ea6a8;font-size:13px}
-</style>
+  <meta charset="UTF-8">
+  <title>Tamagotchi Lucu</title>
+  <style>
+    body {
+      background: #87ceeb;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    h1 { color: #fff; text-shadow: 2px 2px #000; }
+    #game {
+      margin: 20px auto;
+      width: 300px;
+      height: 300px;
+      border: 3px solid #333;
+      background: #dfffd6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 48px;
+    }
+    #stats {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      background: #ff9c00;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover { background: #ff7300; }
+    #leaderboard {
+      margin-top: 20px;
+      padding: 10px;
+      background: #fff;
+      border: 2px solid #333;
+      width: 280px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
 </head>
 <body>
+  <h1>🐣 Tamagotchi Lucu</h1>
+  <div id="game">🐤</div>
 
-<div class="col wide">
-  <h2>🐣 Tamagotchi — Main</h2>
-
-  <div>
-    <label>Nama pemain: <input id="playerNameInput" type="text" placeholder="Masukkan nama (unik)"></label>
-    <button id="startBtn">Start / Login</button>
+  <div id="stats">
+    <p>Nama: <span id="name"></span></p>
+    <p>Level: <span id="level">1</span></p>
+    <p>Umur: <span id="age">0</span> hari</p>
+    <p>Hunger: <span id="hunger">100</span>%</p>
   </div>
 
-  <div id="mainUI" style="display:none;margin-top:12px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div id="petDisplay">🐤</div>
-      <div style="flex:1">
-        <div><strong id="ownerName">-</strong></div>
-        <div class="muted">Level: <span id="level">1</span> • Umur: <span id="ageDays">0</span> hari</div>
-        <div class="muted">Kenyang hari ini: <span id="feedCountToday">0</span> / 3</div>
-        <div class="muted">Last Feed: <span id="lastFeedText">—</span></div>
-      </div>
-    </div>
+  <button onclick="feed()">🍎 Kasih Makan</button>
+  <button onclick="sellPet()">💰 Jual Pet</button>
 
-    <div style="margin-top:10px">
-      <button id="feedBtn">🍎 Beri Makan</button>
-      <button id="sellBtn">💱 Jual Pet</button>
-      <button id="buyBtn">🛒 Beli Pet</button>
-      <button id="resetBtn" class="danger">🔄 Reset Pet (mulai ulang)</button>
-    </div>
-
-    <div class="small" style="margin-top:8px">
-      <div>Aturan penting:</div>
-      <ul>
-        <li>Makan hanya bisa setiap <strong>4 jam</strong> sekali (dari last feed).</li>
-        <li>Dalam <strong>1 hari</strong> pemain harus memberi makan minimal <strong>3 kali</strong>; jika tidak terpenuhi pada akhir hari, pet akan mati dan harus restart dari awal.</li>
-        <li>Level naik tiap <strong>7 hari</strong>. Evolusi tampil setiap hari (bentuk berubah).</li>
-      </ul>
-    </div>
-
-    <div id="messageLog" class="small" style="margin-top:12px"></div>
-  </div>
-</div>
-
-<div class="col" style="width:360px">
-  <h2>🏷 Marketplace & Leaderboard</h2>
-
-  <div style="margin-bottom:8px">
-    <input id="saleIdInput" placeholder="ID jual (unik)" style="width:140px">
-    <button id="postSaleBtn">Post Jual</button>
+  <div id="leaderboard">
+    <h3>🏆 Leaderboard</h3>
+    <ul id="leaderList"></ul>
   </div>
 
-  <div style="margin-top:8px">
-    <input id="buyIdInput" placeholder="ID beli" style="width:140px">
-    <button id="doBuyBtn">Beli</button>
-  </div>
+  <script>
+    let hunger = 100;
+    let level = 1;
+    let age = 0;
+    let name = prompt("Masukkan nama pet kamu:", "Tama");
+    document.getElementById("name").textContent = name;
 
-  <h3 style="margin-top:12px">Daftar Penjualan</h3>
-  <div id="marketList" style="max-height:240px;overflow:auto"></div>
+    let players = JSON.parse(localStorage.getItem("players")) || [];
 
-  <h3 style="margin-top:12px">🏆 Leaderboard</h3>
-  <div id="leaderboard"></div>
+    // Animasi karakter bergerak
+    const frames = ["🐤","🐥","🐦"];
+    let frameIndex = 0;
 
-  <div class="small" style="margin-top:12px">
-    <label><input id="devModeChk" type="checkbox"> DEV_MODE (test cepat)</label>
-    <div class="muted">Jika DEV_MODE dicentang: hari jadi cepat (1 hari = 30 detik), interval makan 1 menit dll — untuk testing.</div>
-  </div>
-</div>
-
-<script>
-/*
-  Tamagotchi logic with:
-  - Feed every 4 hours allowed
-  - Must feed >=3 times per day (day = local calendar day); else pet dies at day rollover
-  - Sell / buy via localStorage marketplace
-  - Leaderboard uses players saved in localStorage
-  - DEV_MODE for testing
-*/
-
-const STORAGE_PLAYERS = 'tama_players_v1';   // stores mapping playerName => playerObject
-const STORAGE_MARKET = 'tama_market_v1';     // stores mapping saleId => saleObject
-
-// DEFAULTS & TIMINGS
-let DEV_MODE = false; // toggle by checkbox
-const MS_HOUR = 3600 * 1000;
-const DEFAULTS = {
-  FEED_INTERVAL_MS: 4 * MS_HOUR,       // 4 hours between feeds
-  DAY_MS: 24 * MS_HOUR,                // 1 day
-  LEVEL_WEEK_MS: 7 * 24 * MS_HOUR      // 7 days per level
-};
-
-// for DEV quick testing (overrides above)
-const DEV = {
-  FEED_INTERVAL_MS: 60 * 1000,   // 1 minute
-  DAY_MS: 30 * 1000,             // 30s per day
-  LEVEL_WEEK_MS: 7 * 30 * 1000   // 7 'days' per level
-};
-
-// state
-let players = loadPlayers();   // object mapping name => playerObj
-let market = loadMarket();     // object mapping saleId => saleObj
-let currentPlayerName = null;
-let currentPlayer = null;
-let tickTimer = null;
-
-// helper: load/save
-function loadPlayers(){ try{ return JSON.parse(localStorage.getItem(STORAGE_PLAYERS)) || {}; }catch(e){ return {}; } }
-function savePlayers(){ try{ localStorage.setItem(STORAGE_PLAYERS, JSON.stringify(players)); }catch(e){} }
-function loadMarket(){ try{ return JSON.parse(localStorage.getItem(STORAGE_MARKET)) || {}; }catch(e){ return {}; } }
-function saveMarket(){ try{ localStorage.setItem(STORAGE_MARKET, JSON.stringify(market)); }catch(e){} }
-
-// date helpers
-function localDateStr(ts){ const d = new Date(ts); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
-function startOfLocalDay(ts){ const d = new Date(ts); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
-
-// create new player & pet
-function createNewPlayer(name){
-  const now = Date.now();
-  return {
-    name: name,
-    createdAt: now,
-    owner: name,
-    pet: {
-      kindIndex: 0,               // index into evolutions array by ageDays
-      ageDays: 0,
-      feedTimestamps: [],        // history of feed timestamps (ms)
-      lastFeed: null,            // timestamp ms of last feed
-      alive: true
-    },
-    lastDailyCheckDate: localDateStr(now), // we mark we've checked today to avoid immediate check
-    // note: level is computed from createdAt (weeks)
-  };
-}
-
-// evolutions (many characters)
-const EVOLUTIONS = [
-  '🐣','🐥','🐤','🐦','🐧','🐝','🐰','🐱','🐶','🐯','🦊','🐼','🐵','🐸','🐲','🦄','🐉','👾','🐺','🦁',
-  '🦄','🦉','🐮','🐷','🐴','🦄','🐙','🦖','🦕','🐳'
-];
-
-// UI refs
-const playerNameInput = document.getElementById('playerNameInput');
-const startBtn = document.getElementById('startBtn');
-const mainUI = document.getElementById('mainUI');
-const ownerNameEl = document.getElementById('ownerName');
-const petDisplayEl = document.getElementById('petDisplay');
-const levelEl = document.getElementById('level');
-const ageDaysEl = document.getElementById('ageDays');
-const feedCountTodayEl = document.getElementById('feedCountToday');
-const lastFeedTextEl = document.getElementById('lastFeedText');
-const messageLog = document.getElementById('messageLog');
-
-const feedBtn = document.getElementById('feedBtn');
-const sellBtn = document.getElementById('sellBtn');
-const buyBtn = document.getElementById('buyBtn');
-const resetBtn = document.getElementById('resetBtn');
-
-const saleIdInput = document.getElementById('saleIdInput');
-const postSaleBtn = document.getElementById('postSaleBtn');
-const buyIdInput = document.getElementById('buyIdInput');
-const doBuyBtn = document.getElementById('doBuyBtn');
-
-const marketListEl = document.getElementById('marketList');
-const leaderboardEl = document.getElementById('leaderboard');
-const devModeChk = document.getElementById('devModeChk');
-
-// bind start
-startBtn.addEventListener('click', ()=>{
-  const name = playerNameInput.value.trim();
-  if(!name){ alert('Masukkan nama pemain (unik) dulu.'); return; }
-  // apply DEV flag from checkbox
-  DEV_MODE = devModeChk.checked;
-  startForPlayer(name);
-});
-
-// feed, sell, buy actions
-feedBtn.addEventListener('click', feedAction);
-postSaleBtn.addEventListener('click', postSale);
-doBuyBtn.addEventListener('click', buyAction);
-sellBtn.addEventListener('click', ()=> {
-  const id = prompt('Masukkan ID unik untuk menjual pet ini (contoh: dragon01):');
-  if(id) { saleIdInput.value = id; postSale(); }
-});
-resetBtn.addEventListener('click', ()=>{
-  if(!currentPlayer) return;
-  if(!confirm('Reset pet dan mulai dari awal?')) return;
-  players[currentPlayerName] = createNewPlayer(currentPlayerName);
-  savePlayers(); loadCurrentPlayer(); addLog('Game direset.');
-});
-
-// buy button
-document.getElementById('buyBtn').addEventListener('click', ()=>{
-  const id = prompt('Masukkan sale ID pet yang ingin dibeli:');
-  if(id) { buyIdInput.value = id; buyAction(); }
-});
-
-// start for player
-function startForPlayer(name){
-  players = loadPlayers();
-  market = loadMarket();
-  if(!players[name]) players[name] = createNewPlayer(name);
-  savePlayers();
-  currentPlayerName = name;
-  loadCurrentPlayer();
-  mainUI.style.display = 'block';
-  playerNameInput.value = '';
-  // start tick
-  if(tickTimer) clearInterval(tickTimer);
-  tickTimer = setInterval(mainTick, (DEV_MODE? 5*1000 : 60*1000)); // tick every minute (or 5s in dev)
-  devModeChk.disabled = true;
-  renderAll();
-  addLog('Selamat datang, ' + name + '!');
-}
-
-// load current player into variable
-function loadCurrentPlayer(){
-  players = loadPlayers();
-  currentPlayer = players[currentPlayerName];
-  if(!currentPlayer){
-    players[currentPlayerName] = createNewPlayer(currentPlayerName);
-    currentPlayer = players[currentPlayerName];
-    savePlayers();
-  }
-}
-
-// helper get timings considering DEV_MODE
-function getTimings(){
-  if(DEV_MODE) return DEV;
-  return DEFAULTS;
-}
-
-// main tick: runs often to check day rollover & other background tasks
-function mainTick(){
-  loadCurrentPlayer();
-  const timings = getTimings();
-  const now = Date.now();
-  // day rollover check: if current local date != lastDailyCheckDate => we must check previous day
-  const todayStr = localDateStr(now);
-  if(currentPlayer.lastDailyCheckDate !== todayStr){
-    // previous date
-    const prevDate = new Date(now);
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevStart = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate()).getTime();
-    const prevEnd = prevStart + timings.DAY_MS; // using DAY_MS (either 24h or dev)
-    // count feeds in previous day range
-    const feedsPrevDay = (currentPlayer.pet.feedTimestamps || []).filter(ts => ts >= prevStart && ts < prevEnd).length;
-    if(feedsPrevDay < 3){
-      // pet dies and must restart
-      currentPlayer.pet.alive = false;
-      addLog('❌ Pet mati karena tidak diberi makan minimal 3x pada hari sebelumnya ('+feedsPrevDay+'x). Harap reset.');
-      // persist
-      players[currentPlayerName] = currentPlayer;
-      savePlayers();
-      renderAll();
-      currentPlayer.lastDailyCheckDate = todayStr; // mark checked so we don't repeat
-      savePlayers();
-      return;
-    } else {
-      // survived previous day: increase ageDays and evolution index
-      currentPlayer.pet.ageDays = (currentPlayer.pet.ageDays || 0) + 1;
-      currentPlayer.pet.kindIndex = Math.min(EVOLUTIONS.length - 1, currentPlayer.pet.ageDays);
-      // level calculation: weeks since createdAt
-      const daysSinceCreated = Math.floor((now - currentPlayer.createdAt) / timings.DAY_MS);
-      currentPlayer.level = Math.floor(daysSinceCreated / 7) + 1;
-      currentPlayer.lastDailyCheckDate = todayStr;
-      addLog('✅ Pet selamat: '+feedsPrevDay+'x makan kemarin. Umur bertambah -> '+currentPlayer.pet.ageDays+' hari');
+    function animatePet(){
+      frameIndex = (frameIndex + 1) % frames.length;
+      document.getElementById("game").textContent = frames[frameIndex];
     }
-    // persist
-    players[currentPlayerName] = currentPlayer;
-    savePlayers();
-  }
-  // just render (keeps UI fresh)
-  renderAll();
-}
+    setInterval(animatePet, 1000);
 
-// feed action
-function feedAction(){
-  if(!currentPlayer) return alert('Login dulu.');
-  if(!currentPlayer.pet.alive) return alert('Pet sudah mati. Tekan Reset untuk mulai lagi.');
-  const now = Date.now();
-  const timings = getTimings();
-  if(currentPlayer.pet.lastFeed && (now - currentPlayer.pet.lastFeed) < timings.FEED_INTERVAL_MS){
-    const waitMs = timings.FEED_INTERVAL_MS - (now - currentPlayer.pet.lastFeed);
-    addLog('⏳ Masih harus tunggu ' + msToStr(waitMs) + ' sebelum bisa beri makan lagi.');
-    alert('Pet baru saja makan — tunggu ' + msToStr(waitMs) + ' lagi.');
-    return;
-  }
-  // feed
-  currentPlayer.pet.feedTimestamps = currentPlayer.pet.feedTimestamps || [];
-  currentPlayer.pet.feedTimestamps.push(now);
-  currentPlayer.pet.lastFeed = now;
-  addLog('🍎 Kamu memberi makan pet.');
-  // persist
-  players[currentPlayerName] = currentPlayer;
-  savePlayers();
-  renderAll();
-}
+    // Hunger sistem (turun tiap menit)
+    setInterval(()=>{
+      hunger -= 5;
+      if(hunger <= 0){
+        alert("😢 Pet kamu mati karena kelaparan! Game restart.");
+        restartGame();
+      }
+      document.getElementById("hunger").textContent = hunger;
+    }, 60000); // tiap 1 menit hunger -5
 
-// post sale (sell)
-function postSale(){
-  if(!currentPlayer) return alert('Login dulu.');
-  if(!currentPlayer.pet.alive) return alert('Pet mati tidak bisa dijual.');
-  if(!currentPlayer.pet) return alert('Kamu tidak punya pet.');
-  const saleId = (saleIdInput.value || '').trim();
-  if(!saleId){ alert('Masukkan ID jual yang unik (contoh: dragon01)'); return; }
-  market = loadMarket();
-  if(market[saleId]){ alert('Sale ID sudah dipakai, pilih ID lain.'); return; }
-  // create sale entry
-  const saleObj = {
-    saleId,
-    seller: currentPlayerName,
-    pet: JSON.parse(JSON.stringify(currentPlayer.pet)),
-    postedAt: Date.now()
-  };
-  market[saleId] = saleObj;
-  // remove pet from player (sold)
-  currentPlayer.pet = null;
-  players[currentPlayerName] = currentPlayer;
-  savePlayers();
-  saveMarket();
-  addLog('📣 Pet diposting di marketplace dengan ID "'+saleId+'".');
-  renderAll();
-}
+    // Evolusi setiap 1 hari
+    setInterval(()=>{
+      age++;
+      document.getElementById("age").textContent = age;
+      if(age % 1 === 0){ // tiap 1 hari evolve
+        level++;
+        document.getElementById("level").textContent = level;
+        frames.push("🐲","🐱","🐰","🐶","🐸","🐵"); // tambah variasi karakter
+        updateLeaderboard();
+      }
+    }, 60000 * 5); // simulasi 1 hari = 5 menit (biar cepat)
 
-// buy action
-function buyAction(){
-  if(!currentPlayer) return alert('Login dulu.');
-  const id = (buyIdInput.value || '').trim();
-  if(!id){ alert('Masukkan ID jual yang ingin dibeli.'); return; }
-  market = loadMarket();
-  const sale = market[id];
-  if(!sale){ alert('ID tidak ditemukan di marketplace.'); return; }
-  // buyer cannot buy own listing
-  if(sale.seller === currentPlayerName){ alert('Kamu tidak bisa membeli petmu sendiri.'); return; }
-  // if buyer already has pet, confirm replace
-  if(currentPlayer.pet && currentPlayer.pet.alive){
-    if(!confirm('Kamu sudah punya pet. Ganti pet lama dengan yang dibeli?')) return;
-  }
-  // perform transfer
-  const boughtPet = JSON.parse(JSON.stringify(sale.pet));
-  // assign owner
-  players[currentPlayerName].pet = boughtPet;
-  // remove listing
-  delete market[id];
-  savePlayers();
-  saveMarket();
-  addLog('✅ Kamu membeli pet dari ' + sale.seller + ' (ID:'+id+').');
-  renderAll();
-}
-
-// restart/reset handled via resetBtn (already bound)
-
-// render UI summary & lists
-function renderAll(){
-  // reload data
-  players = loadPlayers();
-  market = loadMarket();
-  if(currentPlayerName) currentPlayer = players[currentPlayerName];
-
-  // main UI
-  if(currentPlayer){
-    ownerNameEl.textContent = currentPlayerName;
-    if(!currentPlayer.pet){
-      petDisplayEl.textContent = '—';
-      levelEl.textContent = currentPlayer.level || 1;
-      ageDaysEl.textContent = 0;
-      feedCountTodayEl.textContent = 0;
-      lastFeedTextEl.textContent = '—';
-    } else {
-      // pet emoji by kindIndex OR by ageDays
-      const kindIndex = currentPlayer.pet.kindIndex || Math.min((currentPlayer.pet.ageDays||0), EVOLUTIONS.length-1);
-      petDisplayEl.textContent = EVOLUTIONS[kindIndex] || '🐣';
-      // level compute by createdAt weeks
-      const timings = getTimings();
-      const daysSinceCreated = Math.floor((Date.now() - currentPlayer.createdAt) / timings.DAY_MS);
-      const levelComputed = Math.floor(daysSinceCreated / 7) + 1;
-      currentPlayer.level = levelComputed;
-      levelEl.textContent = currentPlayer.level;
-      ageDaysEl.textContent = currentPlayer.pet.ageDays || 0;
-
-      // feed count today (count feedTimestamps that are >= startOfToday)
-      const now = Date.now();
-      const startToday = startOfLocalDay(now);
-      const feedTs = currentPlayer.pet.feedTimestamps || [];
-      const countToday = feedTs.filter(ts => ts >= startToday && ts <= now).length;
-      feedCountTodayEl.textContent = countToday;
-
-      lastFeedTextEl.textContent = currentPlayer.pet.lastFeed ? new Date(currentPlayer.pet.lastFeed).toLocaleString() : 'Belum makan';
+    function feed(){
+      hunger = Math.min(100, hunger + 30);
+      document.getElementById("hunger").textContent = hunger;
     }
-  }
 
-  // marketplace list
-  marketListEl.innerHTML = '';
-  const keys = Object.keys(market);
-  if(keys.length === 0) marketListEl.innerHTML = '<div class="muted">Marketplace kosong</div>';
-  keys.forEach(id=>{
-    const s = market[id];
-    const el = document.createElement('div');
-    el.className = 'market-item';
-    el.innerHTML = `<strong>${id}</strong> — Seller: ${s.seller} • Posted: ${new Date(s.postedAt).toLocaleString()}<br>Pet: ${EVOLUTIONS[s.pet.kindIndex||0] || '🐣'} • Age:${s.pet.ageDays||0}d`;
-    marketListEl.appendChild(el);
-  });
+    function restartGame(){
+      hunger = 100;
+      level = 1;
+      age = 0;
+      document.getElementById("hunger").textContent = hunger;
+      document.getElementById("level").textContent = level;
+      document.getElementById("age").textContent = age;
+    }
 
-  // leaderboard - list players with pet alive, sorted by level desc then age
-  const list = Object.values(players).map(p=>{
-    return {
-      name: p.name,
-      level: p.level || Math.floor((Date.now()-p.createdAt)/getTimings().DAY_MS/7)+1,
-      ageDays: (p.pet && p.pet.ageDays) ? p.pet.ageDays : 0,
-      hasPet: !!p.pet,
-      alive: p.pet ? !!p.pet.alive : false
-    };
-  }).filter(x => x.hasPet).sort((a,b)=> b.level - a.level || b.ageDays - a.ageDays);
+    function sellPet(){
+      let price = prompt("Mau jual pet kamu berapa coin?");
+      if(price){
+        alert(name+" dijual seharga "+price+" coin! 🛒");
+      }
+    }
 
-  leaderboardEl.innerHTML = '';
-  if(list.length === 0) leaderboardEl.innerHTML = '<div class="muted">Belum ada pemain aktif</div>';
-  list.forEach((p,i)=>{
-    const el = document.createElement('div');
-    el.innerHTML = `${i+1}. <strong>${p.name}</strong> — Level ${p.level} (Umur: ${p.ageDays}d) ${p.alive? '':'⚰️'}`;
-    leaderboardEl.appendChild(el);
-  });
+    function updateLeaderboard(){
+      // Simpan progress ke localStorage
+      let player = players.find(p => p.name === name);
+      if(player){
+        player.level = level;
+      } else {
+        players.push({name, level});
+      }
+      localStorage.setItem("players", JSON.stringify(players));
 
-  // persist players & market anytime we render
-  savePlayers();
-  saveMarket();
-}
+      // Tampilkan leaderboard
+      let list = document.getElementById("leaderList");
+      list.innerHTML = "";
+      players.sort((a,b)=>b.level - a.level);
+      players.forEach(p=>{
+        let li = document.createElement("li");
+        li.textContent = p.name+" - Level "+p.level;
+        list.appendChild(li);
+      });
+    }
 
-// utility: ms to human string
-function msToStr(ms){
-  const s = Math.floor(ms/1000);
-  const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); const sec = s%60;
-  if(h>0) return h+'h '+m+'m';
-  if(m>0) return m+'m '+sec+'s';
-  return sec+'s';
-}
-
-// logging small message
-function addLog(msg){
-  const now = new Date().toLocaleTimeString();
-  messageLog.innerHTML = '['+now+'] ' + msg + '<br>' + messageLog.innerHTML;
-}
-
-// market helpers
-function loadMarket(){ try{ return JSON.parse(localStorage.getItem(STORAGE_MARKET)) || {}; }catch(e){ return {}; } }
-function saveMarket(){ try{ localStorage.setItem(STORAGE_MARKET, JSON.stringify(market)); }catch(e){} }
-
-// On page load, render leaderboard & marketplace
-renderAll();
-
-// expose some helpers for debugging in console
-window._tama = {
-  players, market, reload: ()=>{ players = loadPlayers(); market = loadMarket(); renderAll(); }
-};
-</script>
+    updateLeaderboard();
+  </script>
 </body>
 </html>
