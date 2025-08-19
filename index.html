@@ -1,115 +1,115 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Tamagotchi Game</title>
+  <title>Pixel Tamagotchi</title>
   <style>
     body {
       text-align: center;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(to bottom, #87CEFA, #ffffff);
+      font-family: monospace;
+      background: #222;
+      color: white;
     }
     #pet {
-      width: 100px;
-      height: 100px;
-      margin: 20px auto;
-      background-image: url('https://i.ibb.co/mh2T0Qk/cute-pet.gif'); /* karakter lucu */
-      background-size: cover;
-      animation: bounce 1s infinite;
+      font-size: 40px;
+      margin: 20px;
+      animation: bounce 1s infinite alternate;
     }
     @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
+      from { transform: translateY(0px); }
+      to { transform: translateY(-10px); }
     }
     button {
       margin: 5px;
       padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
       border: none;
-      border-radius: 10px;
-      background: #ffcc00;
       cursor: pointer;
-      font-weight: bold;
-    }
-    button:hover {
-      background: #ffaa00;
     }
     #stats {
       margin-top: 15px;
-      font-size: 18px;
-      background: #fff8dc;
-      padding: 10px;
-      border-radius: 10px;
-      display: inline-block;
     }
   </style>
 </head>
 <body>
-  <h1>🐣 Tamagotchi Lucu</h1>
-  <div id="pet"></div>
+  <h1>🐣 Pixel Tamagotchi</h1>
+  <div id="pet"> (•ᴗ•) </div>
 
-  <div>
-    <button onclick="feed()">🍎 Makan</button>
-    <button onclick="play()">⚽ Main</button>
-  </div>
+  <button onclick="feed()">🍎 Feed</button>
+  <button onclick="play()">🎮 Play</button>
+  <button onclick="sleep()">💤 Sleep</button>
 
   <div id="stats">
-    <p>❤️ Health: <span id="health">100</span></p>
-    <p>😊 Happiness: <span id="happy">100</span></p>
-    <p>⭐ Level: <span id="level">1</span> (EXP: <span id="exp">0</span>)</p>
-    <p>⏳ Age: <span id="age">0</span> menit</p>
+    ❤️ Hunger: <span id="hunger">5</span><br>
+    😀 Happiness: <span id="happy">5</span><br>
+    😴 Energy: <span id="energy">5</span><br>
+    ⭐ Level: <span id="level">1</span>
   </div>
 
   <script>
-    let health = parseInt(localStorage.getItem("health")) || 100;
-    let happy = parseInt(localStorage.getItem("happy")) || 100;
-    let level = parseInt(localStorage.getItem("level")) || 1;
-    let exp = parseInt(localStorage.getItem("exp")) || 0;
-    let age = parseInt(localStorage.getItem("age")) || 0;
+    let hunger = 5, happy = 5, energy = 5, level = 1, xp = 0;
 
     function updateStats() {
-      document.getElementById("health").innerText = health;
+      document.getElementById("hunger").innerText = hunger;
       document.getElementById("happy").innerText = happy;
+      document.getElementById("energy").innerText = energy;
       document.getElementById("level").innerText = level;
-      document.getElementById("exp").innerText = exp;
-      document.getElementById("age").innerText = age;
-
-      localStorage.setItem("health", health);
-      localStorage.setItem("happy", happy);
-      localStorage.setItem("level", level);
-      localStorage.setItem("exp", exp);
-      localStorage.setItem("age", age);
+      saveGame();
     }
 
     function feed() {
-      health = Math.min(100, health + 10);
-      exp += 5;
-      checkLevel();
+      hunger = Math.min(hunger + 2, 10);
+      xp++;
+      evolve();
+      document.getElementById("pet").innerText = "(◕‿◕)";
       updateStats();
     }
 
     function play() {
-      happy = Math.min(100, happy + 10);
-      exp += 5;
-      checkLevel();
+      happy = Math.min(happy + 2, 10);
+      energy = Math.max(energy - 1, 0);
+      xp++;
+      evolve();
+      document.getElementById("pet").innerText = "ᕕ(ᐛ)ᕗ";
       updateStats();
     }
 
-    function checkLevel() {
-      if (exp >= level * 20) {
-        exp = 0;
+    function sleep() {
+      energy = Math.min(energy + 3, 10);
+      hunger = Math.max(hunger - 1, 0);
+      xp++;
+      evolve();
+      document.getElementById("pet").innerText = "(-_-) zzz";
+      updateStats();
+    }
+
+    function evolve() {
+      if (xp >= level * 5) {
         level++;
-        alert("🎉 Tamagotchi naik ke level " + level + "!");
+        xp = 0;
+        document.getElementById("pet").innerText = "★(•ᴗ•)★";
+        alert("Level Up! Your Tamagotchi reached Level " + level);
       }
     }
 
-    // umur bertambah tiap 1 menit
-    setInterval(() => {
-      age++;
-      health = Math.max(0, health - 2);
-      happy = Math.max(0, happy - 2);
-      updateStats();
-    }, 60000);
+    function saveGame() {
+      localStorage.setItem("tamaSave", JSON.stringify({hunger, happy, energy, level, xp}));
+    }
 
+    function loadGame() {
+      let save = localStorage.getItem("tamaSave");
+      if (save) {
+        let data = JSON.parse(save);
+        hunger = data.hunger;
+        happy = data.happy;
+        energy = data.energy;
+        level = data.level;
+        xp = data.xp;
+        updateStats();
+      }
+    }
+
+    loadGame();
     updateStats();
   </script>
 </body>
