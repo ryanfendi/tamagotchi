@@ -1,34 +1,47 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:12px}
-  #box{background:#0f172a;border-radius:10px;height:55vh;overflow-y:auto;padding:10px}
-  .row{margin:6px 0}
-  input,button,select{padding:8px;border-radius:8px;border:0;margin:4px}
-  button{background:#10b981;color:#06261f;font-weight:700;cursor:pointer}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamagotchi Chat</title>
+  <style>
+    body { font-family:sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:0; }
+    h2 { margin:10px; }
+    .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
+    .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
+    .from { font-weight:bold; color:#38bdf8; }
+    input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
+    .tab { margin:10px; }
+  </style>
 </head>
 <body>
   <h2>💬 Chat</h2>
-  <div>
-    Mode:
-    <select id="mode" onchange="switchMode()">
-      <option value="global">Global</option>
-      <option value="pm">Private</option>
-    </select>
-    <span id="pmBox" style="display:none">
-      ke <input id="toUser" placeholder="username tujuan" style="width:160px">
-      <button onclick="setPeer()">Set</button>
-    </span>
-  </div>
-  <div id="box"></div>
-  <div>
-    <input id="msg" placeholder="Tulis pesan…" style="width:70%">
-    <button onclick="sendMsg()">Kirim</button>
+
+  <!-- Tabs -->
+  <div class="tab">
+    <button onclick="switchTab('global')">🌍 Global</button>
+    <button onclick="switchTab('private')">👤 Private</button>
     <button onclick="nav('game.html')">⬅️ Kembali</button>
+  </div>
+
+  <!-- Global Chat -->
+  <div id="globalTab">
+    <h3>🌍 Global Chat</h3>
+    <div class="chat-box" id="globalMessages"></div>
+    <input type="text" id="globalInput" placeholder="Tulis pesan...">
+    <button onclick="sendGlobal()">Kirim</button>
+  </div>
+
+  <!-- Private Chat -->
+  <div id="privateTab" style="display:none">
+    <h3>👤 Private Chat</h3>
+    <label>Pilih User: 
+      <select id="userSelect"></select>
+    </label>
+    <div class="chat-box" id="privateMessages"></div>
+    <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
+    <button onclick="sendPrivate()">Kirim</button>
   </div>
 
   <!-- Firebase -->
@@ -37,66 +50,106 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
     const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
-    firebase.initializeApp(cfg); const auth=firebase.auth(), db=firebase.database();
+    firebase.initializeApp(cfg);
+    const auth=firebase.auth(), db=firebase.database();
 
-    let me, uid, myUser, mode='global', peerUid=null, unlisten=null;
+    let currentUser, currentRoom=null;
 
     function nav(p){ location.href=p; }
-    function el(id){ return document.getElementById(id); }
 
-    function switchMode(){
-      mode = el('mode').value;
-      el('pmBox').style.display = mode==='pm' ? '' : 'none';
-      listen();
+    function switchTab(tab){
+      document.getElementById('globalTab').style.display = tab==='global'?'block':'none';
+      document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
     }
-    async function setPeer(){
-      const uname=(el('toUser').value||'').toLowerCase();
-      if(!uname) return;
-      const uidSnap=await db.ref('usernames/'+uname).once('value');
-      if(!uidSnap.exists()) return alert('Username tidak ditemukan');
-      peerUid = uidSnap.val();
-      listen();
-    }
-    function pairKey(a,b){ return a<b? `${a}_${b}` : `${b}_${a}`; }
 
-    function listen(){
-      if(unlisten) unlisten.off();
-      el('box').innerHTML='';
-      if(mode==='global'){
-        unlisten = db.ref('chats/global').limitToLast(200);
-        unlisten.on('child_added',s=>{
-          const m=s.val(); addRow(`[${new Date(m.ts).toLocaleTimeString()}] ${m.fromName}: ${m.text}`);
+    // Global Chat
+    function sendGlobal(){
+      const txt=document.getElementById('globalInput').value.trim();
+      if(!txt) return;
+      db.ref("chat").push({
+        from: currentUser.username,
+        uid: currentUser.uid,
+        text: txt,
+        time: Date.now()
+      });
+      document.getElementById('globalInput').value='';
+    }
+
+    function loadGlobal(){
+      db.ref("chat").limitToLast(50).on("child_added",snap=>{
+        const d=snap.val();
+        const div=document.createElement("div");
+        div.className="msg";
+        div.innerHTML=`<span class="from">${d.from}:</span> ${d.text}`;
+        document.getElementById("globalMessages").appendChild(div);
+        div.scrollIntoView();
+      });
+    }
+
+    // Private Chat
+    function setupPrivateChat(toUid,toName){
+      const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
+      currentRoom = roomId;
+      // register membership
+      db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
+      db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
+
+      document.getElementById("privateMessages").innerHTML="";
+      db.ref("privateChat/"+roomId+"/messages").off();
+      db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added",snap=>{
+        const d=snap.val();
+        const div=document.createElement("div");
+        div.className="msg";
+        const from=(d.from===currentUser.uid? "Saya": toName);
+        div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
+        document.getElementById("privateMessages").appendChild(div);
+        div.scrollIntoView();
+      });
+    }
+
+    function sendPrivate(){
+      const txt=document.getElementById('privateInput').value.trim();
+      if(!txt || !currentRoom) return;
+      db.ref("privateChat/"+currentRoom+"/messages").push({
+        from: currentUser.uid,
+        text: txt,
+        time: Date.now()
+      });
+      document.getElementById('privateInput').value='';
+    }
+
+    function loadUsers(){
+      db.ref("users").once("value",snap=>{
+        const sel=document.getElementById("userSelect");
+        sel.innerHTML="";
+        snap.forEach(ch=>{
+          const u=ch.val();
+          if(ch.key!==currentUser.uid){
+            const opt=document.createElement("option");
+            opt.value=ch.key;
+            opt.text=u.username||u.email;
+            sel.appendChild(opt);
+          }
         });
-      }else if(mode==='pm' && peerUid){
-        const ref = db.ref('chats/pm/'+pairKey(uid,peerUid)).limitToLast(200);
-        unlisten = ref;
-        ref.on('child_added',s=>{
-          const m=s.val(); addRow(`${m.from===uid?'🟢 Kamu':'🔵 ' + m.fromName}: ${m.text}`);
-        });
-      }
-    }
-    function addRow(t){
-      const d=document.createElement('div'); d.className='row'; d.textContent=t;
-      el('box').appendChild(d); el('box').scrollTop = el('box').scrollHeight;
-    }
-
-    async function sendMsg(){
-      const text = el('msg').value.trim(); if(!text) return;
-      el('msg').value='';
-      if(mode==='global'){
-        await db.ref('chats/global').push({from:uid, fromName:myUser.username, text, ts:Date.now()});
-      }else{
-        if(!peerUid) return alert('Set username tujuan dulu');
-        const ref = db.ref('chats/pm/'+pairKey(uid,peerUid));
-        await ref.push({from:uid, fromName:myUser.username, text, ts:Date.now()});
-      }
+        sel.onchange=()=>{
+          const uid=sel.value;
+          const name=sel.options[sel.selectedIndex].text;
+          setupPrivateChat(uid,name);
+        };
+        if(sel.options.length>0){
+          sel.selectedIndex=0;
+          sel.onchange();
+        }
+      });
     }
 
-    auth.onAuthStateChanged(async u=>{
-      if(!u){ location.href='index.html'; return; }
-      me=u; uid=u.uid;
-      const s=await db.ref('users/'+uid).once('value'); myUser=s.val();
-      listen();
+    auth.onAuthStateChanged(u=>{
+      if(!u){ nav("index.html"); return; }
+      db.ref("users/"+u.uid).once("value",snap=>{
+        currentUser={uid:u.uid,...snap.val()};
+        loadGlobal();
+        loadUsers();
+      });
     });
   </script>
 </body>
