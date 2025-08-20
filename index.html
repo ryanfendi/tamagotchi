@@ -1,187 +1,312 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamagotchi Pixel Game</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamagotchi — Game</title>
 <style>
-  body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-  canvas { background:#08121a; image-rendering:pixelated; border-radius:8px; margin:10px auto; display:block; }
-  .controls button { background:#10b981; border:none; padding:10px; margin:5px; border-radius:8px; font-weight:bold; cursor:pointer; }
-  .hidden { display:none; }
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+  .wrap{max-width:760px;margin:0 auto;padding:10px}
+  canvas{background:#08121a;border-radius:12px;image-rendering:pixelated;margin:10px auto;display:block}
+  .btn{background:#10b981;border:0;color:#042018;font-weight:700;padding:10px 12px;border-radius:10px;margin:5px;cursor:pointer}
+  .btn.gray{background:#1f2937;color:#fff}
+  .row{margin:6px 0}
+  input{padding:10px;border-radius:10px;border:0;margin:4px;width:260px;max-width:90%}
+  .menu a,.menu button{display:inline-block;text-decoration:none}
+  .hidden{display:none}
+  .bars{max-width:360px;margin:6px auto}
+  .bar{height:18px;background:#263245;border-radius:10px;margin:6px 0;overflow:hidden}
+  .fill{height:100%}
+  .hunger{background:#ef4444}
+  .energy{background:#3b82f6}
+  .hp{background:#10b981}
+  small.mono{font-family:ui-monospace,Menlo,monospace;opacity:.75}
 </style>
 </head>
 <body>
-<h1>🐣 Tamagotchi Pixel Game</h1>
+<div class="wrap">
+  <h1>🐣 Tamagotchi Pixel Game</h1>
 
-<!-- Login Panel -->
-<div id="loginPanel">
-  <input id="username" type="text" placeholder="Username"><br>
-  <input id="password" type="password" placeholder="Password"><br>
-  <button onclick="login()">Login</button>
-</div>
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <div class="row">
+      <input id="loginId" placeholder="Username atau Email" />
+    </div>
+    <div class="row">
+      <input id="loginPass" type="password" placeholder="Password" />
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doLogin()">Login</button>
+    </div>
+    <div class="row">
+      <a class="btn gray" href="register.html">Daftar akun baru</a>
+    </div>
+    <p><small class="mono">Login sekali → halaman lain otomatis mengenali akunmu.</small></p>
+  </div>
 
-<!-- Game Panel -->
-<div id="gamePanel" class="hidden">
-  <p>👤 <span id="playerName"></span> | <button onclick="logout()">Logout</button></p>
-  <canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px;"></canvas>
-  
-  <div id="status"></div>
-  <div id="coinInfo"></div>
-  <div id="bars"></div>
+  <!-- GAME UI -->
+  <div id="gameUI" class="hidden">
+    <div class="menu">
+      <a class="btn gray" href="inventory.html">📦 Inventory</a>
+      <a class="btn gray" href="marketplace.html">🏪 Marketplace</a>
+      <a class="btn gray" href="leaderboard.html">🏆 Leaderboard</a>
+      <a class="btn gray" href="chat.html">💬 Chat</a>
+      <button class="btn" onclick="logout()">🚪 Logout</button>
+    </div>
 
-  <div class="controls">
-    <button onclick="feedPet()">🍎 Feed (500 coin)</button>
-    <button onclick="sleepPet()">💤 Sleep (500 coin)</button>
-    <button onclick="earnCoin()">💰 Tap Coin</button>
-    <button onclick="buyPet()">🛒 Evolusi Pet</button>
-    <button onclick="levelUpManual()">⬆️ Naik Level (100000 coin)</button>
+    <p id="welcome"></p>
+
+    <canvas id="cv" width="128" height="128" style="width:320px;height:320px"></canvas>
+
+    <div class="bars">
+      <div class="bar"><div id="barH" class="fill hunger" style="width:100%"></div></div>
+      <div class="bar"><div id="barE" class="fill energy" style="width:100%"></div></div>
+      <div class="bar"><div id="barHP" class="fill hp" style="width:100%"></div></div>
+    </div>
+
+    <div id="status"></div>
+    <div id="coinInfo" style="margin:.35rem 0 1rem"></div>
+
+    <div class="row">
+      <button class="btn" onclick="buyFeed()">🍎 Feed (+10%, 100c)</button>
+      <button class="btn" onclick="buySleep()">😴 Sleep (+10%, 100c)</button>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="tapCoin()">💰 Tap Coin (+10)</button>
+      <button class="btn" onclick="levelUpManual()">⬆️ Naik Level (100.000c)</button>
+    </div>
+    <p><small class="mono">Hunger & Energy -1%/menit. Jika keduanya 0% → HP -20%/menit. HP=0 → pet mati & reset Level 1.</small></p>
   </div>
 </div>
 
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-ctx.imageSmoothingEnabled = false;
+/* ====== STORAGE & SESSION ====== */
+let players = JSON.parse(localStorage.getItem('players')||'{}');
+function savePlayers(){ localStorage.setItem('players', JSON.stringify(players)); }
+function setSession(username){ localStorage.setItem('lastUser', username); }
+function getSession(){ return localStorage.getItem('lastUser'); }
+function clearSession(){ localStorage.removeItem('lastUser'); }
 
-let players = JSON.parse(localStorage.getItem("players")||"{}");
-let currentUser = localStorage.getItem("lastUser")||null;
-let me = null;
-
-// Login
-function login(){
-  const name = document.getElementById("username").value.trim();
-  const pass = document.getElementById("password").value.trim();
-  if(!name||!pass) return alert("Isi username & password!");
-
-  if(!players[name]){ // register baru
-    players[name] = {
-      username:name, password:pass,
-      coins:1000,
-      pet:{level:1,hp:100,hunger:100,energy:100,alive:true},
-      inventory:{feed:0,sleep:0}
-    };
-  } else {
-    if(players[name].password!==pass) return alert("Password salah!");
+function getUserByLogin(id){
+  id = (id||'').trim().toLowerCase();
+  if(!id) return null;
+  // Jika mengandung '@' → anggap email
+  if(id.includes('@')){
+    const pair = Object.entries(players).find(([u,p]) => (p.email||'').toLowerCase()===id);
+    return pair ? pair[0] : null;
   }
-  me = players[name];
-  currentUser = name;
-  localStorage.setItem("lastUser",name);
-  save();
+  // selain itu → username
+  return players[id] ? id : null;
+}
+
+function ensurePlayer(username, pass, email){
+  if(!players[username]){
+    players[username] = {
+      username,
+      email: email||'',
+      password: pass,
+      coins: 1000,
+      pet: { level:1, hunger:100, energy:100, hp:100, alive:true, lastTick: Date.now() },
+      inventory: []
+    };
+  }
+}
+
+/* ====== LOGIN / LOGOUT ====== */
+let me = null;     // object player
+let myName = null; // username
+
+function doLogin(){
+  const id = document.getElementById('loginId').value;
+  const pass = (document.getElementById('loginPass').value||'').trim();
+  if(!id||!pass) return alert('Isi username/email dan password.');
+
+  const uname = getUserByLogin(id);
+  if(!uname){
+    // Auto-register cepat jika belum ada akun dengan ID tsb (username)
+    if(id.includes('@')) return alert('Email belum terdaftar. Silakan daftar di halaman Register.');
+    ensurePlayer(id.trim().toLowerCase(), pass, '');
+    savePlayers();
+    return proceedLogin(id.trim().toLowerCase(), pass);
+  }
+  // cek password
+  if(players[uname].password !== pass) return alert('Username/Email atau password salah');
+  proceedLogin(uname, pass);
+}
+function proceedLogin(uname){
+  myName = uname;
+  me = players[uname];
+  setSession(uname);
+  savePlayers();
   showGame();
 }
 function logout(){
-  localStorage.removeItem("lastUser");
-  location.reload();
+  clearSession();
+  location.href = 'index.html';
 }
 
-// Show UI
+/* ====== AUTO LOGIN ====== */
+(function auto(){
+  const last = getSession();
+  if(last && players[last]){
+    myName = last; me = players[last];
+    showGame();
+  }
+})();
+
+/* ====== GAME UI ====== */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+let frame = 0;
+
 function showGame(){
-  document.getElementById("loginPanel").classList.add("hidden");
-  document.getElementById("gamePanel").classList.remove("hidden");
-  document.getElementById("playerName").innerText = me.username;
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('gameUI').classList.remove('hidden');
+  document.getElementById('welcome').textContent = `Selamat datang, ${myName}!`;
+  catchUpDecay();
   updateUI();
-  drawPet();
+  loop();
 }
-
-// Save
-function save(){ localStorage.setItem("players",JSON.stringify(players)); }
-
-// UI Update
 function updateUI(){
-  document.getElementById("coinInfo").innerHTML = `💰 Coin: ${me.coins} | Level: ${me.pet.level}`;
-  document.getElementById("status").innerHTML = `Status: ${me.pet.alive?"Hidup":"Mati"} | HP: ${me.pet.hp}`;
-  document.getElementById("bars").innerHTML = 
-    `Hunger: ${me.pet.hunger}% | Energy: ${me.pet.energy}%`;
+  const p = me.pet;
+  document.getElementById('barH').style.width = p.hunger + '%';
+  document.getElementById('barE').style.width = p.energy + '%';
+  document.getElementById('barHP').style.width = p.hp + '%';
+  document.getElementById('status').textContent = `❤️ HP ${p.hp}% • 🍎 Hunger ${p.hunger}% • 😴 Energy ${p.energy}%`;
+  document.getElementById('coinInfo').textContent = `💰 Coin: ${me.coins} • Level: ${p.level}`;
 }
 
-// Feed
-function feedPet(){
-  if(!me.pet.alive) return alert("Pet sudah mati!");
-  if(me.coins<500) return alert("Coin tidak cukup!");
-  me.coins-=500;
-  me.pet.hunger=Math.min(100,me.pet.hunger+10);
-  updateUI(); save();
+/* ====== MEKANIK ====== */
+function buyFeed(){
+  if(me.coins<100) return alert('Coin tidak cukup');
+  me.coins -= 100;
+  me.pet.hunger = Math.min(100, me.pet.hunger + 10);
+  savePlayers(); updateUI();
 }
-// Sleep
-function sleepPet(){
-  if(!me.pet.alive) return alert("Pet sudah mati!");
-  if(me.coins<500) return alert("Coin tidak cukup!");
-  me.coins-=500;
-  me.pet.energy=Math.min(100,me.pet.energy+10);
-  updateUI(); save();
+function buySleep(){
+  if(me.coins<100) return alert('Coin tidak cukup');
+  me.coins -= 100;
+  me.pet.energy = Math.min(100, me.pet.energy + 10);
+  savePlayers(); updateUI();
 }
-// Earn coin
-function earnCoin(){ me.coins+=10; updateUI(); save(); }
-// Buy/Evolusi Pet
-function buyPet(){
-  const price=me.pet.level*10000;
-  if(me.coins<price) return alert("Coin tidak cukup!");
-  me.coins-=price;
-  me.pet.level++;
-  updateUI(); save();
-}
-// Level up manual
+function tapCoin(){ me.coins += 10; savePlayers(); updateUI(); }
 function levelUpManual(){
-  if(me.coins<100000) return alert("Coin tidak cukup!");
-  me.coins-=100000;
-  me.pet.level++;
-  updateUI(); save();
+  if(me.coins < 100000) return alert('Coin tidak cukup (butuh 100.000)');
+  me.coins -= 100000;
+  me.pet.level += 1;
+  // bonus pulih
+  me.pet.hunger = 100; me.pet.energy = 100; me.pet.hp = 100;
+  savePlayers(); updateUI();
 }
 
-// Sprite lucu unik tiap level (canvas pixel art)
-function drawPet(){
-  if(!me||!me.pet) return;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  let lvl=me.pet.level;
-  ctx.fillStyle="#08121a"; ctx.fillRect(0,0,128,128);
-
-  if(lvl<5){ // bayi
-    ctx.fillStyle="#ffd07a";
-    ctx.fillRect(50,60,30,25);
-    ctx.fillStyle="#000"; ctx.fillRect(58,70,5,5); ctx.fillRect(68,70,5,5);
-  } else if(lvl<10){ // anak
-    ctx.fillStyle="#88f";
-    ctx.beginPath(); ctx.arc(64,70,20,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.fillRect(55,65,5,5); ctx.fillRect(70,65,5,5);
-  } else if(lvl<20){ // remaja
-    ctx.fillStyle="#0f0";
-    ctx.fillRect(44,50,40,40);
-    ctx.fillStyle="#000"; ctx.fillRect(52,60,5,5); ctx.fillRect(68,60,5,5);
-  } else if(lvl<50){ // dewasa
-    ctx.fillStyle="#f0f";
-    ctx.beginPath(); ctx.arc(64,64,30,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.fillRect(55,55,6,6); ctx.fillRect(72,55,6,6);
-  } else { // legendaris
-    ctx.fillStyle="#ff0";
-    ctx.beginPath(); ctx.moveTo(64,34); ctx.lineTo(94,94); ctx.lineTo(34,94); ctx.closePath(); ctx.fill();
-    ctx.fillStyle="#000"; ctx.fillRect(55,70,6,6); ctx.fillRect(70,70,6,6);
+// Kurangi stat tiap menit, dan tangani kematian
+function decayOneMinute(pet){
+  pet.hunger = Math.max(0, pet.hunger - 1);
+  pet.energy = Math.max(0, pet.energy - 1);
+  if(pet.hunger===0 && pet.energy===0){
+    pet.hp = Math.max(0, pet.hp - 20);
   }
-
-  requestAnimationFrame(drawPet);
+  if(pet.hp<=0){
+    // Mati → reset
+    alert('💀 Pet mati! Kembali ke Level 1.');
+    me.pet = { level:1, hunger:100, energy:100, hp:100, alive:true, lastTick: Date.now() };
+  }
 }
 
-// Timer: kurangi hunger/energy tiap menit
+// Catch-up kalau lama tidak buka halaman
+function catchUpDecay(){
+  const pet = me.pet;
+  const now = Date.now();
+  const last = pet.lastTick || now;
+  const diffMin = Math.floor((now - last)/60000);
+  if(diffMin>0){
+    for(let i=0;i<diffMin;i++) decayOneMinute(pet);
+    pet.lastTick = now;
+    savePlayers();
+  }
+}
+
 setInterval(()=>{
-  if(me&&me.pet&&me.pet.alive){
-    me.pet.hunger=Math.max(0,me.pet.hunger-1);
-    me.pet.energy=Math.max(0,me.pet.energy-1);
-    if(me.pet.hunger===0||me.pet.energy===0){
-      me.pet.hp=Math.max(0,me.pet.hp-20);
-    }
-    if(me.pet.hp<=0){
-      me.pet.alive=false;
-      me.pet={level:1,hp:100,hunger:100,energy:100,alive:true}; // reset
-      alert("☠️ Pet mati! Mulai dari level 1 lagi");
-    }
-    updateUI(); save();
-  }
-},60000); // tiap 1 menit
+  if(!me) return;
+  decayOneMinute(me.pet);
+  me.pet.lastTick = Date.now();
+  savePlayers(); updateUI();
+}, 60000);
 
-// Auto login jika sudah
-if(currentUser&&players[currentUser]){
-  me=players[currentUser];
-  showGame();
+/* ====== SPRITE LUCu (evolusi) ======
+   Tier: 1-4 bayi, 5-9 anak, 10-19 remaja, 20-49 dewasa, 50+ legendaris
+*/
+function drawPet(){
+  const p = me.pet;
+  ctx.clearRect(0,0,cv.width,cv.height);
+
+  // background bintang
+  ctx.fillStyle = '#08121a';
+  ctx.fillRect(0,0,128,128);
+  for(let i=0;i<18;i++){
+    ctx.fillStyle = 'rgba(255,255,255,.12)';
+    ctx.fillRect((i*13 + frame)%128, (i*7 + frame*0.8)%128, 1, 1);
+  }
+
+  let tier=0, body='#ffd07a';
+  if(p.level<5){ tier=0; body='#ffd07a'; }
+  else if(p.level<10){ tier=1; body='#93c5fd'; }
+  else if(p.level<20){ tier=2; body='#34d399'; }
+  else if(p.level<50){ tier=3; body='#f472b6'; }
+  else { tier=4; body='#fbbf24'; }
+
+  const wobX = Math.sin(frame/12)*3;
+  const wobY = Math.cos(frame/18)*2;
+  const baseX = 64 + wobX;
+  const baseY = 70 + wobY;
+
+  // gambar bentuk per tier
+  ctx.fillStyle = body;
+
+  if(tier===0){ // bayi: kotak mungil
+    ctx.fillRect(baseX-14, baseY-12, 28, 22);
+  } else if(tier===1){ // anak: bulat
+    ctx.beginPath(); ctx.arc(baseX, baseY, 16, 0, Math.PI*2); ctx.fill();
+  } else if(tier===2){ // remaja: persegi besar + topi kecil
+    ctx.fillRect(baseX-18, baseY-16, 36, 30);
+    ctx.fillStyle='#222'; ctx.fillRect(baseX-10, baseY-22, 20, 6);
+    ctx.fillStyle=body;
+  } else if(tier===3){ // dewasa: bulat besar + antena
+    ctx.beginPath(); ctx.arc(baseX, baseY, 22, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#222'; ctx.fillRect(baseX-2, baseY-30, 4, 10);
+    ctx.fillStyle=body; ctx.fillRect(baseX-3, baseY-34, 6, 4);
+  } else { // legendaris: segitiga (naga kecil)
+    ctx.beginPath(); ctx.moveTo(baseX, baseY-24); ctx.lineTo(baseX+24, baseY+20); ctx.lineTo(baseX-24, baseY+20); ctx.closePath(); ctx.fill();
+    // sayap
+    ctx.fillStyle='#fff';
+    ctx.fillRect(baseX-28, baseY-2, 10, 4);
+    ctx.fillRect(baseX+18, baseY-2, 10, 4);
+    ctx.fillStyle=body;
+  }
+
+  // mata (berkedip)
+  const blink = Math.floor(frame/50)%2===0;
+  ctx.fillStyle = '#0b0b0b';
+  if(blink){
+    ctx.fillRect(baseX-6, baseY-2, 3, 3);
+    ctx.fillRect(baseX+3, baseY-2, 3, 3);
+  }else{
+    ctx.fillRect(baseX-6, baseY-1, 3, 1);
+    ctx.fillRect(baseX+3, baseY-1, 3, 1);
+  }
+
+  // mulut sesuai HP
+  ctx.fillStyle = (p.hp>50)?'#fff':'#ff7b7b';
+  ctx.fillRect(baseX-4, baseY+6, 8, 2);
+
+  frame++;
+}
+
+function loop(){
+  if(!me) return;
+  drawPet();
+  requestAnimationFrame(loop);
 }
 </script>
 </body>
