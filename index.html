@@ -2,195 +2,226 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tamagotchi Online</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; margin:0; padding:0; }
-    canvas { background:#08121a; image-rendering:pixelated; border-radius:8px; margin-top:10px; }
-    .controls button { background:#10b981; border:none; padding:10px; margin:5px; border-radius:8px; font-weight:bold; cursor:pointer; }
-    #gameUI { display:none; }
-    .hidden { display:none; }
-    #ads { background:#111; color:#0f0; padding:5px; margin:10px; border:1px dashed #0f0; }
-    #qrisPopup { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; }
-    #qrisBox { background:#fff; color:#000; padding:20px; border-radius:10px; text-align:center; }
+    body { font-family: Arial, sans-serif; text-align: center; background: #f0f8ff; }
+    .box { border:1px solid #ccc; padding:20px; margin:10px; border-radius:10px; display:inline-block; background:#fff; }
+    #game { display:none; }
+    button { margin:5px; padding:8px 15px; border:none; border-radius:8px; background:#4caf50; color:white; cursor:pointer; }
+    button:hover { background:#45a049; }
   </style>
 </head>
 <body>
-<h1>🐣 Tamagotchi Online</h1>
+  <h1>🐾 Tamagotchi Online</h1>
 
-<!-- Login Form -->
-<div id="loginForm">
-  <h3>Login / Daftar</h3>
-  <input id="email" type="email" placeholder="Email"><br>
-  <input id="password" type="password" placeholder="Password"><br>
-  <button onclick="register()">Daftar</button>
-  <button onclick="login()">Login</button>
-</div>
+  <!-- FORM AUTH -->
+  <div id="authBox" class="box">
+    <h2>Daftar</h2>
+    <input id="regEmail" type="email" placeholder="Email"><br>
+    <input id="regUsername" type="text" placeholder="Pilih Username unik"><br>
+    <input id="regPass" type="password" placeholder="Password"><br>
+    <button onclick="register()">Daftar</button>
 
-<!-- Game UI -->
-<div id="gameUI">
-  <p id="userInfo"></p>
-  <button onclick="logout()">Logout</button>
+    <hr>
 
-  <canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px;"></canvas>
-
-  <div class="controls">
-    <button onclick="feedPet()">🍎 Feed (1 coin)</button>
-    <button onclick="sleepPet()">💤 Sleep (1 coin)</button>
-    <button onclick="earnCoin()">💰 Tap Coin (+0.01)</button>
-    <button onclick="levelUp()">⬆️ Level Up (100 coin)</button>
-    <button onclick="buyPet()">🛒 Pet Baru (200 coin)</button>
-    <button onclick="topUpQRIS()">💳 Beli Coin</button>
-    <button onclick="goTo('inventory.html')">📦 Inventory</button>
-    <button onclick="goTo('marketplace.html')">🏪 Marketplace</button>
-    <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
-    <button onclick="goTo('chat.html')">💬 Chat</button>
+    <h2>Login</h2>
+    <input id="loginUser" type="text" placeholder="Email atau Username"><br>
+    <input id="loginPass" type="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
   </div>
 
-  <div id="status"></div>
-  <div id="coinInfo"></div>
+  <!-- GAME -->
+  <div id="game" class="box">
+    <h2>Selamat datang, <span id="playerName"></span>!</h2>
+    <img id="petSprite" src="https://media.giphy.com/media/l0MYC0LajbaPoEADu/giphy.gif" width="150"><br>
+    <p>❤️ HP: <span id="hp">100</span>% | 🍗 Hunger: <span id="hunger">100</span>% | 😴 Energy: <span id="energy">100</span>%</p>
+    <p>💰 Coin: <span id="coin">0</span> | ⭐ Level: <span id="level">1</span></p>
 
-  <!-- Tempat iklan -->
-  <div id="ads">
-    <p>📢 Iklan Teks: Pasang iklanmu di sini!</p>
-    <img src="https://via.placeholder.com/468x60?text=Banner+Iklan" alt="Banner Iklan"><br>
-    <button onclick="showPopupAd()">Tampilkan Iklan Pop-up</button>
+    <button onclick="feedPet()">Kasih Makan</button>
+    <button onclick="sleepPet()">Tidur</button>
+    <button onclick="tapCoin()">Tap Coin</button>
+    <button onclick="buyLevel()">Beli Naik Level</button>
+    <button onclick="buyPet()">Beli Pet Baru</button>
+    <br><br>
+    <button onclick="logout()">Logout</button>
   </div>
-</div>
 
-<!-- QRIS Popup -->
-<div id="qrisPopup">
-  <div id="qrisBox">
-    <h3>QRIS Pembayaran</h3>
-    <p id="qrisInfo"></p>
-    <img id="qrisImage" src="">
-    <br><button onclick="closeQRIS()">Tutup</button>
-  </div>
-</div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { 
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut 
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { 
+      getDatabase, ref, set, get, query, orderByChild, equalTo 
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    // === Firebase config ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
 
-<script>
-// Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-  authDomain: "tamagotchi-2be0c.firebaseapp.com",
-  databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-  projectId: "tamagotchi-2be0c",
-  storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-  messagingSenderId: "202052432703",
-  appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-  measurementId: "G-TWGGSJRX26"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
-let user=null, pet={level:1,hunger:100,energy:100,hp:100,coins:50};
+    let player = {
+      username: "",
+      coin: 0,
+      level: 1,
+      hp: 100,
+      hunger: 100,
+      energy: 100
+    };
 
-// Auth
-function register(){
-  let email=document.getElementById("email").value;
-  let pass=document.getElementById("password").value;
-  auth.createUserWithEmailAndPassword(email,pass).catch(e=>alert(e.message));
-}
-function login(){
-  let email=document.getElementById("email").value;
-  let pass=document.getElementById("password").value;
-  auth.signInWithEmailAndPassword(email,pass).catch(e=>alert(e.message));
-}
-function logout(){ auth.signOut(); }
-auth.onAuthStateChanged(u=>{
-  if(u){
-    user=u; document.getElementById("loginForm").style.display="none";
-    document.getElementById("gameUI").style.display="block";
-    db.ref("users/"+u.uid).once("value",snap=>{
-      if(snap.exists()) pet=snap.val();
-      save(); updateUI();
-    });
-  }else{
-    user=null; document.getElementById("loginForm").style.display="block";
-    document.getElementById("gameUI").style.display="none";
-  }
-});
+    // ===== REGISTER =====
+    window.register = async function() {
+      const email = document.getElementById("regEmail").value.trim();
+      const username = document.getElementById("regUsername").value.trim().toLowerCase();
+      const password = document.getElementById("regPass").value.trim();
 
-// Save
-function save(){ if(user) db.ref("users/"+user.uid).set(pet); }
+      if (!email || !username || !password) {
+        alert("Harap isi semua field.");
+        return;
+      }
 
-// UI
-function updateUI(){
-  document.getElementById("userInfo").innerText=`👤 ${user.email}`;
-  document.getElementById("coinInfo").innerText=`💰 ${pet.coins.toFixed(2)} | Level ${pet.level}`;
-  document.getElementById("status").innerText=`Hunger:${pet.hunger}% | Energy:${pet.energy}% | HP:${pet.hp}`;
-}
+      // cek username unik
+      const q = query(ref(db, "users"), orderByChild("username"), equalTo(username));
+      const snap = await get(q);
+      if (snap.exists()) {
+        alert("Username sudah dipakai, pilih yang lain.");
+        return;
+      }
 
-// Game Actions
-function feedPet(){
-  if(pet.coins<1) return alert("Coin tidak cukup!");
-  pet.coins-=1; pet.hunger=Math.min(100,pet.hunger+10); updateUI(); save();
-}
-function sleepPet(){
-  if(pet.coins<1) return alert("Coin tidak cukup!");
-  pet.coins-=1; pet.energy=Math.min(100,pet.energy+10); updateUI(); save();
-}
-function earnCoin(){ pet.coins+=0.01; updateUI(); save(); }
-function levelUp(){
-  if(pet.coins<100) return alert("Coin tidak cukup!");
-  pet.coins-=100; pet.level++; updateUI(); save();
-}
-function buyPet(){
-  if(pet.coins<200) return alert("Coin tidak cukup!");
-  pet.coins-=200; alert("Pet baru masuk inventory!"); updateUI(); save();
-}
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = userCred.user.uid;
 
-// HP Decay
-setInterval(()=>{
-  if(user){
-    pet.hunger=Math.max(0,pet.hunger-1);
-    pet.energy=Math.max(0,pet.energy-1);
-    if(pet.hunger===0||pet.energy===0) pet.hp=Math.max(0,pet.hp-20);
-    if(pet.hp===0){ alert("Pet mati! Mulai ulang Level 1"); pet={level:1,hunger:100,energy:100,hp:100,coins:0}; }
-    updateUI(); save();
-  }
-},60000);
+        await set(ref(db, "users/" + uid), {
+          email: email,
+          username: username,
+          ...player
+        });
 
-// QRIS TopUp
-function topUpQRIS(){
-  let jumlah=prompt("Jumlah coin (kelipatan 100):"); 
-  jumlah=parseInt(jumlah);
-  if(isNaN(jumlah) || jumlah<100 || jumlah%100!==0){ alert("Minimal 100 coin dan harus kelipatan 100!"); return; }
-  let harga=(jumlah/100)*10000;
-  db.ref("topupRequests").push({uid:user.uid,email:user.email,coin:jumlah,harga,status:"pending"});
-  document.getElementById("qrisInfo").innerText=`Beli ${jumlah} coin = Rp${harga}`;
-  document.getElementById("qrisImage").src=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAY+${harga}+QRIS`;
-  document.getElementById("qrisPopup").style.display="flex";
-}
-function closeQRIS(){ document.getElementById("qrisPopup").style.display="none"; }
+        localStorage.setItem("username", username);
+        alert("Daftar berhasil, selamat datang " + username);
+        showGame(username);
+      } catch (err) {
+        alert("Gagal daftar: " + err.message);
+      }
+    };
 
-// Ads popup
-function showPopupAd(){ alert("📢 Ini iklan pop-up! Hubungi admin untuk pasang iklan."); }
+    // ===== LOGIN =====
+    window.login = async function() {
+      const input = document.getElementById("loginUser").value.trim().toLowerCase();
+      const password = document.getElementById("loginPass").value.trim();
 
-// Navigate
-function goTo(page){ location.href=page; }
+      if (!input || !password) {
+        alert("Isi username/email dan password.");
+        return;
+      }
 
-// Canvas Sprite
-const canvas=document.getElementById("gameCanvas");
-const ctx=canvas.getContext("2d");
-ctx.imageSmoothingEnabled=false;
-let frame=0;
-function drawPet(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  let px=40+Math.sin(frame/10)*5; let py=60;
-  ctx.fillStyle=pet.level<5?"#ffd07a":"#7af"; // berubah warna tiap level range
-  ctx.fillRect(px,py,40,30);
-  ctx.fillStyle="#111"; ctx.fillRect(px+8,py+8,5,5); ctx.fillRect(px+26,py+8,5,5);
-  ctx.fillStyle=pet.hunger<20?"#f00":"#fff"; ctx.fillRect(px+18,py+18,4,4);
-  frame++; requestAnimationFrame(drawPet);
-}
-drawPet();
-</script>
+      let emailToUse = input;
+
+      // kalau input bukan email, anggap username → lookup email
+      if (!input.includes("@")) {
+        const q = query(ref(db, "users"), orderByChild("username"), equalTo(input));
+        const snap = await get(q);
+        if (!snap.exists()) {
+          alert("Username tidak ditemukan.");
+          return;
+        }
+        let userData = Object.values(snap.val())[0];
+        emailToUse = userData.email;
+        localStorage.setItem("username", input);
+      }
+
+      try {
+        const userCred = await signInWithEmailAndPassword(auth, emailToUse, password);
+        const uid = userCred.user.uid;
+        const snap = await get(ref(db, "users/" + uid));
+        if (snap.exists()) {
+          player = snap.val();
+          localStorage.setItem("username", player.username);
+          showGame(player.username);
+        }
+      } catch (err) {
+        alert("Gagal login: " + err.message);
+      }
+    };
+
+    // ===== LOGOUT =====
+    window.logout = async function() {
+      await signOut(auth);
+      localStorage.removeItem("username");
+      location.reload();
+    }
+
+    // ===== GAME FUNCTION =====
+    function showGame(name) {
+      document.getElementById("authBox").style.display = "none";
+      document.getElementById("game").style.display = "block";
+      document.getElementById("playerName").innerText = name;
+      updateUI();
+    }
+
+    function updateUI() {
+      document.getElementById("coin").innerText = player.coin;
+      document.getElementById("level").innerText = player.level;
+      document.getElementById("hp").innerText = player.hp;
+      document.getElementById("hunger").innerText = player.hunger;
+      document.getElementById("energy").innerText = player.energy;
+    }
+
+    async function savePlayer() {
+      if (auth.currentUser) {
+        await set(ref(db, "users/" + auth.currentUser.uid), player);
+      }
+    }
+
+    window.feedPet = async function() {
+      if (player.coin < 1) { alert("Coin kurang!"); return; }
+      player.coin -= 1;
+      player.hunger = Math.min(100, player.hunger + 10);
+      updateUI();
+      savePlayer();
+    }
+
+    window.sleepPet = async function() {
+      if (player.coin < 1) { alert("Coin kurang!"); return; }
+      player.coin -= 1;
+      player.energy = Math.min(100, player.energy + 10);
+      updateUI();
+      savePlayer();
+    }
+
+    window.tapCoin = async function() {
+      player.coin += 0.01;
+      updateUI();
+      savePlayer();
+    }
+
+    window.buyLevel = async function() {
+      if (player.coin < 100) { alert("Coin kurang!"); return; }
+      player.coin -= 100;
+      player.level += 1;
+      updateUI();
+      savePlayer();
+    }
+
+    window.buyPet = async function() {
+      if (player.coin < 200) { alert("Coin kurang!"); return; }
+      player.coin -= 200;
+      alert("Pet baru berhasil dibeli! Cek di Inventory.");
+      updateUI();
+      savePlayer();
+    }
+  </script>
 </body>
 </html>
