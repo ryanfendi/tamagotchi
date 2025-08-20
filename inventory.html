@@ -2,92 +2,25 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Inventory - Tamagotchi Online</title>
+  <title>Inventory - Tamagotchi</title>
   <style>
-    body { font-family: Arial; text-align:center; background:#f9fff2; }
-    .pet { border:1px solid #ccc; margin:10px; padding:10px; border-radius:8px; background:white; }
-    button { margin:5px; padding:6px 12px; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+    button { padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
+    .item { border:1px solid #0f0; margin:5px; padding:10px; border-radius:8px; }
   </style>
 </head>
 <body>
-  <h1>🎒 Inventory</h1>
-  <p>Username: <span id="playerName"></span> | Coin: <span id="coin"></span></p>
-  <div id="pets"></div>
-  <br>
-  <button onclick="location.href='index.html'">🏠 Kembali ke Game</button>
-  <button onclick="logout()">Logout</button>
+  <h2>📦 Inventory</h2>
+  <div id="inventory"></div>
+  <button onclick="goBack()">⬅️ Kembali</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    let player = {}, uid = "";
-
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        uid = user.uid;
-        let snap = await get(ref(db,"users/"+uid));
-        if (snap.exists()) {
-          player = snap.val();
-          showInventory();
-        }
-      } else {
-        alert("Harus login dulu!");
-        location.href="index.html";
-      }
-    });
-
-    function showInventory() {
-      document.getElementById("playerName").innerText = player.username;
-      document.getElementById("coin").innerText = player.coin;
-      const petsBox = document.getElementById("pets");
-      petsBox.innerHTML = "";
-      if (!player.pets || player.pets.length==0) {
-        petsBox.innerHTML = "<p>Tidak ada pet</p>";
-        return;
-      }
-      player.pets.forEach((pet,idx)=>{
-        let div=document.createElement("div");
-        div.className="pet";
-        div.innerHTML=`
-          <p>🐾 Pet Level ${pet.level}</p>
-          <button onclick="sellPet(${idx})">Jual ke Marketplace</button>
-        `;
-        petsBox.appendChild(div);
-      });
-    }
-
-    window.sellPet = async function(idx) {
-      let pet = player.pets[idx];
-      let harga = pet.level * 200; // harga dasar
-      let id = uid+"_"+Date.now();
-      await set(ref(db,"marketplace/"+id), {pet:pet, owner:player.username, price:harga});
-      player.pets.splice(idx,1);
-      await set(ref(db,"users/"+uid), player);
-      alert("Pet dijual di marketplace seharga "+harga+" coin!");
-      showInventory();
-    }
-
-    window.logout = async function() {
-      await signOut(auth);
-      location.href="index.html";
-    }
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="game.js"></script>
+  <script>
+    loadInventory();
+    function goBack(){ location.href="game.html"; }
   </script>
 </body>
 </html>
