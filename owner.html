@@ -3,142 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Owner Panel - Tamagotchi Online</title>
+  <title>Owner Panel</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:20px; }
-    h1 { color:#10b981; }
-    table { border-collapse: collapse; width:100%; margin:10px 0; }
-    th, td { border:1px solid #444; padding:8px; text-align:center; }
-    th { background:#222; }
-    button { background:#10b981; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; margin:2px; }
-    input, textarea { width:100%; padding:5px; margin:4px 0; border-radius:6px; border:none; }
-    .section { background:#111; padding:15px; border-radius:10px; margin-bottom:20px; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:0; padding:20px; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    th, td { border:1px solid #555; padding:8px; text-align:center; }
+    th { background:#10b981; color:#000; }
+    button { background:#10b981; border:none; padding:6px 12px; margin:2px; border-radius:6px; cursor:pointer; }
   </style>
 </head>
 <body>
-  <h1>👑 Owner Panel</h1>
+  <h1>⚙️ Owner Panel</h1>
+  <p id="ownerInfo">Memuat data...</p>
   <button onclick="logout()">Logout</button>
 
-  <div class="section">
-    <h2>📋 Daftar Top Up Pending</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Jumlah Coin</th>
-          <th>Harga</th>
-          <th>Status</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody id="topupTable"></tbody>
-    </table>
-  </div>
+  <h2>📋 Daftar User</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Username</th>
+        <th>Level</th>
+        <th>Coin</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
 
-  <div class="section">
-    <h2>📢 Kelola Iklan</h2>
-    <label>Teks Iklan</label>
-    <textarea id="adText"></textarea>
-    <label>Banner URL</label>
-    <input id="adBanner" type="text">
-    <label>Popup Pesan</label>
-    <textarea id="adPopup"></textarea>
-    <button onclick="saveAds()">Simpan Iklan</button>
-  </div>
+  <h2>💳 Request Top Up</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Coin</th>
+        <th>Harga</th>
+        <th>Status</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="topupTable"></tbody>
+  </table>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
   <script>
-  // Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-    authDomain: "tamagotchi-2be0c.firebaseapp.com",
-    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-    projectId: "tamagotchi-2be0c",
-    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-    messagingSenderId: "202052432703",
-    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-    measurementId: "G-TWGGSJRX26"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const auth = firebase.auth();
-
-  // hanya owner yang bisa login di sini
-  const OWNER_EMAIL = "owner@gmail.com"; 
-
-  auth.onAuthStateChanged(u=>{
-    if(!u || u.email !== OWNER_EMAIL){
-      alert("Hanya owner yang boleh masuk!");
-      location.href="index.html";
-    } else {
-      loadTopups();
-      loadAds();
-    }
-  });
-
-  function logout(){ auth.signOut(); location.href="index.html"; }
-
-  // Load topup requests
-  function loadTopups(){
-    db.ref("topupRequests").on("value",snap=>{
-      let rows="";
-      snap.forEach(child=>{
-        let d=child.val();
-        rows+=`
-          <tr>
-            <td>${d.email}</td>
-            <td>${d.coin}</td>
-            <td>Rp${d.harga}</td>
-            <td>${d.status}</td>
-            <td>
-              <button onclick="approveTopup('${child.key}','${d.uid}',${d.coin})">✅ Approve</button>
-              <button onclick="rejectTopup('${child.key}')">❌ Tolak</button>
-            </td>
-          </tr>
-        `;
-      });
-      document.getElementById("topupTable").innerHTML=rows;
-    });
-  }
-
-  // Approve topup
-  function approveTopup(reqId, uid, coin){
-    db.ref("users/"+uid+"/coins").once("value").then(snap=>{
-      let current = snap.val() || 0;
-      db.ref("users/"+uid+"/coins").set(current+coin);
-      db.ref("topupRequests/"+reqId+"/status").set("approved");
-    });
-  }
-
-  // Reject topup
-  function rejectTopup(reqId){
-    db.ref("topupRequests/"+reqId+"/status").set("rejected");
-  }
-
-  // Load ads
-  function loadAds(){
-    db.ref("ads").once("value").then(snap=>{
-      let d=snap.val()||{};
-      document.getElementById("adText").value=d.text||"";
-      document.getElementById("adBanner").value=d.banner||"";
-      document.getElementById("adPopup").value=d.popup||"";
-    });
-  }
-
-  // Save ads
-  function saveAds(){
-    let data={
-      text:document.getElementById("adText").value,
-      banner:document.getElementById("adBanner").value,
-      popup:document.getElementById("adPopup").value
+    // Konfigurasi Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
     };
-    db.ref("ads").set(data);
-    alert("Iklan diperbarui!");
-  }
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    // Data Owner (ubah sesuai akun owner)
+    const OWNER_EMAIL = "ryanfendiwardana@gmail.com";
+    const OWNER_UID   = "vNuT6n1TD2XSjkywNbE5mROL8sa2"; // isi UID asli dari Firebase Authentication
+
+    let user = null;
+
+    // Logout
+    function logout(){
+      auth.signOut().then(()=>location.href="index.html");
+    }
+
+    // Cek autentikasi
+    auth.onAuthStateChanged(u=>{
+      if(u){
+        user=u;
+        if(user.email!==OWNER_EMAIL || user.uid!==OWNER_UID){
+          alert("🚫 Kamu bukan owner!");
+          window.location.href="game.html";
+        }else{
+          document.getElementById("ownerInfo").innerText=`👑 Login sebagai ${user.email}`;
+          loadUsers();
+          loadTopups();
+        }
+      }else{
+        window.location.href="index.html";
+      }
+    });
+
+    // Muat daftar user
+    function loadUsers(){
+      db.ref("users").on("value", snap=>{
+        let html="";
+        snap.forEach(child=>{
+          let u=child.val();
+          html+=`
+            <tr>
+              <td>${u.email||"-"}</td>
+              <td>${u.username||"-"}</td>
+              <td>${u.level||1}</td>
+              <td>${u.coins||0}</td>
+              <td>
+                <button onclick="addCoins('${child.key}',100)">+100 Coin</button>
+                <button onclick="resetUser('${child.key}')">Reset</button>
+              </td>
+            </tr>
+          `;
+        });
+        document.getElementById("userTable").innerHTML=html;
+      });
+    }
+
+    // Muat request top up
+    function loadTopups(){
+      db.ref("topupRequests").on("value", snap=>{
+        let html="";
+        snap.forEach(child=>{
+          let t=child.val();
+          html+=`
+            <tr>
+              <td>${t.email}</td>
+              <td>${t.coin}</td>
+              <td>Rp${t.harga}</td>
+              <td>${t.status}</td>
+              <td>
+                ${t.status==="pending"?
+                  `<button onclick="approveTopup('${child.key}','${t.uid}',${t.coin})">✔️ Approve</button>`:""}
+              </td>
+            </tr>
+          `;
+        });
+        document.getElementById("topupTable").innerHTML=html;
+      });
+    }
+
+    // Tambah coin manual
+    function addCoins(uid,amount){
+      db.ref("users/"+uid+"/coins").transaction(c=>(c||0)+amount);
+    }
+
+    // Reset user
+    function resetUser(uid){
+      db.ref("users/"+uid).set({
+        level:1,hunger:100,energy:100,hp:100,coins:0
+      });
+    }
+
+    // Approve top up
+    function approveTopup(tid,uid,coin){
+      db.ref("users/"+uid+"/coins").transaction(c=>(c||0)+coin);
+      db.ref("topupRequests/"+tid+"/status").set("approved");
+    }
   </script>
 </body>
 </html>
