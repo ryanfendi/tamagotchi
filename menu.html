@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menu Utama</title>
+<style>
+body{ background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; padding:30px; }
+button{ display:block; margin:10px auto; padding:15px; width:200px; border:none; border-radius:8px; font-weight:bold; background:#3b82f6; color:#fff; cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>🏠 Menu Utama</h1>
+<h3 id="welcome"></h3>
+
+<button onclick="go('inventory.html')">📦 Inventory</button>
+<button onclick="go('leaderboard.html')">🏆 Leaderboard</button>
+<button onclick="go('marketplace.html')">🛒 Marketplace</button>
+<button onclick="go('chat.html')">💬 Chat</button>
+<button onclick="logout()">🚪 Logout</button>
+
+<script>
+let session=JSON.parse(localStorage.getItem("session")||"{}");
+if(!session.currentUser) location.href="login.html";
+document.getElementById("welcome").innerText="Halo, "+session.currentUser;
+
+function go(p){ location.href=p; }
+function logout(){
+  localStorage.removeItem("session");
+  location.href="login.html";
+}
+</script>
+</body>
+</html>
