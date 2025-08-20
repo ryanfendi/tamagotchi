@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tamagotchi — Marketplace</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tamagotchi Online — Marketplace</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:820px;margin:0 auto;padding:12px}
+  .wrap{max-width:860px;margin:0 auto;padding:12px}
   .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px}
   .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
-  button,input,select{padding:10px;border-radius:10px;border:0;margin:4px}
+  button,input{padding:10px;border-radius:10px;border:0;margin:4px}
   button{background:#10b981;color:#042018;font-weight:700}
   .item{background:#1a2436;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
 </style>
@@ -22,11 +21,10 @@
     <a href="inventory.html">📦 Inventory</a>
     <a href="leaderboard.html">🏆 Leaderboard</a>
     <a href="chat.html">💬 Chat</a>
-    <button onclick="logout()">🚪 Logout</button>
+    <button id="btnLogout">🚪 Logout</button>
   </div>
 
   <div id="summary" class="panel"></div>
-
   <div class="panel">
     <h3>Daftar Jual</h3>
     <div id="marketList"></div>
@@ -34,78 +32,59 @@
 
   <div class="panel">
     <h3>Transfer Coin</h3>
-    <input id="toUser" placeholder="Nama penerima" />
-    <input id="amt" type="number" placeholder="Jumlah coin" />
-    <button onclick="transferCoin()">Kirim</button>
+    <input id="toUser" placeholder="Nama penerima">
+    <input id="amt" type="number" placeholder="Jumlah coin">
+    <button id="btnTf">Kirim</button>
   </div>
 </div>
 
-<script>
-let players = JSON.parse(localStorage.getItem('players')||'{}');
-let market  = JSON.parse(localStorage.getItem('market')||'{}');
-let user = localStorage.getItem('lastUser');
-if(!user || !players[user]) location.href='index.html';
-function saveAll(){ localStorage.setItem('players',JSON.stringify(players)); localStorage.setItem('market',JSON.stringify(market)); }
-function logout(){ localStorage.removeItem('lastUser'); location.href='index.html'; }
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/online.js"></script>
+<script type="module">
+import { onAuth, logout, subPlayer, subMarket, buy, cancelSale, transfer } from './js/online.js';
+let uid=null, me=null, unsubP=null, unsubM=null;
 
-function render(){
-  const me = players[user];
-  const p  = me.pets[me.activePet] || me.pets[0];
+document.getElementById('btnLogout').onclick = ()=> logout();
+
+function renderSummary(){
+  if(!me) return;
+  const p = me.pets[me.activePet] || me.pets[0];
   document.getElementById('summary').innerHTML = `
-    <p><b>Player:</b> ${user}</p>
+    <p><b>Player:</b> ${me.username}</p>
     <p><b>Coin:</b> ${me.coins}</p>
     <p><b>Pet Aktif:</b> Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</p>
   `;
-
+}
+function renderMarket(rows){
   const box = document.getElementById('marketList');
-  const rows = Object.values(market).map(item=>{
-    const controls = item.seller===user
-      ? `<button onclick="cancelSale('${item.id}')">Batalkan</button>`
-      : `<button onclick="buy('${item.id}')">Beli (${item.price})</button>`;
-    return `
-      <div class="item">
-        <div><b>Pet:</b> Lv ${item.pet.level} | HP ${item.pet.hp}% | H ${item.pet.hunger}% | E ${item.pet.energy}%</div>
-        <div><b>Harga:</b> ${item.price} coin</div>
-        <div><b>Penjual:</b> ${item.seller}</div>
-        ${controls}
-      </div>`;
-  }).join('');
-  box.innerHTML = rows || '<p>Tidak ada pet di marketplace.</p>';
+  box.innerHTML = rows.map(r=>{
+    const mine = r.sellerUid===uid;
+    return `<div class="item">
+      <div><b>Pet:</b> Lv ${r.pet.level} | HP ${r.pet.hp}% | H ${r.pet.hunger}% | E ${r.pet.energy}%</div>
+      <div><b>Harga:</b> ${r.price} • <b>Penjual:</b> ${r.sellerName}</div>
+      ${mine
+        ? `<button onclick="window._cancel('${r.id}')">Batalkan</button>`
+        : `<button onclick="window._buy('${r.id}')">Beli</button>`
+      }
+    </div>`;
+  }).join('') || '<p>Tidak ada pet di marketplace.</p>';
 }
+window._buy = async(id)=>{ try{ await buy(uid,id); alert('Berhasil dibeli'); }catch(e){ alert(e.message);} };
+window._cancel = async(id)=>{ try{ await cancelSale(uid,id); alert('Dibatalkan'); }catch(e){ alert(e.message);} };
 
-function buy(id){
-  const me = players[user];
-  const item = market[id];
-  if(!item) return alert('Item tidak ditemukan.');
-  if(me.coins < item.price) return alert('Coin tidak cukup.');
-  const seller = players[item.seller];
-  if(!seller){ alert('Penjual tidak ditemukan.'); return; }
-  me.coins -= item.price; seller.coins = (seller.coins||0)+item.price;
-  me.pets.push(item.pet);
-  delete market[id];
-  saveAll(); render(); alert('Pembelian berhasil! Lihat di Inventory.');
-}
+document.getElementById('btnTf').onclick = async ()=>{
+  const to = document.getElementById('toUser').value;
+  const amt= document.getElementById('amt').value;
+  try{ await transfer(uid,to,amt); alert('Coin terkirim'); }catch(e){ alert(e.message); }
+};
 
-function cancelSale(id){
-  const item = market[id];
-  if(!item || item.seller!==user) return alert('Tidak bisa dibatalkan.');
-  players[user].pets.push(item.pet);
-  delete market[id];
-  saveAll(); render(); alert('Dibatalkan.');
-}
-
-function transferCoin(){
-  const me = players[user];
-  const to = (document.getElementById('toUser').value||'').trim().toLowerCase();
-  const amt = parseInt(document.getElementById('amt').value||'0');
-  if(!players[to]) return alert('Penerima tidak ditemukan.');
-  if(!amt || amt<=0) return alert('Jumlah tidak valid.');
-  if(me.coins < amt) return alert('Coin tidak cukup.');
-  me.coins -= amt; players[to].coins = (players[to].coins||0) + amt;
-  saveAll(); render(); alert('Coin terkirim!');
-}
-
-render();
+onAuth(user=>{
+  if(!user){ location.href='index.html'; return; }
+  uid=user.uid;
+  if(unsubP) unsubP(); if(unsubM) unsubM();
+  unsubP = subPlayer(uid, p=>{ me=p; renderSummary(); });
+  unsubM = subMarket(rows=> renderMarket(rows));
+});
 </script>
 </body>
 </html>
