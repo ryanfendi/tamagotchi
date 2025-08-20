@@ -3,54 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Owner Panel</title>
+  <title>Owner Panel - Tamagotchi Online</title>
   <style>
     body { background:#0b1220; color:#fff; font-family:sans-serif; margin:0; padding:20px; }
-    table { width:100%; border-collapse:collapse; margin-top:20px; }
-    th, td { border:1px solid #555; padding:8px; text-align:center; }
-    th { background:#10b981; color:#000; }
-    button { background:#10b981; border:none; padding:6px 12px; margin:2px; border-radius:6px; cursor:pointer; }
+    h1 { text-align:center; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border:1px solid #444; padding:6px; text-align:left; }
+    th { background:#10b981; color:#fff; }
+    tr:nth-child(even){ background:#1a1a1a; }
+    button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; }
+    .topup { background:#3b82f6; color:#fff; }
+    .delete { background:#ef4444; color:#fff; }
+    #backBtn { background:#f43f5e; margin-bottom:10px; }
   </style>
 </head>
 <body>
-  <h1>⚙️ Owner Panel</h1>
-  <p id="ownerInfo">Memuat data...</p>
-  <button onclick="logout()">Logout</button>
+  <button id="backBtn" onclick="goPage('game.html')">⬅️ Kembali</button>
+  <h1>👑 Owner Panel</h1>
 
-  <h2>📋 Daftar User</h2>
   <table>
     <thead>
       <tr>
         <th>Email</th>
         <th>Username</th>
-        <th>Level</th>
         <th>Coin</th>
+        <th>Level</th>
         <th>Aksi</th>
       </tr>
     </thead>
     <tbody id="userTable"></tbody>
   </table>
 
-  <h2>💳 Request Top Up</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Email</th>
-        <th>Coin</th>
-        <th>Harga</th>
-        <th>Status</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody id="topupTable"></tbody>
-  </table>
-
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <script>
-    // Konfigurasi Firebase
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -65,97 +55,67 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // Data Owner (ubah sesuai akun owner)
-    const OWNER_EMAIL = "ryanfendiwardana@gmail.com";
-    const OWNER_UID   = "vNuT6n1TD2XSjkywNbE5mROL8sa2"; // isi UID asli dari Firebase Authentication
+    let user=null;
+    const OWNER_EMAIL = "owner@email.com"; // ganti dengan email owner
 
-    let user = null;
-
-    // Logout
-    function logout(){
-      auth.signOut().then(()=>location.href="index.html");
-    }
-
-    // Cek autentikasi
     auth.onAuthStateChanged(u=>{
       if(u){
         user=u;
-        if(user.email!==OWNER_EMAIL || user.uid!==OWNER_UID){
+        if(user.email!==OWNER_EMAIL){
           alert("🚫 Kamu bukan owner!");
           window.location.href="game.html";
         }else{
-          document.getElementById("ownerInfo").innerText=`👑 Login sebagai ${user.email}`;
           loadUsers();
-          loadTopups();
         }
       }else{
         window.location.href="index.html";
       }
     });
 
-    // Muat daftar user
     function loadUsers(){
-      db.ref("users").on("value", snap=>{
-        let html="";
+      db.ref("users").on("value",snap=>{
+        let tbody=document.getElementById("userTable");
+        tbody.innerHTML="";
         snap.forEach(child=>{
-          let u=child.val();
-          html+=`
-            <tr>
-              <td>${u.email||"-"}</td>
-              <td>${u.username||"-"}</td>
-              <td>${u.level||1}</td>
-              <td>${u.coins||0}</td>
-              <td>
-                <button onclick="addCoins('${child.key}',100)">+100 Coin</button>
-                <button onclick="resetUser('${child.key}')">Reset</button>
-              </td>
-            </tr>
+          let pet=child.val();
+          let uid=child.key;
+          let email=pet.email||"no-email";
+          let username=pet.username||email;
+          let coins=pet.coins||0;
+          let level=pet.level||1;
+
+          let tr=document.createElement("tr");
+          tr.innerHTML=`
+            <td>${email}</td>
+            <td>${username}</td>
+            <td>${coins}</td>
+            <td>${level}</td>
+            <td>
+              <button class="topup" onclick="topUp('${uid}')">+ Coin</button>
+              <button class="delete" onclick="deleteUser('${uid}')">Hapus</button>
+            </td>
           `;
+          tbody.appendChild(tr);
         });
-        document.getElementById("userTable").innerHTML=html;
       });
     }
 
-    // Muat request top up
-    function loadTopups(){
-      db.ref("topupRequests").on("value", snap=>{
-        let html="";
-        snap.forEach(child=>{
-          let t=child.val();
-          html+=`
-            <tr>
-              <td>${t.email}</td>
-              <td>${t.coin}</td>
-              <td>Rp${t.harga}</td>
-              <td>${t.status}</td>
-              <td>
-                ${t.status==="pending"?
-                  `<button onclick="approveTopup('${child.key}','${t.uid}',${t.coin})">✔️ Approve</button>`:""}
-              </td>
-            </tr>
-          `;
-        });
-        document.getElementById("topupTable").innerHTML=html;
-      });
+    function topUp(uid){
+      let jumlah=parseInt(prompt("Jumlah coin yang ingin ditambahkan:"));
+      if(isNaN(jumlah)||jumlah<=0) return;
+      db.ref("users/"+uid+"/coins").transaction(c=> (c||0)+jumlah);
+      alert("✅ Top-up berhasil!");
     }
 
-    // Tambah coin manual
-    function addCoins(uid,amount){
-      db.ref("users/"+uid+"/coins").transaction(c=>(c||0)+amount);
+    function deleteUser(uid){
+      if(confirm("Yakin hapus user ini?")){
+        db.ref("users/"+uid).remove();
+        db.ref("profiles/"+uid).remove();
+        alert("🗑️ User dihapus dari database!");
+      }
     }
 
-    // Reset user
-    function resetUser(uid){
-      db.ref("users/"+uid).set({
-        level:1,hunger:100,energy:100,hp:100,coins:0
-      });
-    }
-
-    // Approve top up
-    function approveTopup(tid,uid,coin){
-      db.ref("users/"+uid+"/coins").transaction(c=>(c||0)+coin);
-      db.ref("topupRequests/"+tid+"/status").set("approved");
-    }
+    function goPage(p){ location.href=p; }
   </script>
 </body>
 </html>
