@@ -1,227 +1,32 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Chat — Tamagotchi Online</title>
-<style>
-  :root{--bg:#0b1220;--panel:#101a2b;--card:#0f172a;--accent:#10b981;--muted:#94a3b8}
-  *{box-sizing:border-box}
-  body{background:var(--bg);color:#fff;font-family:sans-serif;margin:0;padding:16px}
-  h2{margin:8px 0 12px}
-  .panel{background:var(--panel);border-radius:12px;padding:12px;margin:10px auto;max-width:860px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  button{background:var(--accent);border:0;border-radius:8px;color:#042018;font-weight:700;padding:8px 12px;cursor:pointer}
-  button.ghost{background:#0b2e25;color:#b8ffe1}
-  input{padding:10px;border-radius:8px;border:0;flex:1;min-width:120px}
-  #box{height:55vh;min-height:320px;overflow:auto;background:var(--card);border-radius:10px;padding:12px}
-  .msg{margin:6px 0;line-height:1.35}
-  .me b{color:var(--accent)}
-  .other b{color:#e2e8f0}
-  .muted{color:var(--muted);font-size:12px}
-  .tab{opacity:.55}
-  .tab.active{opacity:1}
-  .pill{background:#0b2e25;color:#79ffd2;border-radius:999px;padding:4px 8px;font-size:12px}
-</style>
+  <meta charset="UTF-8">
+  <title>Chat - Tamagotchi</title>
+  <style>
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+    #chatBox { height:300px; overflow-y:scroll; border:1px solid #0f0; padding:5px; margin:10px; }
+    input { padding:8px; width:70%; }
+    button { padding:8px; }
+  </style>
 </head>
 <body>
-  <h2>💬 Chat</h2>
+  <h2>💬 Chat Room</h2>
+  <div id="chatBox"></div>
+  <input id="chatMsg" placeholder="Tulis pesan...">
+  <button onclick="sendChat()">Kirim</button><br>
+  <input id="privateTo" placeholder="Username tujuan (opsional)">
+  <button onclick="sendPrivateChat()">Kirim Private</button>
+  <br><br>
+  <button onclick="goBack()">⬅️ Kembali</button>
 
-  <!-- Not logged in -->
-  <div id="authWarn" class="panel" style="display:none">
-    <p>Kamu belum login.</p>
-    <button onclick="location.href='index.html'">Login</button>
-  </div>
-
-  <!-- Main -->
-  <div id="wrap" style="display:none">
-    <div class="panel">
-      <div class="row">
-        <div class="row" style="gap:6px">
-          <button id="btnGlobal" class="tab active" onclick="switchTab('global')">🌐 Global</button>
-          <button id="btnPrivate" class="tab" onclick="switchTab('private')">🔒 Private</button>
-        </div>
-        <div class="row" id="privTools" style="display:none;margin-left:auto">
-          <input id="emailTo" type="email" placeholder="Email tujuan">
-          <button class="ghost" onclick="startPrivate()">Mulai</button>
-        </div>
-        <div style="margin-left:auto">
-          <button class="ghost" onclick="location.href='index.html'">🏠 Home</button>
-        </div>
-      </div>
-      <div class="muted" id="statusLine">Mode: Global</div>
-    </div>
-
-    <div class="panel">
-      <div id="box" aria-live="polite"></div>
-      <div class="row" style="margin-top:10px">
-        <input id="msg" placeholder="Tulis pesan..." autocomplete="off">
-        <button id="sendBtn" onclick="send()">Kirim</button>
-      </div>
-      <div class="muted" id="hint">Tekan Enter untuk kirim.</div>
-    </div>
-  </div>
-
-  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="game.js"></script>
   <script>
-  // --- Firebase config (punya kamu) ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-    authDomain: "tamagotchi-2be0c.firebaseapp.com",
-    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-    projectId: "tamagotchi-2be0c",
-    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-    messagingSenderId: "202052432703",
-    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-    measurementId: "G-TWGGSJRX26"
-  };
-  if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-  const auth = firebase.auth();
-  const db = firebase.database();
-
-  // --- State ---
-  let uid = null;
-  let myEmail = '';
-  let mode = 'global';       // 'global' | 'private'
-  let chatKey = null;        // key untuk private chat
-  let currentPath = null;    // path yang disubscribe
-  let currentHandler = null; // handler child_added
-  let profilesCache = {};    // email -> uid
-
-  // --- Helpers UI ---
-  const $ = (id) => document.getElementById(id);
-  function setTabUI() {
-    $('btnGlobal').classList.toggle('active', mode==='global');
-    $('btnPrivate').classList.toggle('active', mode==='private');
-    $('privTools').style.display = mode==='private' ? 'flex' : 'none';
-    $('statusLine').innerHTML = mode==='global'
-      ? `Mode: Global <span class="pill">publik</span>`
-      : `Mode: Private ${chatKey ? `<span class="pill">${chatKey}</span>` : ''}`;
-  }
-  function clearBox(){ $('box').innerHTML=''; }
-
-  // --- Auth gate ---
-  auth.onAuthStateChanged(async (u) => {
-    if (!u) {
-      $('authWarn').style.display = 'block';
-      return;
-    }
-    uid = u.uid;
-    myEmail = u.email || '(no-email)';
-    $('wrap').style.display = 'block';
-    await primeProfilesCache();
-    switchTab('global'); // default
-    // enter to send
-    $('msg').addEventListener('keydown', (e)=>{
-      if (e.key==='Enter') { e.preventDefault(); send(); }
-    });
-  });
-
-  // --- Profiles cache (email -> uid) ---
-  async function primeProfilesCache() {
-    const snap = await db.ref('profiles').once('value');
-    profilesCache = {};
-    if (snap.exists()) {
-      const v = snap.val();
-      for (const k in v) { if (v[k]?.email) profilesCache[v[k].email] = k; }
-    }
-  }
-
-  // --- Subscribe / Unsubscribe ---
-  function unsubscribe() {
-    if (currentPath && currentHandler) {
-      db.ref(currentPath).off('child_added', currentHandler);
-    } else if (currentPath) {
-      // lepas semua listener pada path (fallback)
-      db.ref(currentPath).off();
-    }
-    currentPath = null;
-    currentHandler = null;
-  }
-
-  function subscribe(path) {
-    unsubscribe();
-    currentPath = path;
-    currentHandler = (s) => appendMessage(s.val());
-    db.ref(path).limitToLast(200).on('child_added', currentHandler);
-  }
-
-  // --- Switch tabs ---
-  function switchTab(m) {
-    mode = m;
-    setTabUI();
-    clearBox();
-    if (mode === 'global') {
-      chatKey = null;
-      subscribe('chats/global');
-      $('hint').innerText = 'Pesan akan terlihat oleh semua pemain. Tekan Enter untuk kirim.';
-    } else {
-      unsubscribe();
-      $('hint').innerText = 'Masukkan email tujuan, lalu klik “Mulai”.';
-    }
-  }
-
-  // --- Start private chat ---
-  async function startPrivate() {
-    const email = ($('emailTo').value || '').trim().toLowerCase();
-    if (!email) { alert('Isi email tujuan.'); return; }
-    if (email === (myEmail||'').toLowerCase()) { alert('Tidak bisa chat dengan diri sendiri.'); return; }
-
-    // cari uid target
-    let toUid = profilesCache[email];
-    if (!toUid) {
-      // refresh cache sekali lagi (kalau baru register)
-      await primeProfilesCache();
-      toUid = profilesCache[email];
-    }
-    if (!toUid) { alert('Email tidak ditemukan (user belum pernah login).'); return; }
-
-    chatKey = [uid, toUid].sort().join('__');
-    setTabUI();
-    clearBox();
-    subscribe('chats/privates/' + chatKey);
-    $('hint').innerText = `Private chat dengan ${email}.`;
-  }
-
-  // --- Send message ---
-  function send() {
-    const text = ($('msg').value || '').trim();
-    if (!text) return;
-    const msg = {
-      from: uid,
-      email: myEmail,
-      text,
-      time: firebase.database.ServerValue.TIMESTAMP
-    };
-    if (mode === 'global') {
-      db.ref('chats/global').push(msg);
-    } else {
-      if (!chatKey) { alert('Mulai private chat dulu.'); return; }
-      db.ref('chats/privates/' + chatKey).push(msg);
-    }
-    $('msg').value = '';
-    $('msg').focus();
-  }
-
-  // --- Render message ---
-  function appendMessage(m) {
-    if (!m) return;
-    const who = m.from === uid ? 'me' : 'other';
-    const t = new Date(m.time || Date.now());
-    const p = document.createElement('div');
-    p.className = `msg ${who}`;
-    p.innerHTML = `<b>${m.email || m.from}</b>: ${escapeHtml(m.text)} <span class="muted">(${t.toLocaleString()})</span>`;
-    $('box').appendChild(p);
-    $('box').scrollTop = $('box').scrollHeight;
-  }
-
-  // --- Utils ---
-  function escapeHtml(str){
-    return str.replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[s]));
-  }
+    loadChat();
+    function goBack(){ location.href="game.html"; }
   </script>
 </body>
 </html>
