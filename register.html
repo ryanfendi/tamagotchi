@@ -1,22 +1,20 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Register — Tamagotchi</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:40px}
-  .panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block;min-width:320px}
-  input,button{padding:10px;margin:6px;border-radius:8px;border:0;width:100%;box-sizing:border-box}
-  button{background:#10b981;color:#042018;font-weight:700;cursor:pointer}
-  a{color:#10b981;text-decoration:none}
-  .small{font-size:13px;color:#9fb3b5;margin-top:6px}
-</style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Register — Tamagotchi</title>
+  <style>
+    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:40px}
+    .panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block;min-width:320px}
+    input,button{padding:10px;margin:6px;border-radius:8px;border:0;width:100%;box-sizing:border-box}
+    button{background:#10b981;color:#042018;font-weight:700;cursor:pointer}
+    .small{font-size:13px;color:#9fb3b5;margin-top:6px}
+  </style>
 </head>
 <body>
   <div class="panel">
     <h2>📝 Register</h2>
-    <input id="username" placeholder="Username (ID) — huruf/angka tanpa spasi">
+    <input id="username" placeholder="Username (ID)">
     <input id="email" placeholder="Email">
     <input id="password" type="password" placeholder="Password">
     <button id="regBtn">Daftar</button>
@@ -31,18 +29,13 @@ document.getElementById('regBtn').addEventListener('click', ()=>{
   const pass  = (document.getElementById('password').value||'').toString();
 
   if(!uname || !email || !pass) return alert('Isi semua kolom!');
-  if(!/^[a-z0-9_]+$/.test(uname)) return alert('Username hanya boleh huruf/angka/underscore, tanpa spasi.');
-
   const players = JSON.parse(localStorage.getItem('players')||'{}');
-  if(players[uname]) return alert('Username sudah dipakai — pilih yang lain.');
+  if(players[uname]) return alert('Username sudah dipakai.');
   if(Object.values(players).some(u => u.email === email)) return alert('Email sudah terdaftar.');
 
   players[uname] = {
-    username: uname,
-    email,
-    password: pass, // DEMO: plaintext
-    coins: 1000,
-    pet: { name:'Chick', level:1, health:1000, evoIndex:0, lastFeed:null, lastSleep:null, ageDays:0, alive:true },
+    username: uname, email, password: pass, coins: 1000,
+    pet: { name:'Chick', level:1, health:1000, maxHealth:1000, evoIndex:0, lastFeed:null, lastSleep:null, ageDays:0, alive:true },
     inventory: []
   };
   localStorage.setItem('players', JSON.stringify(players));
