@@ -2,35 +2,143 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Owner Panel - Tamagotchi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Panel - Tamagotchi Online</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-    .section { border:1px solid #f00; margin:10px; padding:10px; border-radius:8px; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:20px; }
+    h1 { color:#10b981; }
+    table { border-collapse: collapse; width:100%; margin:10px 0; }
+    th, td { border:1px solid #444; padding:8px; text-align:center; }
+    th { background:#222; }
+    button { background:#10b981; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; margin:2px; }
+    input, textarea { width:100%; padding:5px; margin:4px 0; border-radius:6px; border:none; }
+    .section { background:#111; padding:15px; border-radius:10px; margin-bottom:20px; }
   </style>
 </head>
 <body>
-  <h2>🔑 Owner Panel</h2>
+  <h1>👑 Owner Panel</h1>
+  <button onclick="logout()">Logout</button>
 
   <div class="section">
-    <h3>💳 Permintaan Top Up</h3>
-    <div id="topupRequests"></div>
+    <h2>📋 Daftar Top Up Pending</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Jumlah Coin</th>
+          <th>Harga</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="topupTable"></tbody>
+    </table>
   </div>
 
   <div class="section">
-    <h3>📢 Manajemen Iklan</h3>
-    <textarea id="adText" placeholder="Teks iklan"></textarea><br>
-    <button onclick="saveAd()">Simpan Iklan</button>
+    <h2>📢 Kelola Iklan</h2>
+    <label>Teks Iklan</label>
+    <textarea id="adText"></textarea>
+    <label>Banner URL</label>
+    <input id="adBanner" type="text">
+    <label>Popup Pesan</label>
+    <textarea id="adPopup"></textarea>
+    <button onclick="saveAds()">Simpan Iklan</button>
   </div>
 
-  <button onclick="goBack()">⬅️ Kembali</button>
-
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="game.js"></script>
+
   <script>
-    loadOwnerPanel();
-    function goBack(){ location.href="game.html"; }
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+    authDomain: "tamagotchi-2be0c.firebaseapp.com",
+    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+    projectId: "tamagotchi-2be0c",
+    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+    messagingSenderId: "202052432703",
+    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+    measurementId: "G-TWGGSJRX26"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
+
+  // hanya owner yang bisa login di sini
+  const OWNER_EMAIL = "owner@gmail.com"; 
+
+  auth.onAuthStateChanged(u=>{
+    if(!u || u.email !== OWNER_EMAIL){
+      alert("Hanya owner yang boleh masuk!");
+      location.href="index.html";
+    } else {
+      loadTopups();
+      loadAds();
+    }
+  });
+
+  function logout(){ auth.signOut(); location.href="index.html"; }
+
+  // Load topup requests
+  function loadTopups(){
+    db.ref("topupRequests").on("value",snap=>{
+      let rows="";
+      snap.forEach(child=>{
+        let d=child.val();
+        rows+=`
+          <tr>
+            <td>${d.email}</td>
+            <td>${d.coin}</td>
+            <td>Rp${d.harga}</td>
+            <td>${d.status}</td>
+            <td>
+              <button onclick="approveTopup('${child.key}','${d.uid}',${d.coin})">✅ Approve</button>
+              <button onclick="rejectTopup('${child.key}')">❌ Tolak</button>
+            </td>
+          </tr>
+        `;
+      });
+      document.getElementById("topupTable").innerHTML=rows;
+    });
+  }
+
+  // Approve topup
+  function approveTopup(reqId, uid, coin){
+    db.ref("users/"+uid+"/coins").once("value").then(snap=>{
+      let current = snap.val() || 0;
+      db.ref("users/"+uid+"/coins").set(current+coin);
+      db.ref("topupRequests/"+reqId+"/status").set("approved");
+    });
+  }
+
+  // Reject topup
+  function rejectTopup(reqId){
+    db.ref("topupRequests/"+reqId+"/status").set("rejected");
+  }
+
+  // Load ads
+  function loadAds(){
+    db.ref("ads").once("value").then(snap=>{
+      let d=snap.val()||{};
+      document.getElementById("adText").value=d.text||"";
+      document.getElementById("adBanner").value=d.banner||"";
+      document.getElementById("adPopup").value=d.popup||"";
+    });
+  }
+
+  // Save ads
+  function saveAds(){
+    let data={
+      text:document.getElementById("adText").value,
+      banner:document.getElementById("adBanner").value,
+      popup:document.getElementById("adPopup").value
+    };
+    db.ref("ads").set(data);
+    alert("Iklan diperbarui!");
+  }
   </script>
 </body>
 </html>
