@@ -1,85 +1,163 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tamagotchi Online — Inventory</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory — Tamagotchi Online</title>
 <style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:860px;margin:0 auto;padding:12px}
-  .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px}
-  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
-  button,input,select{padding:10px;border-radius:10px;border:0;margin:4px}
-  button{background:#10b981;color:#042018;font-weight:700}
-  .item{background:#1a2436;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:16px}
+  .panel{background:#101a2b;border-radius:12px;padding:12px;margin:10px auto;max-width:680px}
+  button{background:#10b981;border:0;border-radius:8px;color:#042018;font-weight:700;padding:8px 10px;margin:4px;cursor:pointer}
+  input,select{padding:8px;border-radius:8px;border:0;margin:4px}
+  .item{background:#0f172a;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .muted{color:#a3b3c6;font-size:12px}
 </style>
 </head>
 <body>
-<div class="wrap">
   <h2>📦 Inventory</h2>
-  <div class="menu">
-    <a href="index.html">🏠 Home</a>
-    <a href="marketplace.html">🏪 Marketplace</a>
-    <a href="leaderboard.html">🏆 Leaderboard</a>
-    <a href="chat.html">💬 Chat</a>
-    <button id="btnLogout">🚪 Logout</button>
+
+  <div id="authWarn" class="panel" style="display:none">
+    <p>Kamu belum login.</p>
+    <button onclick="location.href='index.html'">Login</button>
   </div>
 
-  <div id="summary" class="panel"></div>
+  <div id="wrap" class="panel" style="display:none">
+    <div class="row">
+      <div>👤 <span id="meEmail"></span></div>
+      <div>
+        <button onclick="go('index.html')">🏠 Home</button>
+        <button onclick="go('marketplace.html')">🏪 Marketplace</button>
+        <button onclick="go('leaderboard.html')">🏆 Leaderboard</button>
+        <button onclick="go('chat.html')">💬 Chat</button>
+      </div>
+    </div>
+    <div class="row">
+      <div>💰 Coin: <b id="coins">0</b></div>
+      <div>🐣 Active Lv: <b id="activeLv">1</b></div>
+    </div>
 
-  <div class="panel">
-    <h3>Ganti Pet Aktif</h3>
-    <select id="selActive"></select>
-    <button id="btnActive">Aktifkan</button>
+    <h3>Pet Aktif</h3>
+    <div class="item" id="activePetBox"></div>
+
+    <h3>Daftar Pet (Inventory)</h3>
+    <div id="list"></div>
   </div>
 
-  <div class="panel">
-    <h3>Jual Pet ke Marketplace</h3>
-    <select id="selSell"></select>
-    <input id="price" type="number" placeholder="Harga (coin)"/>
-    <button id="btnSell">Jual</button>
-  </div>
-</div>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+  authDomain:"tamagotchi-2be0c.firebaseapp.com",
+  databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+  projectId:"tamagotchi-2be0c",
+  storageBucket:"tamagotchi-2be0c.firebasestorage.app",
+  messagingSenderId:"202052432703",
+  appId:"1:202052432703:web:cb76b50e42149a2c92998a",
+  measurementId:"G-TWGGSJRX26"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database(), auth=firebase.auth();
 
-<script type="module" src="js/firebase-config.js"></script>
-<script type="module" src="js/online.js"></script>
-<script type="module">
-import { onAuth, logout, subPlayer, setActivePet, sellPet } from './js/online.js';
-let uid=null, me=null, unsub=null;
+let uid=null, me=null;
 
-document.getElementById('btnLogout').onclick = ()=> logout();
+auth.onAuthStateChanged(async u=>{
+  if(!u){ document.getElementById('authWarn').style.display='block'; return; }
+  uid=u.uid;
+  document.getElementById('wrap').style.display='block';
+  document.getElementById('meEmail').innerText=u.email;
+
+  const snap=await db.ref('users/'+uid).once('value');
+  me=snap.val()||{level:1,hunger:100,energy:100,hp:100,coins:0};
+  render();
+});
 
 function render(){
-  if(!me) return;
-  const p = me.pets[me.activePet] || me.pets[0];
-  document.getElementById('summary').innerHTML = `
-    <p><b>Player:</b> ${me.username}</p>
-    <p><b>Coin:</b> ${me.coins}</p>
-    <p><b>Pet Aktif:</b> Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</p>
-    <h4>Koleksi (${me.pets.length})</h4>
-    ${me.pets.map((q,i)=>`<div class="item">#${i+1} — ${i===me.activePet?'<b>(Aktif)</b> ':''}Lv ${q.level} | HP ${q.hp}% | H ${q.hunger}% | E ${q.energy}%</div>`).join('')}
-  `;
-  const opts = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}${i===me.activePet?' (aktif)':''}</option>`).join('');
-  document.getElementById('selActive').innerHTML = opts;
-  document.getElementById('selSell').innerHTML = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}</option>`).join('');
+  document.getElementById('coins').innerText=(me.coins||0).toFixed?.(2)||me.coins||0;
+  document.getElementById('activeLv').innerText=me.level||1;
+
+  // Active pet box
+  const box=document.getElementById('activePetBox');
+  box.innerHTML = `
+    <div class="row">
+      <div>
+        <div>Level: <b>${me.level||1}</b></div>
+        <div class="muted">HP ${me.hp||100}% · Hunger ${me.hunger||100}% · Energy ${me.energy||100}%</div>
+      </div>
+      <div>
+        <button onclick="heal()">🔧 Heal (Free)</button>
+      </div>
+    </div>`;
+
+  const inv = me.inventory||{};
+  const list=document.getElementById('list');
+  list.innerHTML='';
+  const keys=Object.keys(inv);
+  if(keys.length===0){
+    list.innerHTML='<p class="muted">Belum ada pet di inventory.</p>';
+    return;
+  }
+  keys.forEach(id=>{
+    const p=inv[id];
+    const div=document.createElement('div');
+    div.className='item';
+    div.innerHTML=`
+      <div class="row">
+        <div>🐾 <b>${p.name||'Pet'}</b> — Level <b>${p.level||1}</b></div>
+        <div>
+          <button onclick="activate('${id}')">Aktifkan</button>
+          <input id="price_${id}" type="number" placeholder="Harga (coin)" style="width:140px">
+          <button onclick="sell('${id}')">Jual</button>
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
 }
 
-document.getElementById('btnActive').onclick = async ()=>{
-  const idx = parseInt(document.getElementById('selActive').value||'-1');
-  if(isNaN(idx)) return;
-  try{ await setActivePet(uid, idx); }catch(e){ alert(e.message); }
-};
-document.getElementById('btnSell').onclick = async ()=>{
-  const idx = parseInt(document.getElementById('selSell').value||'-1');
-  const price = parseInt(document.getElementById('price').value||'0');
-  try{ await sellPet(uid, idx, price); alert('Dijual!'); }catch(e){ alert(e.message); }
-};
+async function heal(){
+  me.hp=100; me.hunger=100; me.energy=100;
+  await save();
+  render();
+}
 
-onAuth(user=>{
-  if(!user){ location.href='index.html'; return; }
-  uid=user.uid;
-  if(unsub) unsub();
-  unsub = subPlayer(uid, (p)=>{ me=p; render(); });
-});
+async function activate(id){
+  const pet = (me.inventory||{})[id];
+  if(!pet) return alert('Pet tidak ditemukan.');
+  // Jadikan aktif (ambil level pet tsb)
+  me.level = pet.level||1;
+  me.hp = 100; me.hunger=100; me.energy=100;
+  await save();
+  alert('Pet diaktifkan!');
+  render();
+}
+
+async function sell(id){
+  const pet=(me.inventory||{})[id];
+  if(!pet) return alert('Pet tidak ada.');
+  const price=parseInt(document.getElementById('price_'+id).value||'0',10);
+  if(isNaN(price)||price<=0) return alert('Harga tidak valid.');
+  const listingId = 'L'+Date.now();
+  // Simpan listing
+  await db.ref('marketplace/pets/'+listingId).set({
+    id: listingId,
+    sellerUid: uid,
+    sellerEmail: firebase.auth().currentUser.email,
+    pet,
+    price,
+    createdAt: Date.now()
+  });
+  // Hapus dari inventory
+  delete me.inventory[id];
+  await save();
+  alert('Pet dimasukkan ke marketplace.');
+  render();
+}
+
+function save(){ return db.ref('users/'+uid).set(me); }
+function go(p){ location.href=p; }
 </script>
 </body>
 </html>
