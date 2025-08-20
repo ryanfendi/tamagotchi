@@ -1,57 +1,38 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat — Tamagotchi</title>
-  <style>
-    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-    #chatBox{background:#101a2b;padding:10px;margin:10px auto;width:90%;max-width:600px;height:300px;overflow-y:auto;text-align:left}
-    input,button{padding:8px;margin:4px;border:none;border-radius:6px;font-size:1em}
-    button{background:#10b981;color:#fff;cursor:pointer}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+<style>
+body{ background:#0b1220; color:#fff; font-family:sans-serif; padding:20px; }
+#chatBox{ background:#111; height:300px; overflow-y:scroll; padding:10px; margin-bottom:10px; }
+</style>
 </head>
 <body>
-<script>
-  (function(){
-    const cur = localStorage.getItem('currentPlayer');
-    if(!cur){ alert('Silakan login'); location.href='login.html'; return }
-    const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(!players[cur]){ localStorage.removeItem('currentPlayer'); alert('User tidak ditemukan'); location.href='login.html' }
-  })();
-</script>
-
-<h2>💬 Chat Global</h2>
+<h1>💬 Chat</h1>
 <div id="chatBox"></div>
-<input id="msg" placeholder="Tulis pesan..." style="width:70%">
-<button onclick="send()">Kirim</button><br>
-<button onclick="goTo('index.html')">Home</button>
+<input id="msg" placeholder="Ketik pesan"><button onclick="send()">Kirim</button>
+<br><button onclick="back()">⬅️ Kembali</button>
 
 <script>
-  let chats = JSON.parse(localStorage.getItem('chats')||'[]');
-  const current = localStorage.getItem('currentPlayer');
+let session=JSON.parse(localStorage.getItem("session")||"{}");
+if(!session.currentUser) location.href="login.html";
+let chats=JSON.parse(localStorage.getItem("chats")||"[]");
 
-  function render(){
-    const box = document.getElementById('chatBox');
-    box.innerHTML = '';
-    chats.forEach(c=>{
-      box.innerHTML += `<p><b>${c.user}</b>: ${escape(c.text)} <small>${c.time}</small></p>`;
-    });
-    box.scrollTop = box.scrollHeight;
-  }
-
-  function send(){
-    const t = (document.getElementById('msg').value||'').trim();
-    if(!t) return;
-    chats.push({ user: current, text: t, time: new Date().toLocaleTimeString() });
-    localStorage.setItem('chats', JSON.stringify(chats));
-    document.getElementById('msg').value = '';
-    render();
-  }
-
-  function escape(s){ return s.replace(/[&<>"'/]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;','/':'/'}[c])); }
-  function goTo(p){ location.href=p }
-
+function render(){
+  document.getElementById("chatBox").innerHTML=chats.map(c=>`<p><b>${c.user}:</b> ${c.text}</p>`).join("");
+}
+function send(){
+  let t=document.getElementById("msg").value.trim();
+  if(!t) return;
+  chats.push({user:session.currentUser,text:t});
+  localStorage.setItem("chats",JSON.stringify(chats));
+  document.getElementById("msg").value="";
   render();
+}
+function back(){ location.href="menu.html"; }
+render();
 </script>
 </body>
 </html>
