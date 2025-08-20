@@ -3,15 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventory</title>
+<title>Inventory & Pet</title>
 <style>
 body{ background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; padding:20px; }
+canvas{ background:#111; border:2px solid #444; border-radius:10px; margin:10px auto; display:block; }
+button{ margin:5px; padding:10px; border:none; border-radius:6px; background:#3b82f6; color:#fff; cursor:pointer; font-weight:bold; }
+.bar{ width:80%; height:20px; margin:5px auto; background:#333; border-radius:5px; overflow:hidden; }
+.fill{ height:100%; }
 </style>
 </head>
 <body>
-<h1>📦 Inventory</h1>
-<div id="info"></div>
-<button onclick="back()">⬅️ Kembali</button>
+<h1>🐣 Pet & Inventory</h1>
+<div id="status"></div>
+
+<!-- Bar keadaan -->
+<div class="bar"><div id="hpBar" class="fill" style="background:#ef4444;width:100%"></div></div>
+<div class="bar"><div id="hungerBar" class="fill" style="background:#facc15;width:100%"></div></div>
+<div class="bar"><div id="energyBar" class="fill" style="background:#3b82f6;width:100%"></div></div>
+
+<canvas id="canvas" width="200" height="150"></canvas>
+
+<!-- Tombol aksi -->
+<button onclick="feed()">🍎 Feed</button>
+<button onclick="sleep()">💤 Sleep</button>
+<button onclick="tapCoin()">💰 Tap Coin</button>
+
+<h3>🎒 Inventory</h3>
+<div id="inv"></div>
+
+<br><button onclick="back()">⬅️ Kembali</button>
 
 <script>
 let players=JSON.parse(localStorage.getItem("players")||"{}");
@@ -19,10 +39,84 @@ let session=JSON.parse(localStorage.getItem("session")||"{}");
 if(!session.currentUser) location.href="login.html";
 let me=players[session.currentUser];
 
-document.getElementById("info").innerHTML=
-  `Level: ${me.pet.level}<br>HP: ${me.pet.health}<br>Hunger: ${me.pet.hunger}<br>Energy: ${me.pet.energy}<br>Coin: ${me.coins}<br>Inventory: ${me.inventory.join(", ")||"(kosong)"}`;
+let canvas=document.getElementById("canvas");
+let ctx=canvas.getContext("2d");
+let animFrame=0, animMode="idle";
 
+function drawPet(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#08121a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  if(me && me.pet){
+    let px=80 + Math.sin(animFrame/10)*5;
+    let py=80;
+    ctx.fillStyle="#ffd07a";
+    ctx.fillRect(px,py,40,30);
+
+    // mata
+    ctx.fillStyle="#111";
+    ctx.fillRect(px+8,py+8,5,5);
+    ctx.fillRect(px+26,py+8,5,5);
+
+    // ekspresi
+    if(animMode==="happy"){
+      ctx.fillStyle="#ff66a6";
+      ctx.fillRect(px+15,py+18,10,4);
+    }else if(animMode==="sleep"){
+      ctx.fillStyle="#88f";
+      ctx.fillRect(px+10,py+18,20,4);
+    }else{
+      ctx.fillStyle="#fff";
+      ctx.fillRect(px+18,py+18,4,4);
+    }
+  }else{
+    ctx.fillStyle="#fff";
+    ctx.font="12px sans-serif";
+    ctx.fillText("Belum ada pet",50,70);
+  }
+
+  animFrame++;
+  requestAnimationFrame(drawPet);
+}
+drawPet();
+
+function updateUI(){
+  document.getElementById("status").innerHTML=
+    `👤 ${session.currentUser}<br>Lv.${me.pet.level} | 💰 ${me.coins} coin`;
+
+  // bar keadaan
+  document.getElementById("hpBar").style.width=(me.pet.health/1000*100)+"%";
+  document.getElementById("hungerBar").style.width=(me.pet.hunger/100*100)+"%";
+  document.getElementById("energyBar").style.width=(me.pet.energy/100*100)+"%";
+
+  // inventory list
+  document.getElementById("inv").innerText=me.inventory.join(", ")||"(kosong)";
+}
+
+function feed(){
+  me.pet.hunger=Math.min(100,me.pet.hunger+20);
+  animMode="happy"; setTimeout(()=>animMode="idle",800);
+  save();
+}
+function sleep(){
+  me.pet.energy=Math.min(100,me.pet.energy+30);
+  animMode="sleep"; setTimeout(()=>animMode="idle",1000);
+  save();
+}
+function tapCoin(){
+  me.coins+=5;
+  animMode="happy"; setTimeout(()=>animMode="idle",500);
+  save();
+}
+function save(){
+  players[session.currentUser]=me;
+  localStorage.setItem("players",JSON.stringify(players));
+  updateUI();
+}
 function back(){ location.href="menu.html"; }
+
+updateUI();
 </script>
 </body>
 </html>
