@@ -2,60 +2,46 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tamagotchi Online</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f0f8ff; }
-    .box { border:1px solid #ccc; padding:20px; margin:10px; border-radius:10px; display:inline-block; background:#fff; }
-    #game { display:none; }
-    button { margin:5px; padding:8px 15px; border:none; border-radius:8px; background:#4caf50; color:white; cursor:pointer; }
+    body { font-family: Arial, sans-serif; background:#f2f2f2; text-align:center; }
+    .card { background:#fff; padding:20px; margin:20px auto; border-radius:10px; width:300px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+    input, button { width:90%; padding:10px; margin:5px 0; border-radius:5px; border:1px solid #ccc; }
+    button { background:#4CAF50; color:white; border:none; cursor:pointer; }
     button:hover { background:#45a049; }
   </style>
 </head>
 <body>
-  <h1>🐾 Tamagotchi Online</h1>
 
-  <!-- FORM AUTH -->
-  <div id="authBox" class="box">
+  <h1>🐶 Tamagotchi Online</h1>
+
+  <!-- Register -->
+  <div class="card">
     <h2>Daftar</h2>
     <input id="regEmail" type="email" placeholder="Email"><br>
-    <input id="regUsername" type="text" placeholder="Pilih Username unik"><br>
+    <input id="regUser" type="text" placeholder="Username"><br>
     <input id="regPass" type="password" placeholder="Password"><br>
-    <button onclick="register()">Daftar</button>
+    <button type="button" onclick="register()">Daftar</button>
+  </div>
 
-    <hr>
-
+  <!-- Login -->
+  <div class="card">
     <h2>Login</h2>
     <input id="loginUser" type="text" placeholder="Email atau Username"><br>
     <input id="loginPass" type="password" placeholder="Password"><br>
-    <button onclick="login()">Login</button>
-  </div>
-
-  <!-- GAME -->
-  <div id="game" class="box">
-    <h2>Selamat datang, <span id="playerName"></span>!</h2>
-    <img id="petSprite" src="https://media.giphy.com/media/l0MYC0LajbaPoEADu/giphy.gif" width="150"><br>
-    <p>❤️ HP: <span id="hp">100</span>% | 🍗 Hunger: <span id="hunger">100</span>% | 😴 Energy: <span id="energy">100</span>%</p>
-    <p>💰 Coin: <span id="coin">0</span> | ⭐ Level: <span id="level">1</span></p>
-
-    <button onclick="feedPet()">Kasih Makan</button>
-    <button onclick="sleepPet()">Tidur</button>
-    <button onclick="tapCoin()">Tap Coin</button>
-    <button onclick="buyLevel()">Beli Naik Level</button>
-    <button onclick="buyPet()">Beli Pet Baru</button>
-    <br><br>
-    <button onclick="logout()">Logout</button>
+    <button type="button" onclick="login()">Login</button>
   </div>
 
   <script type="module">
+    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { 
-      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut 
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { 
-      getDatabase, ref, set, get, query, orderByChild, equalTo 
-    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
+      from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, set, get, query, orderByChild, equalTo } 
+      from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    // === Firebase config ===
+    // ✅ Firebase Config kamu
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -67,161 +53,79 @@
       measurementId: "G-TWGGSJRX26"
     };
 
+    // Inisialisasi Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    let player = {
-      username: "",
-      coin: 0,
-      level: 1,
-      hp: 100,
-      hunger: 100,
-      energy: 100
-    };
-
-    // ===== REGISTER =====
+    // ✅ Daftar akun baru
     window.register = async function() {
       const email = document.getElementById("regEmail").value.trim();
-      const username = document.getElementById("regUsername").value.trim().toLowerCase();
-      const password = document.getElementById("regPass").value.trim();
+      const user = document.getElementById("regUser").value.trim();
+      const pass = document.getElementById("regPass").value;
 
-      if (!email || !username || !password) {
-        alert("Harap isi semua field.");
-        return;
-      }
-
-      // cek username unik
-      const q = query(ref(db, "users"), orderByChild("username"), equalTo(username));
-      const snap = await get(q);
-      if (snap.exists()) {
-        alert("Username sudah dipakai, pilih yang lain.");
+      if (!email || !user || !pass) {
+        alert("Lengkapi semua field!");
         return;
       }
 
       try {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        const uid = userCred.user.uid;
-
-        await set(ref(db, "users/" + uid), {
-          email: email,
-          username: username,
-          ...player
-        });
-
-        localStorage.setItem("username", username);
-        alert("Daftar berhasil, selamat datang " + username);
-        showGame(username);
-      } catch (err) {
-        alert("Gagal daftar: " + err.message);
-      }
-    };
-
-    // ===== LOGIN =====
-    window.login = async function() {
-      const input = document.getElementById("loginUser").value.trim().toLowerCase();
-      const password = document.getElementById("loginPass").value.trim();
-
-      if (!input || !password) {
-        alert("Isi username/email dan password.");
-        return;
-      }
-
-      let emailToUse = input;
-
-      // kalau input bukan email, anggap username → lookup email
-      if (!input.includes("@")) {
-        const q = query(ref(db, "users"), orderByChild("username"), equalTo(input));
-        const snap = await get(q);
-        if (!snap.exists()) {
-          alert("Username tidak ditemukan.");
+        // cek username unik
+        let snap = await get(query(ref(db, "users"), orderByChild("username"), equalTo(user)));
+        if (snap.exists()) {
+          alert("⚠️ Username sudah dipakai, silakan pilih lain.");
           return;
         }
-        let userData = Object.values(snap.val())[0];
-        emailToUse = userData.email;
-        localStorage.setItem("username", input);
+
+        let cred = await createUserWithEmailAndPassword(auth, email, pass);
+        await set(ref(db, "users/" + cred.user.uid), {
+          email: email,
+          username: user,
+          coin: 0,
+          level: 1,
+          pets: []
+        });
+
+        alert("✅ Akun berhasil dibuat! Silakan login.");
+      } catch (err) {
+        alert("❌ Gagal daftar: " + err.message);
+      }
+    }
+
+    // ✅ Login dengan Email atau Username
+    window.login = async function() {
+      const user = document.getElementById("loginUser").value.trim();
+      const pass = document.getElementById("loginPass").value;
+
+      if (!user || !pass) {
+        alert("Isi username/email dan password!");
+        return;
       }
 
       try {
-        const userCred = await signInWithEmailAndPassword(auth, emailToUse, password);
-        const uid = userCred.user.uid;
-        const snap = await get(ref(db, "users/" + uid));
-        if (snap.exists()) {
-          player = snap.val();
-          localStorage.setItem("username", player.username);
-          showGame(player.username);
+        if (user.includes("@")) {
+          // login pakai email
+          await signInWithEmailAndPassword(auth, user, pass);
+        } else {
+          // login pakai username → cari email
+          let snap = await get(query(ref(db, "users"), orderByChild("username"), equalTo(user)));
+          if (snap.exists()) {
+            let email = Object.values(snap.val())[0].email;
+            await signInWithEmailAndPassword(auth, email, pass);
+          } else {
+            alert("Username tidak ditemukan!");
+            return;
+          }
         }
+        alert("✅ Login berhasil!");
+        localStorage.setItem("login", "true");
+        localStorage.setItem("username", user);
+        window.location.href = "game.html"; // masuk game
       } catch (err) {
-        alert("Gagal login: " + err.message);
+        alert("❌ Login gagal: " + err.message);
       }
-    };
-
-    // ===== LOGOUT =====
-    window.logout = async function() {
-      await signOut(auth);
-      localStorage.removeItem("username");
-      location.reload();
-    }
-
-    // ===== GAME FUNCTION =====
-    function showGame(name) {
-      document.getElementById("authBox").style.display = "none";
-      document.getElementById("game").style.display = "block";
-      document.getElementById("playerName").innerText = name;
-      updateUI();
-    }
-
-    function updateUI() {
-      document.getElementById("coin").innerText = player.coin;
-      document.getElementById("level").innerText = player.level;
-      document.getElementById("hp").innerText = player.hp;
-      document.getElementById("hunger").innerText = player.hunger;
-      document.getElementById("energy").innerText = player.energy;
-    }
-
-    async function savePlayer() {
-      if (auth.currentUser) {
-        await set(ref(db, "users/" + auth.currentUser.uid), player);
-      }
-    }
-
-    window.feedPet = async function() {
-      if (player.coin < 1) { alert("Coin kurang!"); return; }
-      player.coin -= 1;
-      player.hunger = Math.min(100, player.hunger + 10);
-      updateUI();
-      savePlayer();
-    }
-
-    window.sleepPet = async function() {
-      if (player.coin < 1) { alert("Coin kurang!"); return; }
-      player.coin -= 1;
-      player.energy = Math.min(100, player.energy + 10);
-      updateUI();
-      savePlayer();
-    }
-
-    window.tapCoin = async function() {
-      player.coin += 0.01;
-      updateUI();
-      savePlayer();
-    }
-
-    window.buyLevel = async function() {
-      if (player.coin < 100) { alert("Coin kurang!"); return; }
-      player.coin -= 100;
-      player.level += 1;
-      updateUI();
-      savePlayer();
-    }
-
-    window.buyPet = async function() {
-      if (player.coin < 200) { alert("Coin kurang!"); return; }
-      player.coin -= 200;
-      alert("Pet baru berhasil dibeli! Cek di Inventory.");
-      updateUI();
-      savePlayer();
     }
   </script>
+
 </body>
 </html>
