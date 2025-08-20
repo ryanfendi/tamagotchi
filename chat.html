@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat — Tamagotchi</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamagotchi — Chat</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif}
-  .wrap{max-width:760px;margin:0 auto;text-align:center}
-  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;margin:4px;border-radius:10px;border:0;display:inline-block}
-  #chatBox{background:#101a2b;height:340px;overflow-y:auto;padding:10px;border-radius:12px;text-align:left;margin:10px}
-  input,button{padding:8px;border-radius:10px;border:0;margin:4px}
+  .wrap{max-width:760px;margin:0 auto;text-align:center;padding:10px}
+  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
+  #chatBox{background:#101a2b;height:360px;overflow-y:auto;padding:10px;border-radius:12px;text-align:left;margin:10px}
+  input,button{padding:10px;border-radius:10px;border:0;margin:4px}
   button{background:#10b981;color:#042018;font-weight:700}
-  small{opacity:.7}
+  small{opacity:.75}
 </style>
 </head>
 <body>
@@ -28,21 +28,20 @@
   <div id="chatBox"></div>
   <input id="msg" placeholder="Ketik pesan..." style="width:70%">
   <button onclick="sendMsg()">Kirim</button>
-  <p><small>Pesan tersimpan di perangkat ini (localStorage).</small></p>
+  <p><small>Chat tersimpan lokal (per perangkat).</small></p>
 </div>
-
 <script>
 let players = JSON.parse(localStorage.getItem('players')||'{}');
 let chats = JSON.parse(localStorage.getItem('chats')||'[]');
-let currentUser = localStorage.getItem('lastUser');
-if(!currentUser || !players[currentUser]) location.href='index.html';
+let user = localStorage.getItem('lastUser');
+if(!user || !players[user]) location.href='index.html';
 function logout(){ localStorage.removeItem('lastUser'); location.href='index.html'; }
 function saveChats(){ localStorage.setItem('chats', JSON.stringify(chats)); }
 
 function sendMsg(){
   const t = (document.getElementById('msg').value||'').trim();
   if(!t) return;
-  chats.push({user: currentUser, msg: t, time: new Date().toLocaleTimeString()});
+  chats.push({user, msg:t, time:new Date().toLocaleTimeString()});
   saveChats();
   document.getElementById('msg').value='';
   render();
