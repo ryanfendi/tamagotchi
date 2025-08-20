@@ -48,6 +48,7 @@
     <button onclick="goTo('marketplace.html')">🏪 Marketplace</button>
     <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
     <button onclick="goTo('chat.html')">💬 Chat</button>
+    <button onclick="logout()">🚪 Logout</button>
   </div>
 </div>
 
@@ -83,6 +84,13 @@ function login(){
   document.getElementById("loginBox").classList.add("hidden");
   document.getElementById("gameBox").classList.remove("hidden");
   updateUI(); drawPet();
+}
+
+// LOGOUT
+function logout(){
+  currentUser=null;
+  document.getElementById("gameBox").classList.add("hidden");
+  document.getElementById("loginBox").classList.remove("hidden");
 }
 
 // UPDATE UI
@@ -148,12 +156,12 @@ function drawPet(){
   ctx.fillStyle=lvl<3?"#ffd07a":lvl<6?"#a78bfa":"#34d399";
   ctx.fillRect(px,py,40,30);
   ctx.fillStyle="#111"; ctx.fillRect(px+8,py+8,5,5); ctx.fillRect(px+26,py+8,5,5);
-  if(lvl>=5){ctx.fillStyle="#fff"; ctx.fillRect(px+15,py,10,5);} // tambahan fitur (sayap misalnya)
+  if(lvl>=5){ctx.fillStyle="#fff"; ctx.fillRect(px+15,py,10,5);} // sayap di level tinggi
   animFrame++;
   requestAnimationFrame(drawPet);
 }
 
-function goTo(p){ alert("Menu "+p+" belum aktif (demo)"); }
+function goTo(p){ window.location=p; }
 </script>
 </body>
 </html>
