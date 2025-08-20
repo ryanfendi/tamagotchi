@@ -2,89 +2,35 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Owner Panel - Tamagotchi Online</title>
+  <title>Owner Panel - Tamagotchi</title>
   <style>
-    body { font-family: Arial; background:#fff0f0; text-align:center; }
-    .box { border:1px solid #ccc; background:#fff; padding:15px; margin:10px auto; width:300px; border-radius:8px; }
-    button { margin:5px; padding:6px 12px; border:none; border-radius:6px; background:#e91e63; color:white; cursor:pointer; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+    .section { border:1px solid #f00; margin:10px; padding:10px; border-radius:8px; }
   </style>
 </head>
 <body>
-  <h1>🔑 Owner Panel</h1>
-  <div class="box">
-    <h3>Top Up Coin</h3>
-    <input id="toUser" placeholder="Username target"><br>
-    <input id="amount" type="number" placeholder="Jumlah coin"><br>
-    <button onclick="topUp()">Kirim</button>
+  <h2>🔑 Owner Panel</h2>
+
+  <div class="section">
+    <h3>💳 Permintaan Top Up</h3>
+    <div id="topupRequests"></div>
   </div>
-  <div class="box">
-    <h3>Reset Player</h3>
-    <input id="delUser" placeholder="Username target"><br>
-    <button onclick="resetUser()">Reset</button>
+
+  <div class="section">
+    <h3>📢 Manajemen Iklan</h3>
+    <textarea id="adText" placeholder="Teks iklan"></textarea><br>
+    <button onclick="saveAd()">Simpan Iklan</button>
   </div>
-  <button onclick="location.href='index.html'">🏠 Kembali</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  <button onclick="goBack()">⬅️ Kembali</button>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    let uid="";
-
-    onAuthStateChanged(auth, async (user)=>{
-      if(user){
-        uid=user.uid;
-        const snap = await get(ref(db,"users/"+uid));
-        if(!snap.exists() || snap.val().role!=="owner"){
-          alert("Bukan owner!");
-          location.href="index.html";
-        }
-      } else {
-        location.href="index.html";
-      }
-    });
-
-    window.topUp = async function() {
-      let uname = document.getElementById("toUser").value;
-      let amt = parseInt(document.getElementById("amount").value);
-      if(!uname || !amt) return;
-      const snap = await get(ref(db,"users"));
-      snap.forEach(child=>{
-        let u = child.val();
-        if(u.username===uname){
-          u.coin = (u.coin||0)+amt;
-          set(ref(db,"users/"+child.key),u);
-          alert("Coin ditambahkan.");
-        }
-      });
-    }
-
-    window.resetUser = async function() {
-      let uname=document.getElementById("delUser").value;
-      const snap=await get(ref(db,"users"));
-      snap.forEach(child=>{
-        let u=child.val();
-        if(u.username===uname){
-          remove(ref(db,"users/"+child.key));
-          alert("User dihapus.");
-        }
-      });
-    }
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="game.js"></script>
+  <script>
+    loadOwnerPanel();
+    function goBack(){ location.href="game.html"; }
   </script>
 </body>
 </html>
