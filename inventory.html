@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tamagotchi — Inventory</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tamagotchi Online — Inventory</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:820px;margin:0 auto;padding:12px}
+  .wrap{max-width:860px;margin:0 auto;padding:12px}
   .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px}
   .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
   button,input,select{padding:10px;border-radius:10px;border:0;margin:4px}
@@ -22,7 +21,7 @@
     <a href="marketplace.html">🏪 Marketplace</a>
     <a href="leaderboard.html">🏆 Leaderboard</a>
     <a href="chat.html">💬 Chat</a>
-    <button onclick="logout()">🚪 Logout</button>
+    <button id="btnLogout">🚪 Logout</button>
   </div>
 
   <div id="summary" class="panel"></div>
@@ -30,64 +29,57 @@
   <div class="panel">
     <h3>Ganti Pet Aktif</h3>
     <select id="selActive"></select>
-    <button onclick="setActive()">Aktifkan</button>
+    <button id="btnActive">Aktifkan</button>
   </div>
 
   <div class="panel">
-    <h3>Jual Pet Koleksi ke Marketplace</h3>
+    <h3>Jual Pet ke Marketplace</h3>
     <select id="selSell"></select>
     <input id="price" type="number" placeholder="Harga (coin)"/>
-    <button onclick="sell()">Jual</button>
+    <button id="btnSell">Jual</button>
   </div>
 </div>
 
-<script>
-let players = JSON.parse(localStorage.getItem('players')||'{}');
-let market  = JSON.parse(localStorage.getItem('market')||'{}');
-let user = localStorage.getItem('lastUser');
-if(!user || !players[user]) location.href='index.html';
-function saveAll(){ localStorage.setItem('players',JSON.stringify(players)); localStorage.setItem('market',JSON.stringify(market)); }
-function logout(){ localStorage.removeItem('lastUser'); location.href='index.html'; }
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/online.js"></script>
+<script type="module">
+import { onAuth, logout, subPlayer, setActivePet, sellPet } from './js/online.js';
+let uid=null, me=null, unsub=null;
+
+document.getElementById('btnLogout').onclick = ()=> logout();
 
 function render(){
-  const me = players[user];
-  const p  = me.pets[me.activePet] || me.pets[0];
+  if(!me) return;
+  const p = me.pets[me.activePet] || me.pets[0];
   document.getElementById('summary').innerHTML = `
-    <p><b>Player:</b> ${user}</p>
+    <p><b>Player:</b> ${me.username}</p>
     <p><b>Coin:</b> ${me.coins}</p>
     <p><b>Pet Aktif:</b> Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</p>
     <h4>Koleksi (${me.pets.length})</h4>
-    ${me.pets.map((q,i)=>`<div class="item">#${i+1} — <b>${i===me.activePet?'(Aktif)':''}</b> Lv ${q.level} | HP ${q.hp}% | H ${q.hunger}% | E ${q.energy}%</div>`).join('')}
+    ${me.pets.map((q,i)=>`<div class="item">#${i+1} — ${i===me.activePet?'<b>(Aktif)</b> ':''}Lv ${q.level} | HP ${q.hp}% | H ${q.hunger}% | E ${q.energy}%</div>`).join('')}
   `;
   const opts = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}${i===me.activePet?' (aktif)':''}</option>`).join('');
   document.getElementById('selActive').innerHTML = opts;
-  // untuk jual, jangan tampilkan yang aktif (opsional): tetap boleh jual semua kecuali aktif?
-  document.getElementById('selSell').innerHTML   = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}</option>`).join('');
+  document.getElementById('selSell').innerHTML = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}</option>`).join('');
 }
 
-function setActive(){
-  const me = players[user];
+document.getElementById('btnActive').onclick = async ()=>{
   const idx = parseInt(document.getElementById('selActive').value||'-1');
-  if(isNaN(idx) || idx<0 || idx>=me.pets.length) return;
-  me.activePet = idx;
-  saveAll(); render(); alert('Pet aktif diganti!');
-}
-
-function sell(){
-  const me = players[user];
+  if(isNaN(idx)) return;
+  try{ await setActivePet(uid, idx); }catch(e){ alert(e.message); }
+};
+document.getElementById('btnSell').onclick = async ()=>{
   const idx = parseInt(document.getElementById('selSell').value||'-1');
   const price = parseInt(document.getElementById('price').value||'0');
-  if(isNaN(idx) || idx<0 || idx>=me.pets.length) return alert('Pilih pet.');
-  if(!price || price<=0) return alert('Harga tidak valid.');
-  if(idx===me.activePet) return alert('Tidak bisa menjual pet yang sedang aktif.');
-  const pet = me.pets.splice(idx,1)[0];
-  if(me.activePet>idx) me.activePet--; // geser index aktif jika perlu
-  const id = 'sale_'+Date.now();
-  market[id] = { id, seller:user, pet, price };
-  saveAll(); render(); alert('Pet dimasukkan ke marketplace!');
-}
+  try{ await sellPet(uid, idx, price); alert('Dijual!'); }catch(e){ alert(e.message); }
+};
 
-render();
+onAuth(user=>{
+  if(!user){ location.href='index.html'; return; }
+  uid=user.uid;
+  if(unsub) unsub();
+  unsub = subPlayer(uid, (p)=>{ me=p; render(); });
+});
 </script>
 </body>
 </html>
