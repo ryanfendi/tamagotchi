@@ -2,25 +2,70 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Inventory - Tamagotchi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory - Tamagotchi Online</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-    button { padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
-    .item { border:1px solid #0f0; margin:5px; padding:10px; border-radius:8px; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; padding:20px; }
+    h1 { color:#10b981; }
+    .pet { display:inline-block; background:#111; padding:10px; margin:10px; border-radius:10px; width:120px; }
+    button { background:#10b981; border:none; padding:5px 10px; margin-top:5px; border-radius:6px; cursor:pointer; }
   </style>
 </head>
 <body>
-  <h2>📦 Inventory</h2>
-  <div id="inventory"></div>
+  <h1>📦 Inventory</h1>
   <button onclick="goBack()">⬅️ Kembali</button>
+  <div id="petList"></div>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="game.js"></script>
   <script>
-    loadInventory();
-    function goBack(){ location.href="game.html"; }
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+    authDomain: "tamagotchi-2be0c.firebaseapp.com",
+    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+    projectId: "tamagotchi-2be0c",
+    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+    messagingSenderId: "202052432703",
+    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+    measurementId: "G-TWGGSJRX26"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db=firebase.database(), auth=firebase.auth();
+
+  let user=null;
+
+  auth.onAuthStateChanged(u=>{
+    if(!u){ location.href="index.html"; }
+    else { user=u; loadInventory(); }
+  });
+
+  function goBack(){ location.href="game.html"; }
+
+  function loadInventory(){
+    db.ref("users/"+user.uid+"/inventory").once("value",snap=>{
+      let pets=snap.val()||[];
+      let html="";
+      pets.forEach((p,i)=>{
+        html+=`
+          <div class="pet">
+            <p>🐾 Pet ${i+1}</p>
+            <p>Level: ${p.level}</p>
+            <button onclick="setActive(${i})">Gunakan</button>
+          </div>
+        `;
+      });
+      if(pets.length===0) html="<p>Belum ada pet tambahan.</p>";
+      document.getElementById("petList").innerHTML=html;
+    });
+  }
+
+  function setActive(index){
+    db.ref("users/"+user.uid+"/activePet").set(index);
+    alert("Pet aktif diganti!");
+  }
   </script>
 </body>
 </html>
