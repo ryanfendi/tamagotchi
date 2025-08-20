@@ -1,184 +1,141 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Marketplace — Tamagotchi Online</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:16px}
-  .panel{background:#101a2b;border-radius:12px;padding:12px;margin:10px auto;max-width:880px}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-  .item{background:#0f172a;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
-  button{background:#10b981;border:0;border-radius:8px;color:#042018;font-weight:700;padding:8px 10px;margin:4px;cursor:pointer}
-  input{padding:8px;border-radius:8px;border:0;margin:4px}
-  .muted{color:#a3b3c6;font-size:12px}
-</style>
+  <meta charset="UTF-8">
+  <title>Marketplace - Tamagotchi Online</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#fffaf0; text-align:center; }
+    .box { border:1px solid #ccc; background:#fff; padding:20px; margin:20px; border-radius:10px; display:inline-block; }
+    button { margin:5px; padding:8px 15px; border:none; border-radius:8px; background:#2196f3; color:white; cursor:pointer; }
+    button:hover { background:#0b7dda; }
+    .pet { border:1px solid #ddd; padding:10px; margin:10px; border-radius:8px; }
+  </style>
 </head>
 <body>
-  <h2>🏪 Marketplace</h2>
+  <h1>🏪 Marketplace</h1>
+  <p>Login sebagai: <span id="playerName"></span> | 💰 Coin: <span id="coin"></span></p>
 
-  <div id="authWarn" class="panel" style="display:none">
-    <p>Kamu belum login.</p>
-    <button onclick="location.href='index.html'">Login</button>
+  <div id="marketBox" class="box">
+    <h2>Pet Dijual</h2>
+    <div id="marketList"></div>
   </div>
 
-  <div id="wrap" style="display:none">
-    <div class="panel">
-      <div class="row">
-        <div>👤 <span id="meEmail"></span></div>
-        <div>
-          <button onclick="go('index.html')">🏠 Home</button>
-          <button onclick="go('inventory.html')">📦 Inventory</button>
-          <button onclick="go('leaderboard.html')">🏆 Leaderboard</button>
-          <button onclick="go('chat.html')">💬 Chat</button>
-        </div>
-      </div>
-      <div>💰 Coin: <b id="coins">0</b></div>
-    </div>
+  <br>
+  <button onclick="location.href='index.html'">🏠 Kembali ke Game</button>
+  <button onclick="logout()">Logout</button>
 
-    <div class="panel">
-      <h3>Transfer Coin ke Player</h3>
-      <div class="row">
-        <input id="toEmail" type="email" placeholder="Email penerima" style="min-width:240px">
-        <input id="amt" type="number" placeholder="Jumlah coin">
-        <button onclick="transfer()">Kirim</button>
-      </div>
-      <p class="muted">Transfer langsung in-game coin (gratis). Pastikan email tujuan benar.</p>
-    </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    <div class="panel">
-      <h3>Daftar Pet Dijual</h3>
-      <div id="list"></div>
-    </div>
-  </div>
+    // === Firebase config ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-  authDomain:"tamagotchi-2be0c.firebaseapp.com",
-  databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-  projectId:"tamagotchi-2be0c",
-  storageBucket:"tamagotchi-2be0c.firebasestorage.app",
-  messagingSenderId:"202052432703",
-  appId:"1:202052432703:web:cb76b50e42149a2c92998a",
-  measurementId:"G-TWGGSJRX26"
-};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database(), auth=firebase.auth();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
-let uid=null, me=null;
+    let player = {};
+    let uid = "";
 
-auth.onAuthStateChanged(async u=>{
-  if(!u){ document.getElementById('authWarn').style.display='block'; return; }
-  uid=u.uid; document.getElementById('wrap').style.display='block';
-  document.getElementById('meEmail').innerText=u.email;
-
-  const snap=await db.ref('users/'+uid).once('value');
-  me=snap.val()||{coins:0};
-
-  document.getElementById('coins').innerText=(me.coins||0).toFixed?.(2)||me.coins||0;
-  loadListings();
-});
-
-function loadListings(){
-  db.ref('marketplace/pets').on('value',snap=>{
-    const list=document.getElementById('list'); list.innerHTML='';
-    if(!snap.exists()){ list.innerHTML='<p class="muted">Belum ada listing.</p>'; return; }
-    const data=snap.val();
-    Object.values(data).sort((a,b)=>b.createdAt-a.createdAt).forEach(x=>{
-      const el=document.createElement('div'); el.className='item';
-      el.innerHTML=`
-        <div class="row">
-          <div>
-            <div>🐾 <b>${x.pet?.name||'Pet'}</b> — Level <b>${x.pet?.level||1}</b></div>
-            <div class="muted">Penjual: ${x.sellerEmail||x.sellerUid}</div>
-          </div>
-          <div>
-            <div>Harga: <b>${x.price}</b> coin</div>
-            ${x.sellerUid!==uid?`<button onclick="buy('${x.id}')">Beli</button>`:`<button onclick="cancel('${x.id}')">Batalkan</button>`}
-          </div>
-        </div>`;
-      list.appendChild(el);
+    // Cek login
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        uid = user.uid;
+        const snap = await get(ref(db, "users/" + uid));
+        if (snap.exists()) {
+          player = snap.val();
+          showPlayer();
+          loadMarketplace();
+        }
+      } else {
+        alert("Harus login dulu!");
+        location.href = "index.html";
+      }
     });
-  });
-}
 
-async function buy(id){
-  const ref=db.ref('marketplace/pets/'+id);
-  const snap=await ref.once('value');
-  if(!snap.exists()) return alert('Listing tidak ada.');
-  const item=snap.val();
-  if(item.sellerUid===uid) return alert('Tidak bisa beli pet sendiri.');
-  const mySnap=await db.ref('users/'+uid).once('value');
-  const buyer=mySnap.val()||{};
-  if((buyer.coins||0)<item.price) return alert('Coin tidak cukup.');
+    function showPlayer() {
+      document.getElementById("playerName").innerText = player.username;
+      document.getElementById("coin").innerText = player.coin;
+    }
 
-  // transaksi sederhana (non-atomic demo)
-  buyer.coins = (buyer.coins||0)-item.price;
-  buyer.inventory = buyer.inventory||{};
-  const invId = 'P'+Date.now();
-  buyer.inventory[invId]=item.pet;
+    function loadMarketplace() {
+      let list = document.getElementById("marketList");
+      list.innerHTML = "<p>Loading...</p>";
 
-  const sellerSnap=await db.ref('users/'+item.sellerUid).once('value');
-  const seller=sellerSnap.val()||{};
-  seller.coins=(seller.coins||0)+item.price;
+      onValue(ref(db, "marketplace"), (snapshot) => {
+        list.innerHTML = "";
+        if (!snapshot.exists()) {
+          list.innerHTML = "<p>Tidak ada pet dijual saat ini.</p>";
+          return;
+        }
+        snapshot.forEach(item => {
+          let data = item.val();
+          let id = item.key;
+          // Jangan tampilkan pet milik sendiri
+          if (id.startsWith(uid)) return;
 
-  await db.ref('users/'+uid).set(buyer);
-  await db.ref('users/'+item.sellerUid).set(seller);
-  await ref.remove();
+          let div = document.createElement("div");
+          div.className = "pet";
+          div.innerHTML = `
+            <p>🐶 Pet Level ${data.pet.level} | Pemilik: ${data.owner}</p>
+            <p>💰 Harga: ${data.price} coin</p>
+            <button onclick="buyPet('${id}', ${data.price})">Beli</button>
+          `;
+          list.appendChild(div);
+        });
+      });
+    }
 
-  alert('Pembelian berhasil. Pet masuk ke Inventory.');
-  location.reload();
-}
+    window.buyPet = async function(id, harga) {
+      if (player.coin < harga) {
+        alert("Coin tidak cukup!");
+        return;
+      }
 
-async function cancel(id){
-  const ref=db.ref('marketplace/pets/'+id);
-  const snap=await ref.once('value');
-  if(!snap.exists()) return;
-  const item=snap.val();
-  if(item.sellerUid!==uid) return alert('Bukan milikmu.');
-  // kembalikan ke inventory
-  const mySnap=await db.ref('users/'+uid).once('value');
-  const me=mySnap.val()||{};
-  me.inventory = me.inventory||{};
-  me.inventory['P'+Date.now()]=item.pet;
-  await db.ref('users/'+uid).set(me);
-  await ref.remove();
-}
+      // Ambil data pet
+      const snap = await get(ref(db, "marketplace/" + id));
+      if (!snap.exists()) { alert("Pet sudah terjual."); return; }
+      const data = snap.val();
 
-async function transfer(){
-  const email=document.getElementById('toEmail').value.trim();
-  const amt=parseFloat(document.getElementById('amt').value);
-  if(!email||!amt||amt<=0) return alert('Isi email & jumlah.');
-  if(amt>(me.coins||0)) return alert('Coin kamu tidak cukup.');
+      // Kurangi coin pembeli
+      player.coin -= harga;
+      if (!player.pets) player.pets = [];
+      player.pets.push(data.pet);
+      await set(ref(db, "users/" + uid), player);
 
-  // cari uid target lewat profiles (disarankan Anda menyimpan profiles saat register/login)
-  const prof=await db.ref('profiles').once('value');
-  let targetUid=null;
-  if(prof.exists()){
-    const ps=prof.val();
-    for(const k in ps){ if(ps[k].email===email){ targetUid=k; break; } }
-  }
-  if(!targetUid) return alert('Email penerima tidak ditemukan (belum pernah login).');
+      // Tambah coin penjual
+      let ownerId = id.split("_")[0];
+      const ownerSnap = await get(ref(db, "users/" + ownerId));
+      if (ownerSnap.exists()) {
+        let seller = ownerSnap.val();
+        seller.coin += harga;
+        await set(ref(db, "users/" + ownerId), seller);
+      }
 
-  const targetSnap=await db.ref('users/'+targetUid).once('value');
-  const target=targetSnap.val()||{};
+      // Hapus dari marketplace
+      await remove(ref(db, "marketplace/" + id));
 
-  me.coins=(me.coins||0)-amt;
-  target.coins=(target.coins||0)+amt;
+      alert("Berhasil membeli pet!");
+      showPlayer();
+    }
 
-  await db.ref('users/'+uid).set(me);
-  await db.ref('users/'+targetUid).set(target);
-
-  alert('Transfer sukses!');
-  location.reload();
-}
-
-function go(p){ location.href=p; }
-</script>
+    // logout
+    window.logout = async function() {
+      await signOut(auth);
+      localStorage.removeItem("username");
+      location.href = "index.html";
+    }
+  </script>
 </body>
 </html>
