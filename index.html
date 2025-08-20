@@ -3,129 +3,100 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tamagotchi Online</title>
+  <title>Tamagotchi Online - Login</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#f2f2f2; text-align:center; }
-    .card { background:#fff; padding:20px; margin:20px auto; border-radius:10px; width:300px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
-    input, button { width:90%; padding:10px; margin:5px 0; border-radius:5px; border:1px solid #ccc; }
-    button { background:#4CAF50; color:white; border:none; cursor:pointer; }
-    button:hover { background:#45a049; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; margin:0; padding:0; }
+    input { padding:10px; margin:5px; border-radius:6px; border:none; width:200px; }
+    button { padding:10px; margin:5px; border-radius:6px; border:none; background:#10b981; color:#fff; font-weight:bold; cursor:pointer; }
+    #loginForm { margin-top:50px; }
   </style>
 </head>
 <body>
+  <h1>🐣 Tamagotchi Online</h1>
 
-  <h1>🐶 Tamagotchi Online</h1>
-
-  <!-- Register -->
-  <div class="card">
-    <h2>Daftar</h2>
-    <input id="regEmail" type="email" placeholder="Email"><br>
-    <input id="regUser" type="text" placeholder="Username"><br>
-    <input id="regPass" type="password" placeholder="Password"><br>
-    <button type="button" onclick="register()">Daftar</button>
+  <!-- Login / Daftar -->
+  <div id="loginForm">
+    <h3>Login / Daftar</h3>
+    <input id="email" type="email" placeholder="Email"><br>
+    <input id="username" type="text" placeholder="Username"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button onclick="register()">Daftar</button>
+    <button onclick="login()">Login</button>
   </div>
 
-  <!-- Login -->
-  <div class="card">
-    <h2>Login</h2>
-    <input id="loginUser" type="text" placeholder="Email atau Username"><br>
-    <input id="loginPass" type="password" placeholder="Password"><br>
-    <button type="button" onclick="login()">Login</button>
-  </div>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  <script type="module">
-    // Import Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } 
-      from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, set, get, query, orderByChild, equalTo } 
-      from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  <script>
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+    authDomain: "tamagotchi-2be0c.firebaseapp.com",
+    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+    projectId: "tamagotchi-2be0c",
+    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+    messagingSenderId: "202052432703",
+    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+    measurementId: "G-TWGGSJRX26"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const auth = firebase.auth();
 
-    // ✅ Firebase Config kamu
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
+  // Daftar User Baru
+  function register(){
+    let email=document.getElementById("email").value;
+    let username=document.getElementById("username").value;
+    let pass=document.getElementById("password").value;
+    if(!email||!username||!pass){ alert("Lengkapi data!"); return; }
 
-    // Inisialisasi Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    // ✅ Daftar akun baru
-    window.register = async function() {
-      const email = document.getElementById("regEmail").value.trim();
-      const user = document.getElementById("regUser").value.trim();
-      const pass = document.getElementById("regPass").value;
-
-      if (!email || !user || !pass) {
-        alert("Lengkapi semua field!");
-        return;
+    // cek username unik
+    db.ref("usernames/"+username).once("value", snap=>{
+      if(snap.exists()){ alert("❌ Username sudah dipakai, pilih lain!"); }
+      else{
+        auth.createUserWithEmailAndPassword(email,pass)
+          .then(cred=>{
+            db.ref("users/"+cred.user.uid).set({
+              email:email, username:username,
+              pet:{level:1,hunger:100,energy:100,hp:100,coins:50}
+            });
+            db.ref("usernames/"+username).set(cred.user.uid);
+          })
+          .catch(e=>alert(e.message));
       }
+    });
+  }
 
-      try {
-        // cek username unik
-        let snap = await get(query(ref(db, "users"), orderByChild("username"), equalTo(user)));
-        if (snap.exists()) {
-          alert("⚠️ Username sudah dipakai, silakan pilih lain.");
-          return;
-        }
+  // Login (pakai email ATAU username)
+  function login(){
+    let email=document.getElementById("email").value;
+    let username=document.getElementById("username").value;
+    let pass=document.getElementById("password").value;
 
-        let cred = await createUserWithEmailAndPassword(auth, email, pass);
-        await set(ref(db, "users/" + cred.user.uid), {
-          email: email,
-          username: user,
-          coin: 0,
-          level: 1,
-          pets: []
-        });
-
-        alert("✅ Akun berhasil dibuat! Silakan login.");
-      } catch (err) {
-        alert("❌ Gagal daftar: " + err.message);
-      }
-    }
-
-    // ✅ Login dengan Email atau Username
-    window.login = async function() {
-      const user = document.getElementById("loginUser").value.trim();
-      const pass = document.getElementById("loginPass").value;
-
-      if (!user || !pass) {
-        alert("Isi username/email dan password!");
-        return;
-      }
-
-      try {
-        if (user.includes("@")) {
-          // login pakai email
-          await signInWithEmailAndPassword(auth, user, pass);
-        } else {
-          // login pakai username → cari email
-          let snap = await get(query(ref(db, "users"), orderByChild("username"), equalTo(user)));
-          if (snap.exists()) {
-            let email = Object.values(snap.val())[0].email;
-            await signInWithEmailAndPassword(auth, email, pass);
-          } else {
-            alert("Username tidak ditemukan!");
-            return;
+    if(email){
+      auth.signInWithEmailAndPassword(email,pass).catch(e=>alert(e.message));
+    }else if(username){
+      db.ref("usernames/"+username).once("value",snap=>{
+        if(!snap.exists()){ alert("Username tidak ditemukan!"); return; }
+        let uid=snap.val();
+        db.ref("users/"+uid).once("value",uSnap=>{
+          let userData=uSnap.val();
+          if(userData && userData.email){
+            auth.signInWithEmailAndPassword(userData.email,pass).catch(e=>alert(e.message));
           }
-        }
-        alert("✅ Login berhasil!");
-        localStorage.setItem("login", "true");
-        localStorage.setItem("username", user);
-        window.location.href = "game.html"; // masuk game
-      } catch (err) {
-        alert("❌ Login gagal: " + err.message);
-      }
+        });
+      });
+    }else{
+      alert("Isi email atau username untuk login!");
     }
-  </script>
+  }
 
+  // Redirect ke game.html jika login berhasil
+  auth.onAuthStateChanged(u=>{
+    if(u) window.location.href="game.html";
+  });
+  </script>
 </body>
 </html>
