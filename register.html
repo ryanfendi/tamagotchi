@@ -1,47 +1,56 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Register — Tamagotchi</title>
-  <style>
-    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:40px}
-    .panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block;min-width:320px}
-    input,button{padding:10px;margin:6px;border-radius:8px;border:0;width:100%;box-sizing:border-box}
-    button{background:#10b981;color:#042018;font-weight:700;cursor:pointer}
-    .small{font-size:13px;color:#9fb3b5;margin-top:6px}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamagotchi — Daftar</title>
+<style>
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+  .wrap{max-width:520px;margin:0 auto;padding:20px}
+  .panel{background:#101a2b;border-radius:12px;padding:16px}
+  input,button{padding:10px;border-radius:10px;border:0;margin:6px;width:90%}
+  button{background:#10b981;color:#042018;font-weight:700}
+  a.btn{display:inline-block;background:#1f2937;color:#fff;text-decoration:none;padding:10px 12px;border-radius:10px;margin-top:6px}
+</style>
 </head>
 <body>
+<div class="wrap">
+  <h2>📝 Daftar Akun</h2>
   <div class="panel">
-    <h2>📝 Register</h2>
-    <input id="username" placeholder="Username (ID)">
-    <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <button id="regBtn">Daftar</button>
-    <div class="small">Sudah punya akun? <a href="login.html">Login</a></div>
-    <div id="msg" class="small"></div>
+    <input id="regUser" placeholder="Username (ID)"/>
+    <input id="regEmail" type="email" placeholder="Email (opsional, bisa dipakai login)"/>
+    <input id="regPass" type="password" placeholder="Password"/>
+    <button onclick="register()">Daftar</button>
+    <div><a class="btn" href="index.html">Kembali ke Login</a></div>
   </div>
-
+</div>
 <script>
-document.getElementById('regBtn').addEventListener('click', ()=>{
-  const uname = (document.getElementById('username').value||'').trim().toLowerCase();
-  const email = (document.getElementById('email').value||'').trim().toLowerCase();
-  const pass  = (document.getElementById('password').value||'').toString();
+let players = JSON.parse(localStorage.getItem('players')||'{}');
+function save(){ localStorage.setItem('players', JSON.stringify(players)); }
 
-  if(!uname || !email || !pass) return alert('Isi semua kolom!');
-  const players = JSON.parse(localStorage.getItem('players')||'{}');
-  if(players[uname]) return alert('Username sudah dipakai.');
-  if(Object.values(players).some(u => u.email === email)) return alert('Email sudah terdaftar.');
-
-  players[uname] = {
-    username: uname, email, password: pass, coins: 1000,
-    pet: { name:'Chick', level:1, health:1000, maxHealth:1000, evoIndex:0, lastFeed:null, lastSleep:null, ageDays:0, alive:true },
+function register(){
+  const u = (document.getElementById('regUser').value||'').trim().toLowerCase();
+  const e = (document.getElementById('regEmail').value||'').trim();
+  const p = (document.getElementById('regPass').value||'').trim();
+  if(!u || !p) return alert('Isi username & password.');
+  if(players[u]) return alert('Username sudah dipakai.');
+  // email unik (jika diisi)
+  if(e){
+    const taken = Object.values(players).some(pl => (pl.email||'').toLowerCase()===e.toLowerCase());
+    if(taken) return alert('Email sudah dipakai.');
+  }
+  players[u] = {
+    username: u,
+    email: e,
+    password: p,
+    coins: 1000,
+    pet: { level:1, hunger:100, energy:100, hp:100, alive:true, lastTick: Date.now() },
     inventory: []
   };
-  localStorage.setItem('players', JSON.stringify(players));
-  document.getElementById('msg').textContent = 'Registrasi berhasil! Mengalihkan ke login...';
-  setTimeout(()=> location.href='login.html', 900);
-});
+  save();
+  alert('Registrasi berhasil! Silakan login.');
+  location.href = 'index.html';
+}
 </script>
 </body>
 </html>
