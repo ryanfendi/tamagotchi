@@ -1,59 +1,46 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Leaderboard - Tamagotchi Online</title>
-  <style>
-    body { font-family: Arial, sans-serif; background:#eef6ff; text-align:center; }
-    table { margin:auto; border-collapse: collapse; width: 80%; background:white; }
-    th, td { border:1px solid #ccc; padding:10px; }
-    th { background:#2196f3; color:white; }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard</title>
+<style>
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:16px}
+  .row{background:#0f172a;border-radius:10px;padding:8px;margin:6px auto;max-width:700px;display:flex;justify-content:space-between}
+  input,button{padding:8px;border-radius:8px;border:0}
+  button{background:#10b981;color:#06261f;font-weight:700;cursor:pointer}
+</style>
 </head>
 <body>
-  <h1>🏆 Leaderboard</h1>
-  <p>Ranking berdasarkan coin & level</p>
-  <table>
-    <thead>
-      <tr><th>Rank</th><th>Username</th><th>Level</th><th>Coin</th></tr>
-    </thead>
-    <tbody id="board"></tbody>
-  </table>
-  <br>
-  <button onclick="location.href='index.html'">🏠 Kembali ke Game</button>
+  <h2>🏆 Leaderboard</h2>
+  <input id="q" placeholder="Cari username" oninput="render()">
+  <div id="list"></div>
+  <button onclick="nav('game.html')">⬅️ Kembali</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const board = document.getElementById("board");
-
-    onValue(ref(db, "users"), (snap) => {
-      let arr = [];
-      snap.forEach(u => {
-        let data = u.val();
-        arr.push({username:data.username, coin:data.coin||0, level:data.level||1});
-      });
-      arr.sort((a,b)=> (b.level*10000+b.coin) - (a.level*10000+a.coin));
-      board.innerHTML = "";
-      arr.forEach((p,i) => {
-        board.innerHTML += `<tr><td>${i+1}</td><td>${p.username}</td><td>${p.level}</td><td>${p.coin}</td></tr>`;
-      });
-    });
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+    const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
+    firebase.initializeApp(cfg); const auth=firebase.auth(), db=firebase.database();
+    let data=[];
+    function nav(p){ location.href=p; }
+    function render(){
+      const q=(document.getElementById('q').value||'').toLowerCase();
+      const list=document.getElementById('list'); list.innerHTML='';
+      data
+        .filter(u=>!q || (u.username||'').toLowerCase().includes(q))
+        .sort((a,b)=>(b.level||0)-(a.level||0)|| (b.coins||0)-(a.coins||0))
+        .slice(0,200)
+        .forEach(u=>{
+          const d=document.createElement('div'); d.className='row';
+          d.innerHTML=`<div>👤 ${u.username||'-'} <small>(${u.email||'-'})</small></div>
+                       <div>Lv ${u.level||1} • 💰 ${Number(u.coins||0).toFixed(2)}</div>`;
+          list.appendChild(d);
+        });
+    }
+    auth.onAuthStateChanged(u=>{ if(!u){ location.href='index.html'; return; }});
+    db.ref('users').on('value',snap=>{ data=[]; snap.forEach(c=>data.push(c.val())); render(); });
   </script>
 </body>
 </html>
