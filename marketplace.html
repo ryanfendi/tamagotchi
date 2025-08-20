@@ -2,25 +2,112 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Marketplace - Tamagotchi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketplace - Tamagotchi Online</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-    button { padding:10px; margin:5px; border-radius:8px; cursor:pointer; }
-    .item { border:1px solid #ff0; margin:5px; padding:10px; border-radius:8px; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:0; padding:20px; }
+    h1 { text-align:center; }
+    #market { display:grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-top:20px; }
+    .item { background:#111; border:1px solid #10b981; border-radius:10px; padding:10px; text-align:center; }
+    button { margin-top:10px; padding:5px 10px; border:none; border-radius:6px; cursor:pointer; background:#10b981; color:#fff; }
+    #backBtn { background:#f43f5e; margin-bottom:20px; }
   </style>
 </head>
 <body>
-  <h2>🏪 Marketplace</h2>
+  <button id="backBtn" onclick="goPage('game.html')">⬅️ Kembali</button>
+  <h1>🏪 Marketplace</h1>
   <div id="market"></div>
-  <button onclick="goBack()">⬅️ Kembali</button>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="game.js"></script>
+
   <script>
-    loadMarketplace();
-    function goBack(){ location.href="game.html"; }
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let user = null;
+    let coins = 0;
+
+    auth.onAuthStateChanged(u=>{
+      if(u){
+        user=u;
+        loadCoins();
+        loadMarketplace();
+      }else{
+        window.location.href="index.html";
+      }
+    });
+
+    function loadCoins(){
+      db.ref("users/"+user.uid+"/coins").on("value",snap=>{
+        coins = snap.val() || 0;
+      });
+    }
+
+    // daftar item marketplace
+    const items = [
+      {id:"pet1", name:"🐶 Pet Anjing", price:200, type:"pet"},
+      {id:"pet2", name:"🐱 Pet Kucing", price:200, type:"pet"},
+      {id:"item1", name:"🍎 Food Pack", price:50, type:"item"},
+      {id:"item2", name:"💤 Sleep Potion", price:50, type:"item"},
+      {id:"item3", name:"❤️ Health Potion", price:80, type:"item"}
+    ];
+
+    function loadMarketplace(){
+      const market=document.getElementById("market");
+      market.innerHTML="";
+      items.forEach(it=>{
+        let div=document.createElement("div");
+        div.className="item";
+        div.innerHTML=`
+          <h3>${it.name}</h3>
+          <p>💰 ${it.price} coin</p>
+          <button onclick="buyItem('${it.id}')">Beli</button>
+        `;
+        market.appendChild(div);
+      });
+    }
+
+    function buyItem(itemId){
+      let item = items.find(x=>x.id===itemId);
+      if(!item) return;
+      if(coins < item.price){
+        alert("❌ Coin tidak cukup!");
+        return;
+      }
+      // kurangi coin
+      db.ref("users/"+user.uid+"/coins").set(coins - item.price);
+
+      // masukkan ke inventory
+      let invRef=db.ref("inventory/"+user.uid).push();
+      invRef.set({
+        id:item.id,
+        name:item.name,
+        type:item.type,
+        level:1,
+        time:Date.now()
+      });
+
+      alert("✅ "+item.name+" berhasil dibeli! Cek di Inventory.");
+    }
+
+    function goPage(page){
+      window.location.href=page;
+    }
   </script>
 </body>
 </html>
