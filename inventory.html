@@ -1,122 +1,94 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventory & Pet</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Inventory — Tamagotchi</title>
 <style>
-body{ background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; padding:20px; }
-canvas{ background:#111; border:2px solid #444; border-radius:10px; margin:10px auto; display:block; }
-button{ margin:5px; padding:10px; border:none; border-radius:6px; background:#3b82f6; color:#fff; cursor:pointer; font-weight:bold; }
-.bar{ width:80%; height:20px; margin:5px auto; background:#333; border-radius:5px; overflow:hidden; }
-.fill{ height:100%; }
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+  .panel{background:#101a2b;padding:12px;border-radius:10px;margin:12px auto;max-width:520px}
+  button,input,select{padding:8px;border-radius:8px;border:0;margin:4px}
+  button{background:#10b981;color:#fff;font-weight:bold}
+  .item{background:#1a2436;padding:8px;border-radius:8px;margin:6px 0}
+  .menu a, .menu button { display:inline-block;background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;margin:4px;border-radius:8px;border:0 }
 </style>
 </head>
 <body>
-<h1>🐣 Pet & Inventory</h1>
-<div id="status"></div>
+<h2>📦 Inventory</h2>
+<div class="menu">
+  <a href="index.html">🏠 Home</a>
+  <a href="marketplace.html">🏪 Marketplace</a>
+  <a href="leaderboard.html">🏆 Leaderboard</a>
+  <a href="chat.html">💬 Chat</a>
+  <button onclick="logout()">🚪 Logout</button>
+</div>
 
-<!-- Bar keadaan -->
-<div class="bar"><div id="hpBar" class="fill" style="background:#ef4444;width:100%"></div></div>
-<div class="bar"><div id="hungerBar" class="fill" style="background:#facc15;width:100%"></div></div>
-<div class="bar"><div id="energyBar" class="fill" style="background:#3b82f6;width:100%"></div></div>
+<div id="info" class="panel"></div>
 
-<canvas id="canvas" width="200" height="150"></canvas>
+<div class="panel">
+  <h3>Jadikan Pet Koleksi Sebagai Aktif</h3>
+  <select id="selInv"></select>
+  <button onclick="setActive()">Aktifkan</button>
+</div>
 
-<!-- Tombol aksi -->
-<button onclick="feed()">🍎 Feed</button>
-<button onclick="sleep()">💤 Sleep</button>
-<button onclick="tapCoin()">💰 Tap Coin</button>
-
-<h3>🎒 Inventory</h3>
-<div id="inv"></div>
-
-<br><button onclick="back()">⬅️ Kembali</button>
+<div class="panel">
+  <h3>Jual Pet (dari koleksi) ke Marketplace</h3>
+  <select id="selSell"></select>
+  <input id="sellPrice" type="number" placeholder="Harga coin"/>
+  <button onclick="sellPet()">Jual</button>
+</div>
 
 <script>
-let players=JSON.parse(localStorage.getItem("players")||"{}");
-let session=JSON.parse(localStorage.getItem("session")||"{}");
-if(!session.currentUser) location.href="login.html";
-let me=players[session.currentUser];
+let players = JSON.parse(localStorage.getItem('players')||'{}');
+let currentUser = localStorage.getItem('sessionUser');
 
-let canvas=document.getElementById("canvas");
-let ctx=canvas.getContext("2d");
-let animFrame=0, animMode="idle";
+if(!currentUser || !players[currentUser]) location.href='index.html';
 
-function drawPet(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle="#08121a";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+function logout(){ localStorage.removeItem('sessionUser'); location.href='index.html'; }
+function save(){ localStorage.setItem('players', JSON.stringify(players)); }
 
-  if(me && me.pet){
-    let px=80 + Math.sin(animFrame/10)*5;
-    let py=80;
-    ctx.fillStyle="#ffd07a";
-    ctx.fillRect(px,py,40,30);
-
-    // mata
-    ctx.fillStyle="#111";
-    ctx.fillRect(px+8,py+8,5,5);
-    ctx.fillRect(px+26,py+8,5,5);
-
-    // ekspresi
-    if(animMode==="happy"){
-      ctx.fillStyle="#ff66a6";
-      ctx.fillRect(px+15,py+18,10,4);
-    }else if(animMode==="sleep"){
-      ctx.fillStyle="#88f";
-      ctx.fillRect(px+10,py+18,20,4);
-    }else{
-      ctx.fillStyle="#fff";
-      ctx.fillRect(px+18,py+18,4,4);
-    }
-  }else{
-    ctx.fillStyle="#fff";
-    ctx.font="12px sans-serif";
-    ctx.fillText("Belum ada pet",50,70);
-  }
-
-  animFrame++;
-  requestAnimationFrame(drawPet);
-}
-drawPet();
-
-function updateUI(){
-  document.getElementById("status").innerHTML=
-    `👤 ${session.currentUser}<br>Lv.${me.pet.level} | 💰 ${me.coins} coin`;
-
-  // bar keadaan
-  document.getElementById("hpBar").style.width=(me.pet.health/1000*100)+"%";
-  document.getElementById("hungerBar").style.width=(me.pet.hunger/100*100)+"%";
-  document.getElementById("energyBar").style.width=(me.pet.energy/100*100)+"%";
-
-  // inventory list
-  document.getElementById("inv").innerText=me.inventory.join(", ")||"(kosong)";
+function render(){
+  const me=players[currentUser];
+  const info=document.getElementById('info');
+  const active = me.pet ? `Lv ${me.pet.level} | HP ${me.pet.hp}% | Hunger ${me.pet.hunger}% | Energy ${me.pet.energy}%` : 'Tidak ada';
+  info.innerHTML = `
+    <p><b>Player:</b> ${currentUser}</p>
+    <p><b>Coin:</b> ${me.coins}</p>
+    <p><b>Pet Aktif:</b> ${active}</p>
+    <h4>Koleksi (${me.inventory.length})</h4>
+    ${me.inventory.map((p,i)=>`<div class="item">#${i+1} — Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</div>`).join('') || '<p>Belum ada koleksi</p>'}
+  `;
+  const selInv=document.getElementById('selInv');
+  const selSell=document.getElementById('selSell');
+  selInv.innerHTML = me.inventory.map((p,i)=>`<option value="${i}">#${i+1} — Lv ${p.level}</option>`).join('');
+  selSell.innerHTML = selInv.innerHTML;
 }
 
-function feed(){
-  me.pet.hunger=Math.min(100,me.pet.hunger+20);
-  animMode="happy"; setTimeout(()=>animMode="idle",800);
-  save();
+function setActive(){
+  const me=players[currentUser];
+  if(me.inventory.length===0) return alert('Koleksi kosong.');
+  const idx=parseInt(document.getElementById('selInv').value||'0');
+  const pet=me.inventory.splice(idx,1)[0];
+  if(me.pet) me.inventory.push(me.pet); // simpan pet aktif lama ke koleksi
+  me.pet = pet;
+  save(); render(); alert('Pet aktif diperbarui!');
 }
-function sleep(){
-  me.pet.energy=Math.min(100,me.pet.energy+30);
-  animMode="sleep"; setTimeout(()=>animMode="idle",1000);
-  save();
-}
-function tapCoin(){
-  me.coins+=5;
-  animMode="happy"; setTimeout(()=>animMode="idle",500);
-  save();
-}
-function save(){
-  players[session.currentUser]=me;
-  localStorage.setItem("players",JSON.stringify(players));
-  updateUI();
-}
-function back(){ location.href="menu.html"; }
 
-updateUI();
+function sellPet(){
+  const me=players[currentUser];
+  if(me.inventory.length===0) return alert('Koleksi kosong.');
+  const idx=parseInt(document.getElementById('selSell').value||'0');
+  const price=parseInt(document.getElementById('sellPrice').value||'0');
+  if(!price || price<=0) return alert('Harga tidak valid.');
+  const pet = me.inventory.splice(idx,1)[0];
+  const market = JSON.parse(localStorage.getItem('market')||'{}');
+  const id = 'sale_'+Date.now();
+  market[id] = { seller: currentUser, pet, price };
+  localStorage.setItem('market', JSON.stringify(market));
+  save(); render(); alert('Pet dimasukkan ke marketplace!');
+}
+
+render();
 </script>
 </body>
 </html>
