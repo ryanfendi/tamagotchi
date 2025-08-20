@@ -1,71 +1,141 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Marketplace</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Marketplace — Tamagotchi</title>
 <style>
-body{ background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-input,button{margin:5px;padding:8px;}
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+  .panel{background:#101a2b;padding:12px;border-radius:10px;margin:12px auto;max-width:600px}
+  button,input{padding:8px;border-radius:8px;border:0;margin:4px}
+  button{background:#10b981;color:#fff;font-weight:bold}
+  .item{background:#1a2436;padding:8px;border-radius:8px;margin:6px 0}
+  .menu a, .menu button { display:inline-block;background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;margin:4px;border-radius:8px;border:0 }
 </style>
 </head>
 <body>
-<h1>🛒 Marketplace</h1>
-<h3>Transfer Coin</h3>
-<input id="toUser" placeholder="Kepada siapa">
-<input id="amount" type="number" placeholder="Jumlah">
-<button onclick="sendCoin()">Kirim</button>
+<h2>🏪 Marketplace</h2>
+<div class="menu">
+  <a href="index.html">🏠 Home</a>
+  <a href="inventory.html">📦 Inventory</a>
+  <a href="leaderboard.html">🏆 Leaderboard</a>
+  <a href="chat.html">💬 Chat</a>
+  <button onclick="logout()">🚪 Logout</button>
+</div>
 
-<h3>Jual Pet</h3>
-<input id="sellPrice" type="number" placeholder="Harga pet">
-<button onclick="sellPet()">Jual Pet</button>
+<div id="summary" class="panel"></div>
 
-<div id="market"></div>
-<button onclick="back()">⬅️ Kembali</button>
+<div class="panel">
+  <h3>Daftar Jual</h3>
+  <div id="marketList"></div>
+</div>
+
+<div class="panel">
+  <h3>Transfer Coin ke Player</h3>
+  <input id="toUser" placeholder="Nama penerima"/>
+  <input id="amount" type="number" placeholder="Jumlah coin"/>
+  <button onclick="transferCoin()">Kirim Coin</button>
+</div>
+
+<div class="panel">
+  <h3>Transfer Pet Langsung ke Player</h3>
+  <p>(Mengirim dari koleksi)</p>
+  <select id="selPet"></select>
+  <input id="toUserPet" placeholder="Nama penerima"/>
+  <button onclick="transferPet()">Kirim Pet</button>
+</div>
 
 <script>
-let players=JSON.parse(localStorage.getItem("players")||"{}");
-let session=JSON.parse(localStorage.getItem("session")||"{}");
-if(!session.currentUser) location.href="login.html";
-let me=players[session.currentUser];
+let players=JSON.parse(localStorage.getItem('players')||'{}');
+let market=JSON.parse(localStorage.getItem('market')||'{}');
+let currentUser=localStorage.getItem('sessionUser');
 
-function sendCoin(){
-  let to=document.getElementById("toUser").value.trim();
-  let amt=parseInt(document.getElementById("amount").value);
-  if(!players[to]) return alert("User tidak ditemukan");
-  if(me.coins<amt) return alert("Coin tidak cukup");
-  me.coins-=amt; players[to].coins+=amt;
-  save(); alert("Transfer berhasil");
+if(!currentUser || !players[currentUser]) location.href='index.html';
+
+function logout(){ localStorage.removeItem('sessionUser'); location.href='index.html'; }
+function saveAll(){
+  localStorage.setItem('players', JSON.stringify(players));
+  localStorage.setItem('market', JSON.stringify(market));
 }
-function sellPet(){
-  let price=parseInt(document.getElementById("sellPrice").value);
-  if(!me.pet.alive) return alert("Pet mati tidak bisa dijual");
-  localStorage.setItem("marketPet",JSON.stringify({owner:session.currentUser,pet:me.pet,price}));
-  alert("Pet dijual di marketplace!");
-  renderMarket();
+
+function render(){
+  const me=players[currentUser];
+  document.getElementById('summary').innerHTML = `
+    <p><b>Player:</b> ${currentUser}</p>
+    <p><b>Coin:</b> ${me.coins}</p>
+    <p><b>Koleksi:</b> ${me.inventory.length} pet</p>
+  `;
+
+  // dropdown koleksi
+  document.getElementById('selPet').innerHTML =
+    me.inventory.map((p,i)=>`<option value="${i}">#${i+1} — Lv ${p.level}</option>`).join('') || '<option value="">(Kosong)</option>';
+
+  // market list
+  const list = Object.entries(market);
+  const wrap = document.getElementById('marketList');
+  if(list.length===0){ wrap.innerHTML='<p>Tidak ada pet di marketplace.</p>'; return; }
+  wrap.innerHTML = list.map(([id,item])=>{
+    return `
+      <div class="item">
+        <div><b>Pet:</b> Lv ${item.pet.level} | HP ${item.pet.hp}% | H ${item.pet.hunger}% | E ${item.pet.energy}%</div>
+        <div><b>Harga:</b> ${item.price} coin</div>
+        <div><b>Penjual:</b> ${item.seller}</div>
+        ${item.seller!==currentUser ? `<button onclick="buy('${id}')">Beli</button>` : `<button onclick="cancelSale('${id}')">Batalkan</button>`}
+      </div>
+    `;
+  }).join('');
 }
-function buyPet(owner){
-  let data=JSON.parse(localStorage.getItem("marketPet"));
-  if(!data||data.owner!==owner) return;
-  if(me.coins<data.price) return alert("Coin tidak cukup!");
-  me.coins-=data.price; players[owner].coins+=data.price;
-  me.pet=data.pet; 
-  delete players[owner].pet; // pet pindah
-  localStorage.removeItem("marketPet");
-  save(); alert("Berhasil beli pet");
-  renderMarket();
+
+function buy(id){
+  const me=players[currentUser];
+  const item=market[id];
+  if(!item) return alert('Item tidak ditemukan.');
+  if(me.coins < item.price) return alert('Coin tidak cukup!');
+  const seller = players[item.seller];
+  if(!seller) return alert('Penjual tidak ditemukan.');
+  // transaksi
+  me.coins -= item.price;
+  seller.coins += item.price;
+  me.inventory.push(item.pet);
+  delete market[id];
+  saveAll(); render();
+  alert('Pembelian berhasil!');
 }
-function renderMarket(){
-  let data=JSON.parse(localStorage.getItem("marketPet"));
-  if(data){
-    document.getElementById("market").innerHTML=`<p>${data.owner} menjual pet Lv.${data.pet.level} seharga 💰${data.price}</p><button onclick="buyPet('${data.owner}')">Beli</button>`;
-  } else {
-    document.getElementById("market").innerHTML="Tidak ada pet dijual";
-  }
+
+function cancelSale(id){
+  const item=market[id];
+  if(!item || item.seller!==currentUser) return alert('Tidak bisa dibatalkan.');
+  // kembalikan ke koleksi
+  players[currentUser].inventory.push(item.pet);
+  delete market[id];
+  saveAll(); render(); alert('Dibatalkan.');
 }
-function save(){ localStorage.setItem("players",JSON.stringify(players)); }
-function back(){ location.href="menu.html"; }
-renderMarket();
+
+function transferCoin(){
+  const me=players[currentUser];
+  const to=document.getElementById('toUser').value.trim();
+  const amt=parseInt(document.getElementById('amount').value||'0');
+  if(!players[to]) return alert('Penerima tidak ditemukan.');
+  if(!amt || amt<=0) return alert('Jumlah tidak valid.');
+  if(me.coins<amt) return alert('Coin tidak cukup.');
+  me.coins -= amt;
+  players[to].coins += amt;
+  saveAll(); render(); alert('Coin terkirim!');
+}
+
+function transferPet(){
+  const me=players[currentUser];
+  if(me.inventory.length===0) return alert('Koleksi kosong.');
+  const idx=parseInt(document.getElementById('selPet').value||'-1');
+  const to=document.getElementById('toUserPet').value.trim();
+  if(idx<0 || idx>=me.inventory.length) return alert('Pilih pet.');
+  if(!players[to]) return alert('Penerima tidak ada.');
+  const pet = me.inventory.splice(idx,1)[0];
+  players[to].inventory.push(pet);
+  saveAll(); render(); alert('Pet terkirim!');
+}
+
+render();
 </script>
 </body>
 </html>
