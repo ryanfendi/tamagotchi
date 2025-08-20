@@ -5,41 +5,65 @@
 <title>Owner Panel</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px}
-  table{width:100%;max-width:900px;margin:0 auto;border-collapse:collapse;margin-top:12px}
-  th,td{border:1px solid #334155;padding:8px}
+  h2,h3{color:#10b981}
+  table{width:100%;max-width:900px;margin:0 auto 20px;border-collapse:collapse}
+  th,td{border:1px solid #334155;padding:8px;text-align:center}
   th{background:#10b981;color:#06261f}
   button{padding:6px 10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer;margin:2px}
   .danger{background:#ef4444}
-  .topbar{margin-bottom:16px;padding:12px;background:#1e293b;border-radius:8px}
-  select,input{padding:6px;margin:4px;border-radius:6px;border:1px solid #475569}
+  .success{background:#10b981}
+  select, input{padding:6px;border-radius:6px;border:1px solid #555;margin:4px}
+  .chat-box{max-height:200px;overflow-y:auto;background:#1e293b;padding:8px;margin:10px 0;border-radius:6px}
 </style>
 </head>
 <body>
   <h2>👑 Owner Panel</h2>
   <div id="me">Memuat…</div>
 
-  <!-- PANEL KONTROL -->
-  <div class="topbar">
-    <label>Cari Player: </label>
-    <input type="text" id="searchBox" placeholder="Ketik username/email..." onkeyup="filterPlayers()"><br>
-    <label>Pilih Player: </label>
-    <select id="playerSelect"><option value="">-- pilih --</option></select><br>
-
-    <input type="number" id="coinAmount" placeholder="Jumlah Coin" value="100">
-    <button onclick="transferCoin()">💰 Kirim Coin</button>
-    <button onclick="transferCoinAll()">🌍 Kirim Coin ke Semua</button><br>
-
-    <input type="number" id="levelAmount" placeholder="Level Baru" value="10">
-    <button onclick="setLevel()">⭐ Set Level</button>
-    <button onclick="setLevelAll()">🌍 Set Level Semua</button>
-  </div>
-
-  <!-- LIST USER -->
+  <!-- USERS -->
+  <h3>📋 Data Member</h3>
   <table>
     <thead><tr><th>Username</th><th>Email</th><th>Lv</th><th>Coin</th><th>Aksi</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
-  <p style="text-align:center;margin-top:12px"><button onclick="nav('game.html')">⬅️ Kembali</button></p>
+
+  <!-- TRANSFER COIN -->
+  <h3>💰 Transfer Coin</h3>
+  <select id="userSelect"></select>
+  <input type="number" id="coinAmount" placeholder="Jumlah coin">
+  <button onclick="transferCoin()">Kirim</button>
+
+  <!-- LEVEL UP -->
+  <h3>⚡ Naikkan Level Pet</h3>
+  <select id="levelUserSelect"></select>
+  <input type="number" id="levelAmount" placeholder="Tambah level">
+  <button onclick="levelUp()">Naikkan</button>
+
+  <!-- CHAT GLOBAL -->
+  <h3>💬 Chat Global</h3>
+  <button onclick="clearGlobalChat()" class="danger">🗑️ Hapus Semua Pesan Global</button>
+  <div class="chat-box" id="globalMessages"></div>
+
+  <!-- PRIVATE CHAT -->
+  <h3>👤 Private Chats</h3>
+  <select id="roomSelect"></select>
+  <button onclick="delRoom()" class="danger">🗑️ Hapus Room</button>
+  <button onclick="delAllRooms()" class="danger">🗑️ Hapus Semua Room</button>
+  <div class="chat-box" id="privateMessages"></div>
+
+  <!-- MARKETPLACE -->
+  <h3>📦 Marketplace</h3>
+  <div id="marketplace"></div>
+
+  <!-- ADS -->
+  <h3>📢 Iklan</h3>
+  <input id="adText" placeholder="Teks iklan">
+  <button onclick="addAd()">Tambah Iklan</button>
+  <div id="ads"></div>
+
+  <p style="text-align:center;margin-top:12px">
+    <button onclick="nav('game.html')">⬅️ Kembali</button>
+  </p>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -47,28 +71,20 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
     const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
-    firebase.initializeApp(cfg); 
-    const auth=firebase.auth(), db=firebase.database();
-    
-    const OWNER_EMAIL="ryanfendiwardana@gmail.com";   // GANTI
-    const OWNER_UID  ="vNuT6n1TD2XSjkywNbE5mROL8sa2"; // GANTI
-
-    let players={};
+    firebase.initializeApp(cfg); const auth=firebase.auth(), db=firebase.database();
+    const OWNER_EMAIL="ryanfendiwardana@gmail.com"; // ganti sesuai akun Owner
+    const OWNER_UID="vNuT6n1TD2XSjkywNbE5mROL8sa2"; // ganti sesuai UID Owner
+    let uid;
 
     function nav(p){ location.href=p; }
 
-    function render(snap){
-      const tb=document.getElementById('rows'); 
-      const sel=document.getElementById('playerSelect'); 
-      tb.innerHTML='';
-      sel.innerHTML='<option value="">-- pilih --</option>'; // reset isi
-
-      players = {};
+    // RENDER USERS
+    function renderUsers(snap){
+      const tb=document.getElementById('rows'); tb.innerHTML='';
+      const sel=document.getElementById('userSelect'); sel.innerHTML='';
+      const sel2=document.getElementById('levelUserSelect'); sel2.innerHTML='';
       snap.forEach(ch=>{
         const u=ch.val(), id=ch.key;
-        players[id]=u;
-
-        // Tambah ke tabel
         const tr=document.createElement('tr');
         tr.innerHTML=`
           <td>${u.username||'-'}</td>
@@ -80,80 +96,96 @@
             <button onclick="reset('${id}')" class="danger">Reset</button>
           </td>`;
         tb.appendChild(tr);
-
-        // Tambah ke dropdown
-        const opt=document.createElement("option");
-        opt.value=id; 
-        opt.textContent=u.username || u.email || ("UID:"+id);
-        sel.appendChild(opt);
+        sel.innerHTML+=`<option value="${id}">${u.username||id}</option>`;
+        sel2.innerHTML+=`<option value="${id}">${u.username||id}</option>`;
       });
     }
 
-    function filterPlayers(){
-      const keyword=document.getElementById("searchBox").value.toLowerCase();
-      const sel=document.getElementById("playerSelect");
-      sel.innerHTML='<option value="">-- pilih --</option>'; 
-
-      Object.entries(players).forEach(([id,u])=>{
-        const label=(u.username||'')+" "+(u.email||'');
-        if(label.toLowerCase().includes(keyword)){
-          const opt=document.createElement("option");
-          opt.value=id;
-          opt.textContent=u.username || u.email || ("UID:"+id);
-          sel.appendChild(opt);
-        }
-      });
-    }
-
+    // COIN
     function topup(id, amt){
       db.ref('users/'+id+'/coins').transaction(c=>(Number(c)||0)+amt);
     }
+    function transferCoin(){
+      const uid=document.getElementById("userSelect").value;
+      const amt=Number(document.getElementById("coinAmount").value);
+      if(!uid||!amt) return alert("Pilih user dan isi jumlah");
+      db.ref("users/"+uid+"/coins").transaction(c=>(Number(c)||0)+amt);
+      alert("✅ Coin ditransfer!");
+    }
+
+    // LEVEL UP
+    function levelUp(){
+      const uid=document.getElementById("levelUserSelect").value;
+      const amt=Number(document.getElementById("levelAmount").value);
+      if(!uid||!amt) return alert("Pilih user dan isi level");
+      db.ref("users/"+uid+"/level").transaction(l=>(Number(l)||1)+amt);
+      alert("✅ Level naik!");
+    }
+
+    // RESET
     function reset(id){
       if(!confirm('Reset user ini?')) return;
       db.ref('users/'+id).update({level:1,hunger:100,energy:100,hp:100,coins:0});
     }
 
-    function transferCoin(){
-      const id=document.getElementById("playerSelect").value;
-      const amt=parseFloat(document.getElementById("coinAmount").value)||0;
-      if(!id||amt<=0) return alert("Pilih player & isi jumlah coin");
-      db.ref("users/"+id+"/coins").transaction(c=>(Number(c)||0)+amt);
-      alert("✅ Coin berhasil dikirim");
+    // CHAT GLOBAL
+    function clearGlobalChat(){
+      if(confirm("Hapus semua pesan global?")){
+        db.ref("chat").remove();
+      }
     }
 
-    function setLevel(){
-      const id=document.getElementById("playerSelect").value;
-      const lvl=parseInt(document.getElementById("levelAmount").value)||1;
-      if(!id||lvl<1) return alert("Pilih player & isi level valid");
-      db.ref("users/"+id+"/level").set(lvl);
-      alert("✅ Level berhasil diubah");
+    // PRIVATE CHAT
+    function delRoom(){
+      const sel=document.getElementById("roomSelect");
+      if(!sel.value) return alert("Pilih room dulu!");
+      if(confirm("Hapus seluruh pesan di room "+sel.value+" ?")){
+        db.ref("privateChat/"+sel.value+"/messages").remove();
+      }
+    }
+    function delAllRooms(){
+      if(confirm("⚠️ Yakin ingin menghapus SEMUA private chat room?")){
+        db.ref("privateChat").remove();
+        document.getElementById("roomSelect").innerHTML = "";
+        document.getElementById("privateMessages").innerHTML = "";
+      }
     }
 
-    function transferCoinAll(){
-      const amt=parseFloat(document.getElementById("coinAmount").value)||0;
-      if(amt<=0) return alert("Isi jumlah coin dulu");
-      Object.keys(players).forEach(id=>{
-        db.ref("users/"+id+"/coins").transaction(c=>(Number(c)||0)+amt);
+    // ADS
+    function addAd(){
+      const txt=document.getElementById("adText").value.trim();
+      if(!txt) return;
+      db.ref("ads").push({text:txt});
+      document.getElementById("adText").value="";
+    }
+    function renderAds(snap){
+      const box=document.getElementById("ads"); box.innerHTML="";
+      snap.forEach(ch=>{
+        const a=ch.val();
+        const d=document.createElement("div");
+        d.innerHTML=`${a.text} <button class="danger" onclick="db.ref('ads/${ch.key}').remove()">x</button>`;
+        box.appendChild(d);
       });
-      alert("✅ Coin berhasil dikirim ke semua player");
     }
 
-    function setLevelAll(){
-      const lvl=parseInt(document.getElementById("levelAmount").value)||1;
-      if(lvl<1) return alert("Isi level valid dulu");
-      Object.keys(players).forEach(id=>{
-        db.ref("users/"+id+"/level").set(lvl);
-      });
-      alert("✅ Level semua player berhasil diubah");
-    }
-
-    auth.onAuthStateChanged(u=>{
+    // AUTH
+    auth.onAuthStateChanged(async u=>{
       if(!u){ location.href='index.html'; return; }
+      uid=u.uid;
       if(u.email!==OWNER_EMAIL || u.uid!==OWNER_UID){
         alert('Bukan owner'); nav('game.html'); return;
       }
       document.getElementById('me').textContent=`Login sebagai ${u.email}`;
-      db.ref('users').on('value',render);
+      db.ref('users').on('value',renderUsers);
+      db.ref("chat").on("value",snap=>{
+        let box=document.getElementById("globalMessages"); box.innerHTML="";
+        snap.forEach(m=>{ let v=m.val(); box.innerHTML+=`<div>[${v.sender}] ${v.text}</div>`; });
+      });
+      db.ref("privateChat").on("value",snap=>{
+        let sel=document.getElementById("roomSelect"); sel.innerHTML="";
+        snap.forEach(r=>{ sel.innerHTML+=`<option value="${r.key}">${r.key}</option>`; });
+      });
+      db.ref("ads").on("value",renderAds);
     });
   </script>
 </body>
