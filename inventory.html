@@ -4,33 +4,24 @@
   <meta charset="UTF-8">
   <title>Inventory - Tamagotchi Online</title>
   <style>
-    body { font-family: Arial, sans-serif; background:#f0f8ff; text-align:center; }
-    .box { border:1px solid #ccc; background:#fff; padding:20px; margin:20px; border-radius:10px; display:inline-block; }
-    button { margin:5px; padding:8px 15px; border:none; border-radius:8px; background:#4caf50; color:white; cursor:pointer; }
-    button:hover { background:#45a049; }
-    .pet { border:1px solid #ddd; padding:10px; margin:10px; border-radius:8px; }
+    body { font-family: Arial; text-align:center; background:#f9fff2; }
+    .pet { border:1px solid #ccc; margin:10px; padding:10px; border-radius:8px; background:white; }
+    button { margin:5px; padding:6px 12px; border:none; border-radius:6px; cursor:pointer; background:#4caf50; color:white; }
   </style>
 </head>
 <body>
-  <h1>📦 Inventory</h1>
-  <p>Selamat datang, <span id="playerName"></span></p>
-  <p>💰 Coin: <span id="coin"></span> | ⭐ Level: <span id="level"></span></p>
-
-  <div id="petsBox" class="box">
-    <h2>Daftar Pet</h2>
-    <div id="petList"></div>
-  </div>
-
+  <h1>🎒 Inventory</h1>
+  <p>Username: <span id="playerName"></span> | Coin: <span id="coin"></span></p>
+  <div id="pets"></div>
   <br>
   <button onclick="location.href='index.html'">🏠 Kembali ke Game</button>
   <button onclick="logout()">Logout</button>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    // === Firebase config ===
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -46,78 +37,56 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    let player = {};
-    let uid = "";
+    let player = {}, uid = "";
 
-    // Cek login
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         uid = user.uid;
-        const snap = await get(ref(db, "users/" + uid));
+        let snap = await get(ref(db,"users/"+uid));
         if (snap.exists()) {
           player = snap.val();
-          showPlayer();
+          showInventory();
         }
       } else {
         alert("Harus login dulu!");
-        location.href = "index.html";
+        location.href="index.html";
       }
     });
 
-    function showPlayer() {
+    function showInventory() {
       document.getElementById("playerName").innerText = player.username;
       document.getElementById("coin").innerText = player.coin;
-      document.getElementById("level").innerText = player.level;
-
-      let petsBox = document.getElementById("petList");
+      const petsBox = document.getElementById("pets");
       petsBox.innerHTML = "";
-
-      if (!player.pets) player.pets = [];
-
-      player.pets.forEach((p, i) => {
-        let div = document.createElement("div");
-        div.className = "pet";
-        div.innerHTML = `
-          <p>🐶 Pet Level ${p.level} | ID: ${i+1}</p>
-          <button onclick="sellPet(${i})">Jual ke Marketplace</button>
+      if (!player.pets || player.pets.length==0) {
+        petsBox.innerHTML = "<p>Tidak ada pet</p>";
+        return;
+      }
+      player.pets.forEach((pet,idx)=>{
+        let div=document.createElement("div");
+        div.className="pet";
+        div.innerHTML=`
+          <p>🐾 Pet Level ${pet.level}</p>
+          <button onclick="sellPet(${idx})">Jual ke Marketplace</button>
         `;
         petsBox.appendChild(div);
       });
-
-      if (player.pets.length === 0) {
-        petsBox.innerHTML = "<p>Belum ada pet. Beli di Marketplace.</p>";
-      }
     }
 
-    // jual pet
-    window.sellPet = async function(i) {
-      const pet = player.pets[i];
-      if (!pet) return;
-
-      // harga = 200 coin x level
-      let harga = 200 * pet.level;
-
-      // push ke marketplace
-      let marketRef = ref(db, "marketplace/" + uid + "_" + Date.now());
-      await set(marketRef, {
-        owner: player.username,
-        pet: pet,
-        price: harga
-      });
-
-      // hapus dari inventory
-      player.pets.splice(i, 1);
-      await set(ref(db, "users/" + uid), player);
-
-      alert("Pet dijual di marketplace seharga " + harga + " coin.");
-      showPlayer();
+    window.sellPet = async function(idx) {
+      let pet = player.pets[idx];
+      let harga = pet.level * 200; // harga dasar
+      let id = uid+"_"+Date.now();
+      await set(ref(db,"marketplace/"+id), {pet:pet, owner:player.username, price:harga});
+      player.pets.splice(idx,1);
+      await set(ref(db,"users/"+uid), player);
+      alert("Pet dijual di marketplace seharga "+harga+" coin!");
+      showInventory();
     }
 
-    // logout
     window.logout = async function() {
       await signOut(auth);
-      localStorage.removeItem("username");
-      location.href = "index.html";
+      location.href="index.html";
     }
   </script>
 </body>
