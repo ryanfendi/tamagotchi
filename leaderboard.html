@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leaderboard — Tamagotchi</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamagotchi — Leaderboard</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:760px;margin:0 auto}
-  .panel{background:#101a2b;padding:14px;border-radius:12px;margin:12px}
-  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;margin:4px;border-radius:10px;border:0;display:inline-block}
-  input{padding:8px;border-radius:10px;border:0;margin:4px;min-width:220px}
+  .wrap{max-width:760px;margin:0 auto;padding:10px}
+  .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px}
+  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
+  input{padding:10px;border-radius:10px;border:0;margin:6px;min-width:240px}
   .row{background:#1a2436;border-radius:10px;padding:10px;margin:6px 0;text-align:left}
 </style>
 </head>
@@ -25,28 +25,26 @@
   </div>
 
   <div class="panel">
-    <input id="q" placeholder="Cari pemain..." oninput="render()"/>
+    <input id="q" placeholder="Cari pemain..." oninput="render()" />
     <div id="board"></div>
   </div>
 </div>
-
 <script>
 let players = JSON.parse(localStorage.getItem('players')||'{}');
-let currentUser = localStorage.getItem('lastUser');
-if(!currentUser || !players[currentUser]) location.href='index.html';
+let user = localStorage.getItem('lastUser');
+if(!user || !players[user]) location.href='index.html';
 function logout(){ localStorage.removeItem('lastUser'); location.href='index.html'; }
 
 function render(){
   const term = (document.getElementById('q').value||'').toLowerCase();
-  const arr = Object.entries(players).map(([name,p])=>{
-    return {name, level: p.pet ? p.pet.level : 0, coins: p.coins||0, pets:(p.inventory||[]).length};
-  });
+  const arr = Object.entries(players).map(([name,p])=>({
+    name, level: p.pet ? p.pet.level : 0, coins: p.coins||0, pets: (p.inventory||[]).length
+  }));
   arr.sort((a,b)=> b.level-a.level || b.coins-a.coins || a.name.localeCompare(b.name));
-  const rows = arr
-    .filter(r=>!term || r.name.toLowerCase().includes(term))
-    .map(r=>`<div class="row"><b>${r.name}</b> — Lv ${r.level} | 💰 ${r.coins} | Koleksi ${r.pets}</div>`)
-    .join('') || '<p>Belum ada pemain</p>';
-  document.getElementById('board').innerHTML = rows;
+  const list = arr.filter(x=>!term || x.name.toLowerCase().includes(term))
+                  .map(x=>`<div class="row"><b>${x.name}</b> — Lv ${x.level} | 💰 ${x.coins} | Koleksi ${x.pets}</div>`)
+                  .join('');
+  document.getElementById('board').innerHTML = list || '<p>Belum ada pemain.</p>';
 }
 render();
 </script>
