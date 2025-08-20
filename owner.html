@@ -5,21 +5,62 @@
 <title>Owner Panel</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px}
-  table{width:100%;max-width:900px;margin:0 auto;border-collapse:collapse}
-  th,td{border:1px solid #334155;padding:8px}
+  table{width:100%;max-width:1100px;margin:20px auto;border-collapse:collapse}
+  th,td{border:1px solid #334155;padding:8px;text-align:center}
   th{background:#10b981;color:#06261f}
-  button{padding:6px 10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer}
+  button{padding:6px 10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer;margin:2px}
   .danger{background:#ef4444}
+  .ban{background:#9333ea}
+  input{width:70px;padding:4px;border-radius:6px;border:1px solid #334155;text-align:center}
+  #detailBox{
+    display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.7);justify-content:center;align-items:center;
+  }
+  #detail{
+    background:#1e293b;padding:20px;border-radius:10px;width:90%;max-width:500px;
+    color:#fff;max-height:80vh;overflow:auto;
+  }
+  #detail h3{margin-top:0;color:#10b981}
 </style>
 </head>
 <body>
   <h2>👑 Owner Panel</h2>
   <div id="me">Memuat…</div>
+
+  <!-- Tabel User -->
   <table>
-    <thead><tr><th>Username</th><th>Email</th><th>Lv</th><th>Coin</th><th>Aksi</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Username</th><th>Email</th><th>Lv</th><th>Coin</th>
+        <th>Tambah Coin</th><th>Set Level</th><th>Aksi</th>
+      </tr>
+    </thead>
     <tbody id="rows"></tbody>
   </table>
-  <p style="text-align:center;margin-top:12px"><button onclick="nav('game.html')">⬅️ Kembali</button></p>
+
+  <!-- Tabel Transaksi -->
+  <h3 style="text-align:center;margin-top:40px">📜 Log Transaksi Coin</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Waktu</th><th>Dari</th><th>Ke</th><th>Jumlah</th><th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody id="logs"></tbody>
+  </table>
+
+  <p style="text-align:center;margin-top:12px">
+    <button onclick="nav('game.html')">⬅️ Kembali</button>
+  </p>
+
+  <!-- Popup Detail -->
+  <div id="detailBox">
+    <div id="detail">
+      <h3>📋 Detail User</h3>
+      <div id="detailContent">Memuat...</div>
+      <p style="text-align:center"><button onclick="closeDetail()">Tutup</button></p>
+    </div>
+  </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -27,14 +68,14 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
     const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
-    firebase.initializeApp(cfg); const auth=firebase.auth(), db=firebase.database();
-    const OWNER_EMAIL="ryanfendiwardana@gmail.com";           // GANTI
-    const OWNER_UID  ="vNuT6n1TD2XSjkywNbE5mROL8sa2";    // GANTI
-
-    let uid;
+    firebase.initializeApp(cfg); 
+    const auth=firebase.auth(), db=firebase.database();
+    const OWNER_EMAIL="ryanfendiwardana@gmail.com";   // GANTI sesuai email owner
+    const OWNER_UID  ="vNuT6n1TD2XSjkywNbE5mROL8sa2"; // GANTI sesuai UID owner
 
     function nav(p){ location.href=p; }
 
+    // Render daftar user
     function render(snap){
       const tb=document.getElementById('rows'); tb.innerHTML='';
       snap.forEach(ch=>{
@@ -46,29 +87,108 @@
           <td>${u.level||1}</td>
           <td>${Number(u.coins||0).toFixed(2)}</td>
           <td>
-            <button onclick="topup('${id}',100)">+100</button>
+            <input type="number" id="coin-${id}" placeholder="Jumlah">
+            <button onclick="addCoin('${id}')">Kirim</button>
+          </td>
+          <td>
+            <input type="number" id="level-${id}" placeholder="Lv">
+            <button onclick="setLevel('${id}')">Set</button>
+          </td>
+          <td>
+            <button onclick="lihatDetail('${id}')">Detail</button>
             <button onclick="reset('${id}')" class="danger">Reset</button>
+            <button onclick="hapus('${id}')" class="ban">Hapus</button>
           </td>`;
-        document.getElementById('rows').appendChild(tr);
+        tb.appendChild(tr);
       });
     }
 
-    function topup(id, amt){
+    // Tambah coin ke user + catat transaksi
+    function addCoin(id){
+      const amt=Number(document.getElementById("coin-"+id).value);
+      if(isNaN(amt)||amt<=0) return alert("Jumlah coin tidak valid");
       db.ref('users/'+id+'/coins').transaction(c=>(Number(c)||0)+amt);
+      // log transaksi
+      const tx=db.ref('transactions').push();
+      tx.set({
+        from:"OWNER",
+        to:id,
+        amount:amt,
+        note:"Topup dari Owner",
+        time:Date.now()
+      });
     }
+
+    function setLevel(id){
+      const lv=Number(document.getElementById("level-"+id).value);
+      if(isNaN(lv)||lv<=0) return alert("Level tidak valid");
+      db.ref('users/'+id+'/level').set(lv);
+    }
+
     function reset(id){
       if(!confirm('Reset user ini?')) return;
       db.ref('users/'+id).update({level:1,hunger:100,energy:100,hp:100,coins:0});
     }
 
+    function hapus(id){
+      if(!confirm('Yakin mau hapus user ini?')) return;
+      db.ref('users/'+id).remove();
+      alert("User berhasil dihapus dari database");
+    }
+
+    // Lihat detail user
+    function lihatDetail(id){
+      const box=document.getElementById("detailBox");
+      const content=document.getElementById("detailContent");
+      box.style.display="flex";
+      content.innerHTML="Memuat...";
+      db.ref('users/'+id).once("value",snap=>{
+        const u=snap.val();
+        if(!u){ content.innerHTML="Data user tidak ditemukan"; return; }
+        content.innerHTML=`
+          <b>Username:</b> ${u.username||"-"}<br>
+          <b>Email:</b> ${u.email||"-"}<br>
+          <b>Level:</b> ${u.level||1}<br>
+          <b>Coin:</b> ${u.coins||0}<br>
+          <b>HP:</b> ${u.hp||100}<br>
+          <b>Energy:</b> ${u.energy||100}<br>
+          <b>Hunger:</b> ${u.hunger||100}<br>
+          <hr>
+          <b>Inventory:</b><br><pre>${JSON.stringify(u.inventory||{},null,2)}</pre>
+          <hr>
+          <b>Pet:</b><br><pre>${JSON.stringify(u.pet||{},null,2)}</pre>
+        `;
+      });
+    }
+    function closeDetail(){ document.getElementById("detailBox").style.display="none"; }
+
+    // Render transaksi
+    function renderLogs(snap){
+      const tb=document.getElementById('logs'); tb.innerHTML='';
+      const arr=[];
+      snap.forEach(ch=>{ arr.push(ch.val()); });
+      arr.sort((a,b)=>b.time-a.time); // urut terbaru dulu
+      arr.forEach(tx=>{
+        const tr=document.createElement('tr');
+        const t=new Date(tx.time).toLocaleString();
+        tr.innerHTML=`
+          <td>${t}</td>
+          <td>${tx.from}</td>
+          <td>${tx.to}</td>
+          <td>${tx.amount}</td>
+          <td>${tx.note||'-'}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
     auth.onAuthStateChanged(async u=>{
       if(!u){ location.href='index.html'; return; }
-      uid=u.uid;
       if(u.email!==OWNER_EMAIL || u.uid!==OWNER_UID){
         alert('Bukan owner'); nav('game.html'); return;
       }
       document.getElementById('me').textContent=`Login sebagai ${u.email}`;
       db.ref('users').on('value',render);
+      db.ref('transactions').on('value',renderLogs);
     });
   </script>
 </body>
