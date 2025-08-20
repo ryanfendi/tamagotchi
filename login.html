@@ -1,41 +1,41 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Login — Tamagotchi</title>
 <style>
-body{background:#0b1220;color:#fff;font-family:system-ui,Arial;text-align:center;padding-top:40px}
-.panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block}
-input,button{padding:10px;margin:6px;border-radius:8px;border:0}
-button{background:#10b981;color:#042018;font-weight:700;cursor:pointer}
-.small{font-size:13px;color:#9fb3b5}
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:40px}
+  .panel{background:#101a2b;padding:18px;border-radius:10px;display:inline-block;min-width:320px}
+  input,button{padding:10px;margin:6px;border-radius:8px;border:0;width:100%;box-sizing:border-box}
+  button{background:#10b981;color:#fff;font-weight:700;cursor:pointer}
+  a{color:#10b981;text-decoration:none}
+  .small{font-size:13px;color:#9fb3b5;margin-top:6px}
 </style>
 </head>
 <body>
   <div class="panel">
-    <h2>🔐 Login (username)</h2>
-    <input id="username" placeholder="Username (ID)" /><br/>
-    <input id="password" type="password" placeholder="Password" /><br/>
+    <h2>🔐 Login</h2>
+    <input id="emailOrUser" placeholder="Username atau Email">
+    <input id="password" type="password" placeholder="Password">
     <button id="loginBtn">Login</button>
     <div class="small">Belum punya akun? <a href="register.html">Daftar</a></div>
     <div id="msg" class="small"></div>
   </div>
 
 <script>
-document.getElementById('loginBtn').addEventListener('click', ()=> {
-  const raw = document.getElementById('username').value || '';
-  const username = raw.toString().trim().toLowerCase();
-  const password = (document.getElementById('password').value || '').toString();
-  if(!username || !password){ alert('Isi username & password'); return; }
+document.getElementById('loginBtn').addEventListener('click', ()=>{
+  const input = (document.getElementById('emailOrUser').value||'').trim().toLowerCase();
+  const pass  = (document.getElementById('password').value||'').toString();
+  if(!input || !pass) return alert('Isi semua kolom!');
+
   const players = JSON.parse(localStorage.getItem('players')||'{}');
-  const user = players[username];
-  if(!user || user.password !== password){
-    alert('Username atau password salah');
-    return;
-  }
-  localStorage.setItem('currentPlayer', username);
-  location.href = 'index.html';
+  const user = Object.values(players).find(u => (u.username===input || u.email===input) && u.password===pass);
+  if(!user) return alert('Username/Email atau password salah.');
+
+  localStorage.setItem('currentPlayer', user.username);
+  document.getElementById('msg').textContent = 'Login berhasil! Masuk ke game...';
+  setTimeout(()=> location.href='index.html', 700);
 });
 </script>
 </body>
