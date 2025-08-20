@@ -5,16 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tamagotchi — Game</title>
 <style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px;text-align:center}
-  header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px;text-align:center;overflow-x:hidden}
+  header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
   .btn{background:#10b981;border:0;color:#06261f;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
   .ghost{background:#1e293b;color:#cde;border:1px solid #334155}
   #hud{margin:10px auto;max-width:720px;background:#101a2b;border-radius:12px;padding:10px}
-  #bars{display:flex;gap:8px;justify-content:center}
-  .bar{width:30%;background:#1f2937;border-radius:999px;overflow:hidden;border:1px solid #334155}
-  .bar>div{height:12px;background:#10b981}
+  #bars{display:flex;gap:8px;justify-content:center;margin:10px 0}
+  .bar{position:relative;width:30%;height:16px;background:#1f2937;border-radius:999px;overflow:hidden;border:1px solid #334155}
+  .bar>div{height:100%;width:0;transition:width 0.6s ease}
+  .bar span{position:absolute;width:100%;text-align:center;left:0;top:0;font-size:12px;color:#fff}
+  #bh{background:#f87171} /* hunger merah */
+  #be{background:#60a5fa} /* energy biru */
+  #bhp{background:#34d399} /* hp hijau */
   canvas{background:#08121a;border-radius:12px;margin:8px auto;image-rendering:pixelated;width:320px;height:320px}
   .grid{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px}
+  .coin-fx{position:absolute;font-size:20px;pointer-events:none;animation:floatUp 1s ease-out forwards}
+  @keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
 </style>
 </head>
 <body>
@@ -36,18 +42,21 @@
   <div id="hud">
     <div id="stats">Coin 0 • Lv 1</div>
     <div id="bars">
-      <div class="bar"><div id="bh"></div></div>
-      <div class="bar"><div id="be"></div></div>
-      <div class="bar"><div id="bhp"></div></div>
+      <div class="bar"><div id="bh"></div><span id="ph">0%</span></div>
+      <div class="bar"><div id="be"></div><span id="pe">0%</span></div>
+      <div class="bar"><div id="bhp"></div><span id="php">0%</span></div>
     </div>
     <div class="grid">
       <button class="btn" onclick="feed()">🍎 Feed (1)</button>
       <button class="btn" onclick="sleep()">💤 Sleep (1)</button>
-      <button class="btn" onclick="tap()">💰 Tap +0.01</button>
+      <button class="btn" id="tapBtn" onmousedown="startTapHold()" onmouseup="stopTapHold()" ontouchstart="startTapHold()" ontouchend="stopTapHold()">💰 Tap +0.01</button>
       <button class="btn" onclick="levelUp()">⬆️ Level +1 (100)</button>
       <button class="btn" onclick="buyPet()">🛒 Pet Baru (200)</button>
     </div>
   </div>
+
+  <!-- Suara koin -->
+  <audio id="coinSound" src="https://actions.google.com/sounds/v1/coins/coin_drop.ogg" preload="auto"></audio>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -76,7 +85,6 @@
     function nav(p){ location.href=p; }
     function logout(){ auth.signOut().then(()=>location.href='index.html'); }
 
-    // default profile (jaga2 kalau belum ada)
     function def(){ return {
       email: me.email, username: (prof&&prof.username)||'player',
       coins: 50, level: 1, hunger: 100, energy: 100, hp: 100,
@@ -84,20 +92,18 @@
     };}
 
     function clamp(x,min,max){ return Math.max(min, Math.min(max,x)); }
-    function pct(el, v){ el.style.width = clamp(v,0,100)+'%'; }
+    function pct(el, span, v){ el.style.width = clamp(v,0,100)+'%'; span.textContent=Math.round(v)+'%'; }
 
-    // BAR refs
-    const bh=document.getElementById('bh');
-    const be=document.getElementById('be');
-    const bhp=document.getElementById('bhp');
+    const bh=document.getElementById('bh'), ph=document.getElementById('ph');
+    const be=document.getElementById('be'), pe=document.getElementById('pe');
+    const bhp=document.getElementById('bhp'), php=document.getElementById('php');
 
     function updateUI(){
       document.getElementById('who').textContent = `👤 ${prof.username} (${me.email})`;
       document.getElementById('stats').textContent = `💰 ${Number(prof.coins).toFixed(2)} • Lv ${prof.level}`;
-      pct(bh, prof.hunger); pct(be, prof.energy); pct(bhp, prof.hp);
+      pct(bh, ph, prof.hunger); pct(be, pe, prof.energy); pct(bhp, php, prof.hp);
     }
 
-    // SAVE
     let saving=false;
     async function save(){ if(!uid) return;
       if(saving) return; saving=true;
@@ -106,7 +112,6 @@
       saving=false;
     }
 
-    // ACTIONS
     function feed(){
       if(prof.coins<1) return alert('Coin tidak cukup');
       prof.coins-=1; prof.hunger=clamp(prof.hunger+10,0,100); save(); updateUI();
@@ -115,7 +120,11 @@
       if(prof.coins<1) return alert('Coin tidak cukup');
       prof.coins-=1; prof.energy=clamp(prof.energy+10,0,100); save(); updateUI();
     }
-    function tap(){ prof.coins = Number((Number(prof.coins)+0.01).toFixed(2)); save(); updateUI(); }
+    function tap(){ 
+      prof.coins = Number((Number(prof.coins)+0.01).toFixed(2)); 
+      save(); updateUI(); 
+      spawnCoinsFx();
+    }
     function levelUp(){
       if(prof.coins<100) return alert('Coin tidak cukup');
       prof.coins-=100; prof.level++; save(); updateUI();
@@ -128,7 +137,6 @@
       save(); updateUI(); alert('Pet baru masuk inventory!');
     }
 
-    // DECAY per menit
     setInterval(()=>{
       if(!prof) return;
       prof.hunger = clamp(prof.hunger-1,0,100);
@@ -143,10 +151,8 @@
       save(); updateUI();
     }, 60000);
 
-    // PIXEL PET (3 bentuk, berubah sesuai level)
     function drawPet(){
       ctx.clearRect(0,0,cv.width,cv.height);
-      // background dots
       for(let i=0;i<64;i++){
         ctx.fillStyle = i%2? '#0d1822' : '#0b141d';
         ctx.fillRect((i*7+t)%128, (i*11)%128, 3,3);
@@ -154,32 +160,56 @@
       const x=44+Math.sin(t/10)*4, y=60+Math.cos(t/15)*2;
 
       if(prof.level<5){
-        // bayi bulat kuning
         ctx.fillStyle='#ffd07a'; ctx.fillRect(x,y,40,30);
         ctx.fillStyle='#111'; ctx.fillRect(x+10,y+10,5,5); ctx.fillRect(x+25,y+10,5,5);
         ctx.fillStyle='#ff6b9a'; ctx.fillRect(x+18,y+20,6,3);
       }else if(prof.level<10){
-        // remaja dengan telinga kecil
         ctx.fillStyle='#7ad0ff'; ctx.fillRect(x-2,y-4,44,34);
         ctx.fillStyle='#7ad0ff'; ctx.fillRect(x+4,y-10,6,8); ctx.fillRect(x+30,y-10,6,8);
         ctx.fillStyle='#111'; ctx.fillRect(x+10,y+10,5,5); ctx.fillRect(x+27,y+10,5,5);
         ctx.fillStyle='#fff'; ctx.fillRect(x+19,y+20,8,3);
       }else{
-        // dewasa bersayap
         ctx.fillStyle='#baff7a'; ctx.fillRect(x-4,y-2,48,34);
         ctx.fillStyle='#88aaff'; ctx.fillRect(x+40,y+8,10,8); ctx.fillRect(x+40,y+18,10,8);
         ctx.fillStyle='#111'; ctx.fillRect(x+12,y+10,5,5); ctx.fillRect(x+30,y+10,5,5);
         ctx.fillStyle='#222'; ctx.fillRect(x+20,y+22,8,3);
       }
 
-      // indikator lapar/energi
       if(prof.hunger<20){ ctx.fillStyle='#ff3b3b'; ctx.fillRect(6,6,6,6); }
       if(prof.energy<20){ ctx.fillStyle='#ffd23b'; ctx.fillRect(16,6,6,6); }
 
       t++; requestAnimationFrame(drawPet);
     }
 
-    // Auth & load
+    // efek koin + suara
+    function spawnCoinsFx(){
+      const rect = tapBtn.getBoundingClientRect();
+      const count = 3 + Math.floor(Math.random()*3);
+      for(let i=0;i<count;i++){
+        const fx = document.createElement("div");
+        fx.textContent = "💰";
+        fx.className = "coin-fx";
+        fx.style.left = (rect.left + rect.width/2 + (Math.random()*40-20)) + "px";
+        fx.style.top  = (rect.top - 10 + (Math.random()*20-10)) + "px";
+        fx.style.animationDuration = (0.8+Math.random()*0.6)+"s";
+        document.body.appendChild(fx);
+        setTimeout(()=>fx.remove(), 1200);
+      }
+      const s = document.getElementById("coinSound");
+      s.currentTime = 0; s.play();
+    }
+
+    // tap & hold
+    let tapInt=null;
+    const tapBtn=document.getElementById("tapBtn");
+    function startTapHold(){
+      tap(); 
+      tapInt=setInterval(tap,200);
+    }
+    function stopTapHold(){
+      clearInterval(tapInt); tapInt=null;
+    }
+
     auth.onAuthStateChanged(async u=>{
       if(!u){ location.href='index.html'; return; }
       me=u; uid=u.uid;
