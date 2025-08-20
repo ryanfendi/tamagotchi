@@ -1,80 +1,107 @@
-<script>
-const cfg = {
-  apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-  authDomain: "tamagotchi-2be0c.firebaseapp.com",
-  databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-  projectId: "tamagotchi-2be0c",
-  storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-  messagingSenderId: "202052432703",
-  appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-  measurementId: "G-TWGGSJRX26"
-};
-firebase.initializeApp(cfg);
-const auth = firebase.auth(), db = firebase.database();
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamagotchi — Game</title>
+<style>
+  body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px;text-align:center;overflow-x:hidden}
+  header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .btn{background:#10b981;border:0;color:#06261f;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+  .ghost{background:#1e293b;color:#cde;border:1px solid #334155}
+  #hud{margin:10px auto;max-width:720px;background:#101a2b;border-radius:12px;padding:10px}
+  #bars{display:flex;gap:8px;justify-content:center;margin:10px 0}
+  .bar{position:relative;width:30%;height:16px;background:#1f2937;border-radius:999px;overflow:hidden;border:1px solid #334155}
+  .bar>div{height:100%;width:0;transition:width 0.6s ease}
+  .bar span{position:absolute;width:100%;text-align:center;left:0;top:0;font-size:12px;color:#fff}
+  #bh{background:#f87171}
+  #be{background:#60a5fa}
+  #bhp{background:#34d399}
+  canvas{background:#08121a;border-radius:12px;margin:8px auto;image-rendering:pixelated;width:320px;height:320px}
+  .menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-top:6px}
+  .coin-fx{position:absolute;font-size:20px;pointer-events:none;animation:floatUp 1s ease-out forwards}
+  @keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+</style>
+</head>
+<body>
+  <header>
+    <button class="btn ghost" onclick="nav('index.html')">⟵ Keluar</button>
+    <div id="who">Memuat…</div>
+    <div class="menu-grid">
+      <button class="btn ghost" onclick="nav('inventory.html')">📦 Inventory</button>
+      <button class="btn ghost" onclick="nav('marketplace.html')">🏪 Marketplace</button>
+      <button class="btn ghost" onclick="nav('leaderboard.html')">🏆 Leaderboard</button>
+      <button class="btn ghost" onclick="nav('chat.html')">💬 Chat</button>
+      <button class="btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
 
-let uid = null;
+  <canvas id="cv" width="128" height="128"></canvas>
 
-auth.onAuthStateChanged(u=>{
-  if(!u){ location.href="index.html"; return; }
-  uid = u.uid;
+  <div id="hud">
+    <div id="stats">Coin 0 • Lv 1</div>
+    <div id="bars">
+      <div class="bar"><div id="bh"></div><span id="ph">0%</span></div>
+      <div class="bar"><div id="be"></div><span id="pe">0%</span></div>
+      <div class="bar"><div id="bhp"></div><span id="php">0%</span></div>
+    </div>
+    <div class="menu-grid">
+      <button class="btn" onclick="feed()">🍎 Feed (1)</button>
+      <button class="btn" onclick="sleep()">💤 Sleep (1)</button>
+      <button class="btn" id="tapBtn">💰 Tap +0.01</button>
+      <button class="btn" onclick="levelUp()">⬆️ Level +1 (100)</button>
+      <button class="btn" onclick="buyPet()">🛒 Pet Baru (200)</button>
+    </div>
+  </div>
 
-  // === LISTENER REALTIME ===
-  db.ref("users/"+uid).on("value", snap=>{
-    const data = snap.val();
-    if(!data) return;
+  <audio id="coinSound" src="https://actions.google.com/sounds/v1/coins/coin_drop.ogg" preload="auto"></audio>
 
-    document.getElementById("coins").textContent = Number(data.coins||0).toFixed(2);
-    document.getElementById("level").textContent = data.level || 1;
-    document.getElementById("hunger").textContent = (data.hunger||100)+"%";
-    document.getElementById("energy").textContent = (data.energy||100)+"%";
-    document.getElementById("hp").textContent = (data.hp||100)+"%";
-    
-    // tampilkan sprite pet sesuai level
-    updatePetSprite(data.level||1);
-  });
-});
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script>
+    const firebaseConfig={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
+    firebase.initializeApp(firebaseConfig);
+    const auth=firebase.auth(),db=firebase.database();
+    let me=null,uid=null,prof=null;
 
-// === contoh fungsi feed ===
-function feedPet(){
-  db.ref("users/"+uid).transaction(user=>{
-    if(user){
-      if((user.coins||0) >= 1){
-        user.coins -= 1;
-        user.hunger = Math.min((user.hunger||100)+10,100);
-      }
-    }
-    return user;
-  });
-}
+    const cv=document.getElementById('cv'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;let t=0;
 
-// === contoh fungsi sleep ===
-function sleepPet(){
-  db.ref("users/"+uid).transaction(user=>{
-    if(user){
-      if((user.coins||0) >= 1){
-        user.coins -= 1;
-        user.energy = Math.min((user.energy||100)+10,100);
-      }
-    }
-    return user;
-  });
-}
+    function nav(p){location.href=p;}
+    function logout(){auth.signOut().then(()=>location.href='index.html');}
 
-// === contoh tap coin ===
-function tapCoin(){
-  db.ref("users/"+uid+"/coins").transaction(c=>(Number(c)||0)+0.01);
-}
+    function def(){return{email:me.email,username:(prof&&prof.username)||'player',coins:50,level:1,hunger:100,energy:100,hp:100,currentPet:0,inventory:[{name:'Chick',level:1,kind:'egg'}],updatedAt:Date.now()};}
+    function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+    function pct(el,span,v){el.style.width=clamp(v,0,100)+'%';span.textContent=Math.round(v)+'%';}
+    const bh=document.getElementById('bh'),ph=document.getElementById('ph');const be=document.getElementById('be'),pe=document.getElementById('pe');const bhp=document.getElementById('bhp'),php=document.getElementById('php');
 
-// === update sprite berdasarkan level ===
-function updatePetSprite(level){
-  const pet = document.getElementById("pet");
-  if(!pet) return;
-  if(level < 5){
-    pet.src = "img/pet1.gif";
-  } else if(level < 10){
-    pet.src = "img/pet2.gif";
-  } else {
-    pet.src = "img/pet3.gif";
-  }
-}
-</script>
+    function updateUI(){document.getElementById('who').textContent=`👤 ${prof.username} (${me.email})`;document.getElementById('stats').textContent=`💰 ${Number(prof.coins).toFixed(2)} • Lv ${prof.level}`;pct(bh,ph,prof.hunger);pct(be,pe,prof.energy);pct(bhp,php,prof.hp);}
+
+    let saving=false;async function save(){if(!uid)return;if(saving)return;saving=true;prof.updatedAt=Date.now();await db.ref('users/'+uid).set(prof);saving=false;}
+
+    function feed(){if(prof.coins<1)return alert('Coin tidak cukup');prof.coins-=1;prof.hunger=clamp(prof.hunger+10,0,100);save();updateUI();}
+    function sleep(){if(prof.coins<1)return alert('Coin tidak cukup');prof.coins-=1;prof.energy=clamp(prof.energy+10,0,100);save();updateUI();}
+    function tap(){prof.coins=Number((Number(prof.coins)+0.01).toFixed(2));save();updateUI();spawnCoinsFx();}
+    function levelUp(){if(prof.coins<100)return alert('Coin tidak cukup');prof.coins-=100;prof.level++;save();updateUI();}
+    function buyPet(){if(prof.coins<200)return alert('Coin tidak cukup');prof.coins-=200;const pet={name:'Pet L'+prof.level,level:1,kind:'baby'+(1+Math.floor(Math.random()*3))};prof.inventory.push(pet);save();updateUI();alert('Pet baru masuk inventory!');}
+
+    setInterval(()=>{if(!prof)return;prof.hunger=clamp(prof.hunger-1,0,100);prof.energy=clamp(prof.energy-1,0,100);if(prof.hunger===0||prof.energy===0){prof.hp=clamp(prof.hp-20,0,100);}if(prof.hp===0){alert('☠️ Pet mati! Mulai dari Level 1 lagi.');prof.level=1;prof.hunger=100;prof.energy=100;prof.hp=100;prof.coins=0;}save();updateUI();},60000);
+
+    function drawPet(){ctx.clearRect(0,0,cv.width,cv.height);for(let i=0;i<64;i++){ctx.fillStyle=i%2?'#0d1822':'#0b141d';ctx.fillRect((i*7+t)%128,(i*11)%128,3,3);}const x=44+Math.sin(t/10)*4,y=60+Math.cos(t/15)*2;if(prof.level<5){ctx.fillStyle='#ffd07a';ctx.fillRect(x,y,40,30);ctx.fillStyle='#111';ctx.fillRect(x+10,y+10,5,5);ctx.fillRect(x+25,y+10,5,5);ctx.fillStyle='#ff6b9a';ctx.fillRect(x+18,y+20,6,3);}else if(prof.level<10){ctx.fillStyle='#7ad0ff';ctx.fillRect(x-2,y-4,44,34);ctx.fillStyle='#7ad0ff';ctx.fillRect(x+4,y-10,6,8);ctx.fillRect(x+30,y-10,6,8);ctx.fillStyle='#111';ctx.fillRect(x+10,y+10,5,5);ctx.fillRect(x+27,y+10,5,5);ctx.fillStyle='#fff';ctx.fillRect(x+19,y+20,8,3);}else{ctx.fillStyle='#baff7a';ctx.fillRect(x-4,y-2,48,34);ctx.fillStyle='#88aaff';ctx.fillRect(x+40,y+8,10,8);ctx.fillRect(x+40,y+18,10,8);ctx.fillStyle='#111';ctx.fillRect(x+12,y+10,5,5);ctx.fillRect(x+30,y+10,5,5);ctx.fillStyle='#222';ctx.fillRect(x+20,y+22,8,3);}if(prof.hunger<20){ctx.fillStyle='#ff3b3b';ctx.fillRect(6,6,6,6);}if(prof.energy<20){ctx.fillStyle='#ffd23b';ctx.fillRect(16,6,6,6);}t++;requestAnimationFrame(drawPet);}
+
+    function spawnCoinsFx(){const rect=tapBtn.getBoundingClientRect();const count=3+Math.floor(Math.random()*3);for(let i=0;i<count;i++){const fx=document.createElement("div");fx.textContent="💰";fx.className="coin-fx";fx.style.left=(rect.left+rect.width/2+(Math.random()*40-20))+"px";fx.style.top=(rect.top-10+(Math.random()*20-10))+"px";fx.style.animationDuration=(0.8+Math.random()*0.6)+"s";document.body.appendChild(fx);setTimeout(()=>fx.remove(),1200);}const s=document.getElementById("coinSound");s.currentTime=0;s.play();}
+
+    let tapInt=null;const tapBtn=document.getElementById("tapBtn");
+    function startTapHold(){if(tapInt)return;tap();tapInt=setInterval(tap,200);}
+    function stopTapHold(){if(tapInt){clearInterval(tapInt);tapInt=null;}}
+    tapBtn.addEventListener("mousedown",startTapHold);
+    tapBtn.addEventListener("mouseup",stopTapHold);
+    tapBtn.addEventListener("mouseleave",stopTapHold);
+    tapBtn.addEventListener("touchstart",e=>{e.preventDefault();startTapHold();},{passive:false});
+    tapBtn.addEventListener("touchend",stopTapHold);
+    tapBtn.addEventListener("touchcancel",stopTapHold);
+
+    auth.onAuthStateChanged(async u=>{if(!u){location.href='index.html';return;}me=u;uid=u.uid;const snap=await db.ref('users/'+uid).once('value');prof=snap.exists()?snap.val():def();if(!snap.exists())await save();updateUI();drawPet();});
+  </script>
+</body>
+</html>
