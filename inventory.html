@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventory — Tamagotchi</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamagotchi — Inventory</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:720px;margin:0 auto}
-  .panel{background:#101a2b;padding:14px;border-radius:12px;margin:12px}
-  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;margin:4px;border-radius:10px;border:0;display:inline-block}
-  button,input,select{padding:8px;border-radius:10px;border:0;margin:4px}
+  .wrap{max-width:760px;margin:0 auto;padding:10px}
+  .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px}
+  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
+  button,input,select{padding:10px;border-radius:10px;border:0;margin:4px}
   button{background:#10b981;color:#042018;font-weight:700}
   .item{background:#1a2436;border-radius:10px;padding:8px;margin:6px 0;text-align:left}
-  small.mono{font-family:ui-monospace, Menlo, monospace; opacity:.75}
 </style>
 </head>
 <body>
@@ -26,72 +25,67 @@
     <button onclick="logout()">🚪 Logout</button>
   </div>
 
-  <div id="info" class="panel"></div>
+  <div id="summary" class="panel"></div>
 
   <div class="panel">
     <h3>Jadikan Pet Koleksi Sebagai Aktif</h3>
-    <select id="selInv"></select>
+    <select id="selActive"></select>
     <button onclick="setActive()">Aktifkan</button>
   </div>
 
   <div class="panel">
-    <h3>Jual Pet dari Koleksi ke Marketplace</h3>
+    <h3>Jual Pet Koleksi ke Marketplace</h3>
     <select id="selSell"></select>
-    <input id="sellPrice" type="number" placeholder="Harga (coin)"/>
-    <button onclick="sellPet()">Jual</button>
-    <p><small class="mono">Pet yang dijual akan hilang dari koleksi dan tampil di marketplace.</small></p>
+    <input id="price" type="number" placeholder="Harga (coin)"/>
+    <button onclick="sell()">Jual</button>
   </div>
 </div>
 
 <script>
 let players = JSON.parse(localStorage.getItem('players')||'{}');
-let currentUser = localStorage.getItem('lastUser');
-if(!currentUser || !players[currentUser]) location.href='index.html';
-function save(){ localStorage.setItem('players', JSON.stringify(players)); }
+let market  = JSON.parse(localStorage.getItem('market')||'{}');
+let user = localStorage.getItem('lastUser');
+if(!user || !players[user]) location.href='index.html';
+function saveAll(){ localStorage.setItem('players',JSON.stringify(players)); localStorage.setItem('market',JSON.stringify(market)); }
 function logout(){ localStorage.removeItem('lastUser'); location.href='index.html'; }
 
 function render(){
-  const me = players[currentUser];
-  const info = document.getElementById('info');
-  const active = me.pet ? `Lv ${me.pet.level} | HP ${me.pet.hp}% | H ${me.pet.hunger}% | E ${me.pet.energy}%` : '-';
-  info.innerHTML = `
-    <p><b>Player:</b> ${currentUser}</p>
+  const me = players[user];
+  document.getElementById('summary').innerHTML = `
+    <p><b>Player:</b> ${user}</p>
     <p><b>Coin:</b> ${me.coins}</p>
-    <p><b>Pet Aktif:</b> ${active}</p>
+    <p><b>Pet Aktif:</b> Lv ${me.pet.level} | HP ${me.pet.hp}% | H ${me.pet.hunger}% | E ${me.pet.energy}%</p>
     <h4>Koleksi (${me.inventory.length})</h4>
-    ${(me.inventory||[]).map((p,i)=>`<div class="item">#${i+1} — Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</div>`).join('') || '<p>Tidak ada pet di koleksi.</p>'}
+    ${(me.inventory||[]).map((p,i)=>`<div class="item">#${i+1} — Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</div>`).join('') || '<p>Tidak ada pet.</p>'}
   `;
-
-  const selInv = document.getElementById('selInv');
-  const selSell = document.getElementById('selSell');
-  selInv.innerHTML = (me.inventory||[]).map((p,i)=>`<option value="${i}">#${i+1} — Lv ${p.level}</option>`).join('');
-  selSell.innerHTML = selInv.innerHTML;
+  const opts = (me.inventory||[]).map((p,i)=>`<option value="${i}">#${i+1} — Lv ${p.level}</option>`).join('');
+  document.getElementById('selActive').innerHTML = opts || '<option>(kosong)</option>';
+  document.getElementById('selSell').innerHTML   = opts || '<option>(kosong)</option>';
 }
 
 function setActive(){
-  const me = players[currentUser];
+  const me = players[user];
   if(!me.inventory || me.inventory.length===0) return alert('Koleksi kosong.');
-  const idx = parseInt(document.getElementById('selInv').value||'0');
+  const idx = parseInt(document.getElementById('selActive').value||'-1');
+  if(idx<0) return;
   const chosen = me.inventory.splice(idx,1)[0];
-  if(me.pet) me.inventory.push(me.pet);
+  me.inventory.push(me.pet);
   me.pet = chosen;
-  save(); render(); alert('Pet aktif diperbarui!');
+  saveAll(); render(); alert('Pet aktif diganti!');
 }
 
-function sellPet(){
-  const me = players[currentUser];
+function sell(){
+  const me = players[user];
   if(!me.inventory || me.inventory.length===0) return alert('Koleksi kosong.');
-  const idx = parseInt(document.getElementById('selSell').value||'0');
-  const price = parseInt(document.getElementById('sellPrice').value||'0');
+  const idx = parseInt(document.getElementById('selSell').value||'-1');
+  const price = parseInt(document.getElementById('price').value||'0');
+  if(idx<0) return;
   if(!price || price<=0) return alert('Harga tidak valid.');
   const pet = me.inventory.splice(idx,1)[0];
-  const market = JSON.parse(localStorage.getItem('market')||'{}');
   const id = 'sale_'+Date.now();
-  market[id] = { seller: currentUser, pet, price };
-  localStorage.setItem('market', JSON.stringify(market));
-  save(); render(); alert('Pet dimasukkan ke marketplace!');
+  market[id] = { seller:user, pet, price };
+  saveAll(); render(); alert('Pet dimasukkan ke marketplace!');
 }
-
 render();
 </script>
 </body>
