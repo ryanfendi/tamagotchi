@@ -1,121 +1,75 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Owner Panel - Tamagotchi Online</title>
-  <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; }
-    table { width:100%; border-collapse:collapse; margin-top:10px; }
-    th, td { border:1px solid #444; padding:6px; text-align:left; }
-    th { background:#10b981; color:#fff; }
-    tr:nth-child(even){ background:#1a1a1a; }
-    button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; }
-    .topup { background:#3b82f6; color:#fff; }
-    .delete { background:#ef4444; color:#fff; }
-    #backBtn { background:#f43f5e; margin-bottom:10px; }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Panel</title>
+<style>
+  body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px}
+  table{width:100%;max-width:900px;margin:0 auto;border-collapse:collapse}
+  th,td{border:1px solid #334155;padding:8px}
+  th{background:#10b981;color:#06261f}
+  button{padding:6px 10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer}
+  .danger{background:#ef4444}
+</style>
 </head>
 <body>
-  <button id="backBtn" onclick="goPage('game.html')">⬅️ Kembali</button>
-  <h1>👑 Owner Panel</h1>
-
+  <h2>👑 Owner Panel</h2>
+  <div id="me">Memuat…</div>
   <table>
-    <thead>
-      <tr>
-        <th>Email</th>
-        <th>Username</th>
-        <th>Coin</th>
-        <th>Level</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody id="userTable"></tbody>
+    <thead><tr><th>Username</th><th>Email</th><th>Lv</th><th>Coin</th><th>Aksi</th></tr></thead>
+    <tbody id="rows"></tbody>
   </table>
+  <p style="text-align:center;margin-top:12px"><button onclick="nav('game.html')">⬅️ Kembali</button></p>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
   <script>
-    // Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
+    const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
+    firebase.initializeApp(cfg); const auth=firebase.auth(), db=firebase.database();
+    const OWNER_EMAIL="owner@email.com";           // GANTI
+    const OWNER_UID  ="GANTI_DENGAN_UID_OWNER";    // GANTI
 
-    let user=null;
-    const OWNER_EMAIL = "owner@email.com"; // ganti dengan email owner
+    let uid;
 
-    auth.onAuthStateChanged(u=>{
-      if(u){
-        user=u;
-        if(user.email!==OWNER_EMAIL){
-          alert("🚫 Kamu bukan owner!");
-          window.location.href="game.html";
-        }else{
-          loadUsers();
-        }
-      }else{
-        window.location.href="index.html";
-      }
-    });
+    function nav(p){ location.href=p; }
 
-    function loadUsers(){
-      db.ref("users").on("value",snap=>{
-        let tbody=document.getElementById("userTable");
-        tbody.innerHTML="";
-        snap.forEach(child=>{
-          let pet=child.val();
-          let uid=child.key;
-          let email=pet.email||"no-email";
-          let username=pet.username||email;
-          let coins=pet.coins||0;
-          let level=pet.level||1;
-
-          let tr=document.createElement("tr");
-          tr.innerHTML=`
-            <td>${email}</td>
-            <td>${username}</td>
-            <td>${coins}</td>
-            <td>${level}</td>
-            <td>
-              <button class="topup" onclick="topUp('${uid}')">+ Coin</button>
-              <button class="delete" onclick="deleteUser('${uid}')">Hapus</button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
+    function render(snap){
+      const tb=document.getElementById('rows'); tb.innerHTML='';
+      snap.forEach(ch=>{
+        const u=ch.val(), id=ch.key;
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td>${u.username||'-'}</td>
+          <td>${u.email||'-'}</td>
+          <td>${u.level||1}</td>
+          <td>${Number(u.coins||0).toFixed(2)}</td>
+          <td>
+            <button onclick="topup('${id}',100)">+100</button>
+            <button onclick="reset('${id}')" class="danger">Reset</button>
+          </td>`;
+        document.getElementById('rows').appendChild(tr);
       });
     }
 
-    function topUp(uid){
-      let jumlah=parseInt(prompt("Jumlah coin yang ingin ditambahkan:"));
-      if(isNaN(jumlah)||jumlah<=0) return;
-      db.ref("users/"+uid+"/coins").transaction(c=> (c||0)+jumlah);
-      alert("✅ Top-up berhasil!");
+    function topup(id, amt){
+      db.ref('users/'+id+'/coins').transaction(c=>(Number(c)||0)+amt);
+    }
+    function reset(id){
+      if(!confirm('Reset user ini?')) return;
+      db.ref('users/'+id).update({level:1,hunger:100,energy:100,hp:100,coins:0});
     }
 
-    function deleteUser(uid){
-      if(confirm("Yakin hapus user ini?")){
-        db.ref("users/"+uid).remove();
-        db.ref("profiles/"+uid).remove();
-        alert("🗑️ User dihapus dari database!");
+    auth.onAuthStateChanged(async u=>{
+      if(!u){ location.href='index.html'; return; }
+      uid=u.uid;
+      if(u.email!==OWNER_EMAIL || u.uid!==OWNER_UID){
+        alert('Bukan owner'); nav('game.html'); return;
       }
-    }
-
-    function goPage(p){ location.href=p; }
+      document.getElementById('me').textContent=`Login sebagai ${u.email}`;
+      db.ref('users').on('value',render);
+    });
   </script>
 </body>
 </html>
