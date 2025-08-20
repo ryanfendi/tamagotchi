@@ -1,106 +1,194 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tamagotchi Game</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamagotchi Pixel Game</title>
 <style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:20px}
-  canvas{background:#08121a;image-rendering:pixelated;border-radius:8px}
-  .controls button, .panel-btn{background:#10b981;border:none;padding:8px;margin:5px;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer}
-  #hpBarContainer{width:300px;height:20px;background:#444;margin:10px auto;border-radius:10px;}
-  #hpBar{height:100%;background:#10b981;border-radius:10px;}
-  #ownerPanel, .transferPanel{background:#222;padding:10px;margin:10px auto;border-radius:8px;max-width:560px;}
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+    canvas { background:#08121a; image-rendering:pixelated; border-radius:8px; margin-top:10px; }
+    .controls button { background:#10b981; border:none; padding:10px; margin:5px; border-radius:8px; font-weight:bold; cursor:pointer; }
+    .hidden { display:none; }
+    #ownerPanel { background:#222; padding:10px; margin:10px 0; border-radius:8px; }
 </style>
 </head>
 <body>
-<!-- Proteksi -->
-<script>
-  (function(){
-    const current = localStorage.getItem('currentPlayer');
-    if(!current){ alert('Silakan login terlebih dahulu'); location.href='login.html'; return; }
-    const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(!players[current]){ localStorage.removeItem('currentPlayer'); alert('Akun tidak ditemukan. Login kembali.'); location.href='login.html'; }
-  })();
-</script>
-
-<h1>🐣 Tamagotchi Game</h1>
+<h1>🐣 Tamagotchi Pixel Game</h1>
 <div>
-  <button class="panel-btn" onclick="logout()">Logout</button>
-  <button class="panel-btn" onclick="goTo('inventory.html')">Inventory</button>
-  <button class="panel-btn" onclick="goTo('marketplace.html')">Marketplace</button>
-  <button class="panel-btn" onclick="goTo('leaderboard.html')">Leaderboard</button>
-  <button class="panel-btn" onclick="goTo('chat.html')">Chat</button>
-  <button class="panel-btn" onclick="goTo('owner.html')">Owner</button>
+    <input id="playerName" type="text" placeholder="Masukkan nama..." />
+    <button onclick="login()">Login</button>
 </div>
 
 <canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px;"></canvas>
+
 <div class="controls">
-  <button onclick="feedPet()">Feed</button>
-  <button onclick="sleepPet()">Sleep</button>
-  <button onclick="earnCoin()">Tap Coin</button>
-  <button onclick="buyPet()">Beli Pet</button>
+    <button onclick="feedPet()">🍎 Feed (500 coin)</button>
+    <button onclick="sleepPet()">💤 Sleep</button>
+    <button onclick="earnCoin()">💰 Tap Coin</button>
+    <button onclick="buyPet()">🛒 Beli Pet Baru</button>
+    <button onclick="goTo('inventory.html')">📦 Inventory</button>
+    <button onclick="goTo('marketplace.html')">🏪 Marketplace</button>
+    <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
+    <button onclick="goTo('chat.html')">💬 Chat</button>
 </div>
 
 <div id="status"></div>
 <div id="coinInfo"></div>
-<div id="hpBarContainer"><div id="hpBar"></div></div>
 
-<div id="ownerPanel" style="display:none;">
-  <h3>OWNER PANEL</h3>
-  <input id="sendTo" placeholder="Transfer Coin ke (username)">
-  <input id="sendAmount" type="number" placeholder="Jumlah Coin">
-  <button onclick="transferCoins()">Transfer Coin</button><br><br>
-  <input id="tradeTo" placeholder="Transfer Pet ke (username)">
-  <input id="tradePetIndex" type="number" placeholder="Index Pet">
-  <button onclick="transferPet()">Transfer Pet</button>
+<!-- Owner Panel (hidden by default) -->
+<div id="ownerPanel" class="hidden">
+    <h3>OWNER PANEL</h3>
+    <input id="topupName" placeholder="Nama Player">
+    <input id="topupAmount" type="number" placeholder="Jumlah Coin">
+    <button onclick="topup()">Top-Up</button>
+    <button onclick="unlockAllPets()">Unlock Semua Pet</button>
 </div>
 
 <script>
-const players = JSON.parse(localStorage.getItem('players')||'{}');
-const current = localStorage.getItem('currentPlayer');
-let currentPlayer = players[current];
-const OWNER = 'owner';
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
 
-function saveAll(){ players[current]=currentPlayer; localStorage.setItem('players', JSON.stringify(players)); }
-function logout(){ localStorage.removeItem('currentPlayer'); location.href='login.html'; }
-function goTo(p){location.href=p;}
+let currentPlayer = null;
+let players = JSON.parse(localStorage.getItem("players")||"{}");
+let animFrame = 0;
+let animMode = 'idle';
 
-if(currentPlayer.username === OWNER) document.getElementById('ownerPanel').style.display = 'block';
+const OWNER_NAME = "OWNER"; // owner name fixed
+const PET_PRICE_BASE = 10000;
+const MAX_LEVEL = 1000;
 
+// Login
+function login(){
+    const name = document.getElementById("playerName").value.trim();
+    if(!name) return alert("Masukkan nama dulu!");
+    if(!players[name]){
+        players[name] = {
+            name,
+            coins: name===OWNER_NAME?999999999:1000,
+            pet:{ level:1, health:1000, evoIndex:0, lastFeed:null, lastSleep:null, ageDays:0, alive:true },
+            inventory: []
+        };
+    }
+    currentPlayer = players[name];
+    save();
+    if(name===OWNER_NAME) document.getElementById("ownerPanel").classList.remove("hidden");
+    updateUI();
+    drawPet();
+}
+
+// Update UI
 function updateUI(){
-  const hp = currentPlayer.pet.health;
-  const max = currentPlayer.pet.maxHealth;
-  const pct = Math.max(0, Math.min(100, (hp/max)*100));
-  document.getElementById('coinInfo').textContent = `Coin: ${currentPlayer.coins} | Level: ${currentPlayer.pet.level}`;
-  document.getElementById('status').textContent = `Status: ${currentPlayer.pet.alive?'Hidup':'Mati'} | HP: ${hp}/${max}`;
-  const bar = document.getElementById('hpBar');
-  bar.style.width = pct + '%';
-  bar.style.background = pct>50 ? '#10b981' : pct>20 ? '#f59e0b' : '#ef4444';
+    document.getElementById("coinInfo").innerHTML = `💰 Coin: ${currentPlayer.coins} | Level: ${currentPlayer.pet.level}`;
+    document.getElementById("status").innerHTML = `Status: ${currentPlayer.pet.alive?"Hidup":"Mati"} | HP: ${currentPlayer.pet.health}`;
 }
 
-function transferCoins(){
-  const to = (document.getElementById('sendTo').value||'').trim().toLowerCase();
-  const amt = parseInt((document.getElementById('sendAmount').value||'').toString(),10);
-  if(!players[to]) return alert('Player tidak ditemukan');
-  if(currentPlayer.coins < amt) return alert('Coin tidak cukup');
-  currentPlayer.coins -= amt; players[to].coins = (players[to].coins||0) + amt;
-  saveAll(); updateUI(); alert(`Berhasil transfer ${amt} coin ke ${to}`);
+// Save
+function save(){
+    localStorage.setItem("players", JSON.stringify(players));
 }
 
-function transferPet(){
-  const to = (document.getElementById('tradeTo').value||'').trim().toLowerCase();
-  const idx = parseInt((document.getElementById('tradePetIndex').value||'').toString(),10);
-  if(!players[to]) return alert('Player tidak ditemukan');
-  if(currentPlayer.inventory.length<=idx || idx<0) return alert('Index pet tidak valid');
-  const pet = currentPlayer.inventory.splice(idx,1)[0];
-  players[to].inventory = players[to].inventory||[];
-  players[to].inventory.push(pet);
-  saveAll(); alert(`Pet ${pet.name} ditransfer ke ${to}`);
+// Feed Pet
+function feedPet(){
+    if(!currentPlayer) return;
+    if(currentPlayer.coins<500) return alert("Coin tidak cukup!");
+    const now = Date.now();
+    if(currentPlayer.pet.lastFeed && now - currentPlayer.pet.lastFeed < 4*60*60*1000){
+        return alert("Tunggu 4 jam untuk makan lagi!");
+    }
+    currentPlayer.coins -= 500;
+    currentPlayer.pet.lastFeed = now;
+    currentPlayer.pet.health = Math.min(1000, currentPlayer.pet.health+200);
+    animMode = "happy";
+    save();
+    updateUI();
 }
 
-// Pet logic (feedPet, etc.)... similar to sebelumnya, plus updateUI()
+// Sleep Pet
+function sleepPet(){
+    if(!currentPlayer) return;
+    const now = Date.now();
+    if(currentPlayer.pet.lastSleep && now - currentPlayer.pet.lastSleep < 24*60*60*1000){
+        return alert("Hanya bisa tidur 1 kali sehari!");
+    }
+    currentPlayer.pet.lastSleep = now;
+    currentPlayer.pet.health = Math.min(1000, currentPlayer.pet.health+300);
+    animMode = "sleep";
+    save();
+    updateUI();
+}
 
-updateUI();
+// Earn Coin by Tap
+function earnCoin(){
+    if(!currentPlayer) return;
+    currentPlayer.coins += 10;
+    updateUI();
+    save();
+}
+
+// Buy New Pet
+function buyPet(){
+    if(!currentPlayer) return;
+    const price = currentPlayer.pet.level * PET_PRICE_BASE;
+    if(currentPlayer.coins < price) return alert("Coin tidak cukup!");
+    currentPlayer.coins -= price;
+    currentPlayer.pet.level += 1;
+    currentPlayer.pet.evoIndex = Math.min(currentPlayer.pet.evoIndex+1,10);
+    save();
+    updateUI();
+}
+
+// Owner Functions
+function topup(){
+    const name = document.getElementById("topupName").value.trim();
+    const amt = parseInt(document.getElementById("topupAmount").value);
+    if(!players[name]) return alert("Player tidak ditemukan!");
+    players[name].coins += amt;
+    save();
+    alert(`Top-up berhasil ke ${name} sejumlah ${amt} coin`);
+}
+function unlockAllPets(){
+    if(!currentPlayer) return;
+    currentPlayer.pet.level = MAX_LEVEL;
+    save();
+    alert("Semua pet unlocked!");
+}
+
+// Go to other page
+function goTo(page){
+    location.href = page;
+}
+
+// Draw Pet Animation
+function drawPet(){
+    if(!currentPlayer) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#08121a";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    let px = 40 + Math.sin(animFrame/10)*10;
+    let py = 60;
+    ctx.fillStyle = "#ffd07a";
+    ctx.fillRect(px,py,40,30);
+
+    // Eyes
+    ctx.fillStyle = "#111";
+    ctx.fillRect(px+8, py+8, 5,5);
+    ctx.fillRect(px+26, py+8, 5,5);
+
+    // Expression
+    if(animMode==="happy"){
+        ctx.fillStyle = "#ff66a6"; ctx.fillRect(px+15, py+18,10,4);
+    } else if(animMode==="sleep"){
+        ctx.fillStyle = "#88f"; ctx.fillRect(px+10, py+18,20,4);
+    } else {
+        ctx.fillStyle = "#fff"; ctx.fillRect(px+18, py+18,4,4);
+    }
+
+    animFrame++;
+    requestAnimationFrame(drawPet);
+}
+drawPet();
 </script>
 </body>
 </html>
