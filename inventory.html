@@ -1,87 +1,94 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventory - Tamagotchi Online</title>
-  <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:0; padding:20px; }
-    h1 { text-align:center; }
-    #inventory { display:grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap:15px; margin-top:20px; }
-    .item { background:#111; border:1px solid #10b981; border-radius:10px; padding:10px; text-align:center; }
-    button { margin-top:10px; padding:5px 10px; border:none; border-radius:6px; cursor:pointer; background:#10b981; color:#fff; }
-    #backBtn { background:#f43f5e; margin-bottom:20px; }
-  </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory</title>
+<style>
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;padding:16px}
+  .card{background:#101a2b;border-radius:12px;padding:12px;max-width:700px;margin:0 auto}
+  button,input{padding:8px;border:0;border-radius:8px;margin:4px}
+  button{background:#10b981;color:#06261f;font-weight:700;cursor:pointer}
+  .item{background:#0f172a;border-radius:10px;padding:8px;margin:6px 0;display:flex;justify-content:space-between;align-items:center}
+</style>
 </head>
 <body>
-  <button id="backBtn" onclick="goPage('game.html')">⬅️ Kembali</button>
-  <h1>📦 Inventory</h1>
-  <div id="inventory"></div>
+  <h2>📦 Inventory</h2>
+  <div class="card">
+    <div id="info">Memuat…</div>
+    <h3>Pet Milikmu</h3>
+    <div id="list"></div>
+    <hr>
+    <h3>Transfer Coin</h3>
+    <input id="toUser" placeholder="Username tujuan">
+    <input id="amtCoin" type="number" placeholder="Jumlah coin">
+    <button onclick="xferCoin()">Kirim</button>
+    <hr>
+    <button onclick="nav('game.html')">⬅️ Kembali</button>
+  </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
   <script>
-    // Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
+    const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
+    firebase.initializeApp(cfg); const auth=firebase.auth(), db=firebase.database();
+    let uid, me, prof;
 
-    let user = null;
+    function nav(p){ location.href=p; }
 
-    auth.onAuthStateChanged(u=>{
-      if(u){
-        user = u;
-        loadInventory();
-      } else {
-        window.location.href="index.html";
-      }
-    });
-
-    function loadInventory(){
-      db.ref("inventory/"+user.uid).on("value",snap=>{
-        const inv = document.getElementById("inventory");
-        inv.innerHTML="";
-        if(!snap.exists()){
-          inv.innerHTML="<p>❌ Belum ada item di inventory.</p>";
-          return;
-        }
-        snap.forEach(item=>{
-          let val=item.val();
-          let div=document.createElement("div");
-          div.className="item";
-          div.innerHTML=`
-            <h3>${val.type === "pet" ? "🐕 Pet" : "🎁 Item"}</h3>
-            <p>Level: ${val.level || 1}</p>
-            <p>⏰ ${new Date(val.time).toLocaleString()}</p>
-            <button onclick="useItem('${item.key}')">Gunakan</button>
-          `;
-          inv.appendChild(div);
-        });
+    function render(){
+      document.getElementById('info').textContent = `👤 ${prof.username} • 💰 ${Number(prof.coins).toFixed(2)}`;
+      const c=document.getElementById('list'); c.innerHTML='';
+      (prof.inventory||[]).forEach((p,i)=>{
+        const div=document.createElement('div'); div.className='item';
+        div.innerHTML=`<div>🐾 <b>${p.name}</b> (Lv ${p.level})</div>
+          <div>
+            <button onclick="setActive(${i})">Aktifkan</button>
+            <button onclick="sell(${i})">Jual (ke Marketplace)</button>
+          </div>`;
+        c.appendChild(div);
       });
     }
 
-    function useItem(id){
-      alert("✅ Item "+id+" digunakan!");
-      // contoh: hapus dari inventory setelah dipakai
-      db.ref("inventory/"+user.uid+"/"+id).remove();
+    async function setActive(i){
+      prof.currentPet = i; await db.ref('users/'+uid+'/currentPet').set(i);
+      alert('Aktifkan pet berhasil');
     }
 
-    function goPage(page){
-      window.location.href=page;
+    async function sell(i){
+      const price = parseInt(prompt('Harga (coin):'));
+      if(!price || price<=0) return;
+      const pet = prof.inventory.splice(i,1)[0];
+      const id = db.ref('market').push().key;
+      const item={ id, sellerUid:uid, sellerName:prof.username, pet, price, ts:Date.now() };
+      await db.ref('market/'+id).set(item);
+      await db.ref('users/'+uid+'/inventory').set(prof.inventory);
+      render();
+      alert('Pet masuk marketplace');
     }
+
+    async function xferCoin(){
+      const uname = document.getElementById('toUser').value.trim().toLowerCase();
+      const amt = parseFloat(document.getElementById('amtCoin').value);
+      if(!uname || !amt || amt<=0) return alert('Data tidak valid');
+      if(amt>prof.coins) return alert('Coin kurang');
+
+      const uidSnap = await db.ref('usernames/'+uname).once('value');
+      if(!uidSnap.exists()) return alert('Username tidak ditemukan');
+
+      const other = uidSnap.val();
+      await db.ref('users/'+uid+'/coins').transaction(c=>(Number(c)||0)-amt);
+      await db.ref('users/'+other+'/coins').transaction(c=>(Number(c)||0)+amt);
+      alert('Transfer berhasil');
+    }
+
+    auth.onAuthStateChanged(async u=>{
+      if(!u){ location.href='index.html'; return; }
+      uid=u.uid; me=u;
+      const s=await db.ref('users/'+uid).once('value');
+      prof=s.val(); render();
+    });
   </script>
 </body>
 </html>
