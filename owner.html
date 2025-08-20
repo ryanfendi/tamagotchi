@@ -8,7 +8,7 @@
   table{width:100%;max-width:900px;margin:0 auto;border-collapse:collapse;margin-top:12px}
   th,td{border:1px solid #334155;padding:8px}
   th{background:#10b981;color:#06261f}
-  button{padding:6px 10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer}
+  button{padding:6px 10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer;margin:2px}
   .danger{background:#ef4444}
   .topbar{margin-bottom:16px;padding:12px;background:#1e293b;border-radius:8px}
   select,input{padding:6px;margin:4px;border-radius:6px;border:1px solid #475569}
@@ -20,12 +20,18 @@
 
   <!-- PANEL KONTROL -->
   <div class="topbar">
+    <label>Cari Player: </label>
+    <input type="text" id="searchBox" placeholder="Ketik username/email..." onkeyup="filterPlayers()"><br>
     <label>Pilih Player: </label>
-    <select id="playerSelect"></select><br>
+    <select id="playerSelect"><option value="">-- pilih --</option></select><br>
+
     <input type="number" id="coinAmount" placeholder="Jumlah Coin" value="100">
     <button onclick="transferCoin()">💰 Kirim Coin</button>
+    <button onclick="transferCoinAll()">🌍 Kirim Coin ke Semua</button><br>
+
     <input type="number" id="levelAmount" placeholder="Level Baru" value="10">
     <button onclick="setLevel()">⭐ Set Level</button>
+    <button onclick="setLevelAll()">🌍 Set Level Semua</button>
   </div>
 
   <!-- LIST USER -->
@@ -47,17 +53,21 @@
     const OWNER_EMAIL="ryanfendiwardana@gmail.com";   // GANTI
     const OWNER_UID  ="vNuT6n1TD2XSjkywNbE5mROL8sa2"; // GANTI
 
-    let uid, players={};
+    let players={};
 
     function nav(p){ location.href=p; }
 
     function render(snap){
-      const tb=document.getElementById('rows'); tb.innerHTML='';
-      const sel=document.getElementById('playerSelect'); sel.innerHTML='';
+      const tb=document.getElementById('rows'); 
+      const sel=document.getElementById('playerSelect'); 
+      tb.innerHTML='';
+      sel.innerHTML='<option value="">-- pilih --</option>'; // reset isi
+
       players = {};
       snap.forEach(ch=>{
         const u=ch.val(), id=ch.key;
         players[id]=u;
+
         // Tambah ke tabel
         const tr=document.createElement('tr');
         tr.innerHTML=`
@@ -70,10 +80,28 @@
             <button onclick="reset('${id}')" class="danger">Reset</button>
           </td>`;
         tb.appendChild(tr);
+
         // Tambah ke dropdown
         const opt=document.createElement("option");
-        opt.value=id; opt.textContent=u.username||u.email||id;
+        opt.value=id; 
+        opt.textContent=u.username || u.email || ("UID:"+id);
         sel.appendChild(opt);
+      });
+    }
+
+    function filterPlayers(){
+      const keyword=document.getElementById("searchBox").value.toLowerCase();
+      const sel=document.getElementById("playerSelect");
+      sel.innerHTML='<option value="">-- pilih --</option>'; 
+
+      Object.entries(players).forEach(([id,u])=>{
+        const label=(u.username||'')+" "+(u.email||'');
+        if(label.toLowerCase().includes(keyword)){
+          const opt=document.createElement("option");
+          opt.value=id;
+          opt.textContent=u.username || u.email || ("UID:"+id);
+          sel.appendChild(opt);
+        }
       });
     }
 
@@ -85,7 +113,6 @@
       db.ref('users/'+id).update({level:1,hunger:100,energy:100,hp:100,coins:0});
     }
 
-    // === Transfer Coin Unlimited ===
     function transferCoin(){
       const id=document.getElementById("playerSelect").value;
       const amt=parseFloat(document.getElementById("coinAmount").value)||0;
@@ -94,7 +121,6 @@
       alert("✅ Coin berhasil dikirim");
     }
 
-    // === Set Level Unlimited ===
     function setLevel(){
       const id=document.getElementById("playerSelect").value;
       const lvl=parseInt(document.getElementById("levelAmount").value)||1;
@@ -103,9 +129,26 @@
       alert("✅ Level berhasil diubah");
     }
 
+    function transferCoinAll(){
+      const amt=parseFloat(document.getElementById("coinAmount").value)||0;
+      if(amt<=0) return alert("Isi jumlah coin dulu");
+      Object.keys(players).forEach(id=>{
+        db.ref("users/"+id+"/coins").transaction(c=>(Number(c)||0)+amt);
+      });
+      alert("✅ Coin berhasil dikirim ke semua player");
+    }
+
+    function setLevelAll(){
+      const lvl=parseInt(document.getElementById("levelAmount").value)||1;
+      if(lvl<1) return alert("Isi level valid dulu");
+      Object.keys(players).forEach(id=>{
+        db.ref("users/"+id+"/level").set(lvl);
+      });
+      alert("✅ Level semua player berhasil diubah");
+    }
+
     auth.onAuthStateChanged(u=>{
       if(!u){ location.href='index.html'; return; }
-      uid=u.uid;
       if(u.email!==OWNER_EMAIL || u.uid!==OWNER_UID){
         alert('Bukan owner'); nav('game.html'); return;
       }
