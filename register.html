@@ -18,7 +18,7 @@
   <h2>📝 Daftar Akun</h2>
   <div class="panel">
     <input id="regUser" placeholder="Username (ID)"/>
-    <input id="regEmail" type="email" placeholder="Email (opsional, bisa dipakai login)"/>
+    <input id="regEmail" type="email" placeholder="Email (opsional)"/>
     <input id="regPass" type="password" placeholder="Password"/>
     <button onclick="register()">Daftar</button>
     <div><a class="btn" href="index.html">Kembali ke Login</a></div>
@@ -27,6 +27,7 @@
 <script>
 let players = JSON.parse(localStorage.getItem('players')||'{}');
 function save(){ localStorage.setItem('players', JSON.stringify(players)); }
+function createPet(){ return { id:'P'+Date.now()+Math.random().toString(16).slice(2), level:1, hunger:100, energy:100, hp:100 }; }
 
 function register(){
   const u = (document.getElementById('regUser').value||'').trim().toLowerCase();
@@ -34,18 +35,13 @@ function register(){
   const p = (document.getElementById('regPass').value||'').trim();
   if(!u || !p) return alert('Isi username & password.');
   if(players[u]) return alert('Username sudah dipakai.');
-  // email unik (jika diisi)
   if(e){
     const taken = Object.values(players).some(pl => (pl.email||'').toLowerCase()===e.toLowerCase());
     if(taken) return alert('Email sudah dipakai.');
   }
   players[u] = {
-    username: u,
-    email: e,
-    password: p,
-    coins: 1000,
-    pet: { level:1, hunger:100, energy:100, hp:100, alive:true, lastTick: Date.now() },
-    inventory: []
+    username:u, email:e, password:p,
+    coins:1000, pets:[createPet()], activePet:0, lastTick:Date.now()
   };
   save();
   alert('Registrasi berhasil! Silakan login.');
