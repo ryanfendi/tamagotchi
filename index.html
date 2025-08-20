@@ -1,315 +1,148 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamagotchi — Game</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tamagotchi Pixel Game</title>
 <style>
-  :root{--bg:#071726;--panel:#0f1724;--accent:#10b981;--muted:#9fb3b5}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071726,#06202A);font-family:system-ui,Arial;color:#e6eef6}
-  .wrap{max-width:980px;margin:20px auto;padding:16px;display:grid;grid-template-columns:1fr 320px;gap:16px}
-  .panel{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-  h1{margin:0 0 8px;font-size:20px}
-  canvas{background:#08121a;border-radius:8px;display:block;margin:12px auto;image-rendering:pixelated}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-  button{background:linear-gradient(180deg,var(--accent),#06a77a);border:0;color:#042018;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700}
-  button.secondary{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#042018}
-  .small{font-size:13px;color:var(--muted)}
-  .status-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center}
-  a.link{display:inline-block;background:#06b6d4;padding:8px 10px;border-radius:8px;color:#042018;text-decoration:none;margin-top:6px}
-  .muted{color:var(--muted)}
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+  canvas{background:#08121a;image-rendering:pixelated;border-radius:8px;margin-top:10px}
+  .controls button{background:#10b981;border:none;padding:10px;margin:5px;border-radius:8px;font-weight:bold;cursor:pointer}
+  .hidden{display:none}
+  #ownerPanel{background:#222;padding:10px;margin:10px auto;border-radius:8px;max-width:520px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>🐣 Tamagotchi — Game</h1>
+<!-- Proteksi -->
+<script>
+  (function(){
+    const current = localStorage.getItem('currentPlayer');
+    if(!current){ alert('Silakan login terlebih dahulu'); location.href='login.html'; return; }
+    const players = JSON.parse(localStorage.getItem('players')||'{}');
+    if(!players[current]){ localStorage.removeItem('currentPlayer'); alert('Akun tidak ditemukan. Silakan login kembali.'); location.href='login.html'; }
+  })();
+</script>
 
-      <div style="text-align:center">
-        <canvas id="canvas" width="128" height="128" style="width:320px;height:320px"></canvas>
-      </div>
+<h1>🐣 Tamagotchi Pixel Game</h1>
+<div style="margin-bottom:8px;">
+  <button onclick="logout()">Logout</button>
+  <button onclick="goTo('inventory.html')">📦 Inventory</button>
+  <button onclick="goTo('marketplace.html')">🏪 Marketplace</button>
+  <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
+  <button onclick="goTo('chat.html')">💬 Chat</button>
+  <button onclick="goTo('owner.html')">🔐 Owner</button>
+</div>
 
-      <div class="status-row" style="margin-top:8px">
-        <div class="small">Player: <strong id="playerName">—</strong></div>
-        <div class="small">💰 <strong id="coinText">0</strong></div>
-        <div class="small">🍖 Food: <strong id="foodText">0</strong></div>
-        <div class="small">⭐ Level: <strong id="levelText">—</strong></div>
-        <div class="small">❤️ Health: <strong id="healthText">—</strong></div>
-      </div>
+<canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px"></canvas>
 
-      <div class="controls" style="margin-top:10px;justify-content:center">
-        <button id="tapBtn">👆 Tap (+10)</button>
-        <button id="buyFoodBtn" class="secondary">🍖 Beli Makanan (500💰)</button>
-        <button id="feedBtn">🍽️ Feed (pakai 1 makanan)</button>
-        <button id="sleepBtn">💤 Sleep (1x/hari)</button>
-        <button id="buyPetBtn">🛒 Beli Pet Baru (Lvl × 10.000)</button>
-      </div>
+<div class="controls">
+  <button onclick="feedPet()">🍎 Feed (500 coin)</button>
+  <button onclick="sleepPet()">💤 Sleep</button>
+  <button onclick="earnCoin()">💰 Tap Coin</button>
+  <button onclick="buyPet()">🛒 Beli Pet Level +1</button>
+</div>
 
-      <div style="margin-top:10px;text-align:center">
-        <a class="link" href="inventory.html">📦 Inventory</a>
-        <a class="link" href="marketplace.html">🛒 Marketplace</a>
-        <a class="link" href="leaderboard.html">🏆 Leaderboard</a>
-        <a class="link" href="chat.html">💬 Chat</a>
-        <button id="ownerBtn" class="secondary" style="display:none">🔑 Owner Panel</button>
-        <button id="logoutBtn" style="background:#ff6b6b">🚪 Logout</button>
-      </div>
+<div id="status" style="margin-top:8px"></div>
+<div id="coinInfo"></div>
 
-      <div style="margin-top:12px" class="small muted">
-        Aturan singkat: Makan minimal 3x/hari (setiap 4 jam minimal), tidur 1x/hari. Makan bayar 500 coin. Pet level naik otomatis per 7 hari; owner dapat set level unlimited via Owner Panel.
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2 style="margin-top:0">Detail & Log</h2>
-      <div class="small">Active Pet:</div>
-      <div id="petInfo" style="margin-top:6px"></div>
-
-      <div style="margin-top:8px">
-        <strong>Recent Actions</strong>
-        <div id="log" class="small muted" style="margin-top:6px;max-height:220px;overflow:auto"></div>
-      </div>
-    </div>
-  </div>
+<div id="ownerPanel" class="hidden">
+  <h3>OWNER PANEL</h3>
+  <input id="topupName" placeholder="Nama Player">
+  <input id="topupAmount" type="number" placeholder="Jumlah Coin">
+  <button onclick="topup()">Top-Up</button>
+  <button onclick="unlockAllPets()">Unlock Semua Pet</button>
+</div>
 
 <script>
-/* Helper - load & save players & current player */
-function loadPlayers(){ return JSON.parse(localStorage.getItem('players')||'{}'); }
-function savePlayers(players){ localStorage.setItem('players', JSON.stringify(players)); }
-function getCurrentUsername(){ return (localStorage.getItem('currentPlayer')||'').toString().trim().toLowerCase(); }
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
 
-/* Redirect to login if not logged in or player missing */
-const players = loadPlayers();
-const currentUsername = getCurrentUsername();
-if(!currentUsername || !players[currentUsername]){
-  localStorage.removeItem('currentPlayer');
-  location.href = 'login.html';
-}
-let currentPlayer = players[currentUsername]; // live reference
+let players = JSON.parse(localStorage.getItem('players')||'{}');
+const current = localStorage.getItem('currentPlayer');
+let currentPlayer = players[current];
 
-/* UI refs */
-const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
-const playerNameEl = document.getElementById('playerName');
-const coinText = document.getElementById('coinText');
-const foodText = document.getElementById('foodText');
-const levelText = document.getElementById('levelText');
-const healthText = document.getElementById('healthText');
-const petInfo = document.getElementById('petInfo');
-const logEl = document.getElementById('log');
-const ownerBtn = document.getElementById('ownerBtn');
+const OWNER_USERNAME = 'owner';
+const PET_PRICE_BASE = 10000;
+const MAX_LEVEL = 1000;
 
-const tapBtn = document.getElementById('tapBtn');
-const buyFoodBtn = document.getElementById('buyFoodBtn');
-const feedBtn = document.getElementById('feedBtn');
-const sleepBtn = document.getElementById('sleepBtn');
-const buyPetBtn = document.getElementById('buyPetBtn');
-const logoutBtn = document.getElementById('logoutBtn');
+function saveAll(){ players[current] = currentPlayer; localStorage.setItem('players', JSON.stringify(players)); }
+function logout(){ localStorage.removeItem('currentPlayer'); location.href='login.html'; }
+function goTo(p){ location.href=p; }
 
-/* Config */
-const FEED_COST = 500;
-const FOOD_PER_PURCHASE = 1;
-const FEED_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
-const SLEEP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const LEVEL_UP_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const PET_PRICE_BASE = 10000; // price multiplier per level
+// UI awal
+if(currentPlayer.username === OWNER_USERNAME) document.getElementById('ownerPanel').classList.remove('hidden');
+updateUI();
 
-/* Init UI */
-function initUI(){
-  playerNameEl.textContent = currentUsername;
-  coinText.textContent = currentPlayer.coins || 0;
-  foodText.textContent = currentPlayer.foodCount || 0;
-  levelText.textContent = currentPlayer.pet?.level || 1;
-  healthText.textContent = currentPlayer.health || 1000;
-  petInfo.innerHTML = renderPetInfo(currentPlayer.pet);
-  // show owner btn if username === 'owner'
-  if(currentUsername === 'owner') ownerBtn.style.display = 'inline-block';
-  else ownerBtn.style.display = 'none';
-  renderLog();
-}
-function renderPetInfo(pet){
-  if(!pet) return '<div class="muted">Tidak ada pet aktif</div>';
-  return `<div><strong>${pet.name}</strong> • Lv ${pet.level} • Age ${pet.ageDays || 0}d • Evo ${pet.evo || 0}<br>Last feed: ${pet.lastFeed? new Date(pet.lastFeed).toLocaleString():'Belum'}</div>`;
-}
-function pushLog(msg){
-  const t = new Date().toLocaleTimeString();
-  logEl.innerHTML = `<div>[${t}] ${msg}</div>` + logEl.innerHTML;
-}
+// Gameplay
+let animFrame = 0, animMode = 'idle';
 
-/* Save routine */
-function persist(){
-  const all = loadPlayers();
-  all[currentUsername] = currentPlayer;
-  savePlayers(all);
-}
-
-/* Actions */
-tapBtn.addEventListener('click', ()=>{
-  if(currentUsername === 'owner'){ currentPlayer.coins = Infinity; }
-  else currentPlayer.coins = (currentPlayer.coins||0) + 10;
-  persist(); initUI(); pushLog('Tap +10 coin');
-});
-
-buyFoodBtn.addEventListener('click', ()=>{
-  if(currentUsername !== 'owner' && (currentPlayer.coins||0) < FEED_COST){ return alert('Coin tidak cukup untuk membeli makanan (500).'); }
-  if(currentUsername !== 'owner') currentPlayer.coins -= FEED_COST;
-  currentPlayer.foodCount = (currentPlayer.foodCount||0) + FOOD_PER_PURCHASE;
-  persist(); initUI(); pushLog('Beli makanan (500)');
-});
-
-feedBtn.addEventListener('click', ()=>{
-  const pet = currentPlayer.pet;
-  if(!pet || !pet.alive){ return alert('Tidak ada pet hidup yang aktif.'); }
+function feedPet(){
+  if(currentPlayer.coins < 500) return alert('Coin tidak cukup!');
   const now = Date.now();
-  if(pet.lastFeed && (now - pet.lastFeed) < FEED_INTERVAL_MS){
-    const remain = FEED_INTERVAL_MS - (now - pet.lastFeed);
-    return alert('Terlalu cepat memberi makan. Tunggu: ' + Math.ceil(remain/1000) + 's (DEV: faster).');
-  }
-  if((currentPlayer.foodCount||0) <= 0){ return alert('Tidak ada makanan. Beli dulu.'); }
-  currentPlayer.foodCount -= 1;
-  pet.lastFeed = Date.now();
-  pet.feedTimestamps = pet.feedTimestamps || [];
-  pet.feedTimestamps.push(pet.lastFeed);
-  pet.health = Math.min(1000, (pet.health||1000) + 200);
-  persist(); initUI(); pushLog('Feed pet');
-});
+  if(currentPlayer.pet.lastFeed && now - currentPlayer.pet.lastFeed < 4*60*60*1000) return alert('Tunggu 4 jam untuk makan lagi!');
+  currentPlayer.coins -= 500;
+  currentPlayer.pet.lastFeed = now;
+  currentPlayer.pet.health = Math.min(1000, (currentPlayer.pet.health||0) + 200);
+  animMode = 'happy';
+  saveAll(); updateUI();
+}
 
-sleepBtn.addEventListener('click', ()=>{
-  const pet = currentPlayer.pet;
-  if(!pet || !pet.alive) return alert('Tidak ada pet hidup.');
+function sleepPet(){
   const now = Date.now();
-  if(pet.lastSleep && (now - pet.lastSleep) < SLEEP_INTERVAL_MS){
-    const remain = SLEEP_INTERVAL_MS - (now - pet.lastSleep);
-    return alert('Pet sudah tidur hari ini. Coba besok. (DEV faster mungkin).');
-  }
-  pet.lastSleep = Date.now();
-  pet.sleepTimestamps = pet.sleepTimestamps || [];
-  pet.sleepTimestamps.push(pet.lastSleep);
-  pet.health = Math.min(1000, (pet.health||1000) + 300);
-  persist(); initUI(); pushLog('Pet tidur (1x/hari)');
-});
-
-buyPetBtn.addEventListener('click', ()=>{
-  let pet = currentPlayer.pet;
-  if(!pet){ // if no pet, create starter
-    pet = { name: 'Chick', level: 1, evo:0, health:1000, feedTimestamps:[], sleepTimestamps:[], ageDays:0, lastFeed:null, lastSleep:null, alive:true };
-    currentPlayer.pet = pet;
-    persist(); initUI(); return;
-  }
-  const price = (pet.level) * PET_PRICE_BASE;
-  if(currentUsername !== 'owner' && (currentPlayer.coins||0) < price){ return alert(`Coin tidak cukup. Harga untuk naik 1 level = ${price}💰`); }
-  if(currentUsername !== 'owner') currentPlayer.coins -= price;
-  pet.level = Math.min(1000, (pet.level||1) + 1);
-  pet.evo = (pet.evo||0) + 1;
-  pet.health = Math.min(1000, (pet.health||1000) + 100);
-  persist(); initUI(); pushLog(`Beli pet baru / level up -> Lv ${pet.level} (-${price}💰)`);
-});
-
-/* Owner Panel button */
-document.getElementById('ownerBtn').addEventListener('click', ()=> { location.href = 'owner.html'; });
-
-logoutBtn.addEventListener('click', ()=> {
-  localStorage.removeItem('currentPlayer');
-  location.href = 'login.html';
-});
-
-/* Background checks: daily survival and level auto-up (runs on interval) */
-function dailyAndLevelChecks(){
-  // reload fresh
-  const all = loadPlayers();
-  const me = all[currentUsername];
-  if(!me) { localStorage.removeItem('currentPlayer'); location.href='login.html'; return; }
-  const pet = me.pet;
-  const now = Date.now();
-  // daily check: check previous day feeds & sleeps (DEV mode not implemented here)
-  // For simplicity: if today no feed >=3 or sleep <1 then health penalty on next load
-  const dayStart = new Date(new Date().toDateString()).getTime(); // start of today
-  const feedsToday = (pet.feedTimestamps||[]).filter(t=>t>=dayStart).length;
-  const sleepsToday = (pet.sleepTimestamps||[]).filter(t=>t>=dayStart).length;
-  // NOTE: we do not auto-kill immediately; we apply small health penalty if under threshold when day changed
-  // track lastCheckedDay in player
-  me._lastChecked = me._lastChecked || 0;
-  const lastCheckedDay = me._lastChecked;
-  const todayStr = dayStart;
-  if(lastCheckedDay !== todayStr){
-    // evaluate previous day (we'll be permissive: require >=3 feeds & >=1 sleep)
-    if(feedsToday < 3) { pet.health = (pet.health||1000) - (3 - feedsToday) * 200; pushLog(`Daily penalty: only ${feedsToday} feeds -> health -${(3-feedsToday)*200}`); }
-    if(sleepsToday < 1) { pet.health = (pet.health||1000) - 100; pushLog(`Daily penalty: no sleep -> health -100`); }
-    if((pet.health||0) <= 0){ pet.alive = false; pushLog('Pet mati karena health <= 0'); }
-    // level up by weeks since createdAt: simple approach
-    pet.ageDays = (pet.ageDays||0) + 1;
-    // record today checked
-    me._lastChecked = todayStr;
-    all[currentUsername] = me;
-    savePlayers(all);
-  }
-
-  // auto-level progress each LEVEL_UP_MS since birth/levelProgressAt
-  // simplified: increase level every 7 days based on ageDays
-  if(pet.ageDays && pet.ageDays > 0){
-    const expectedLevel = Math.min(1000, 1 + Math.floor(pet.ageDays / 7));
-    if(pet.level < expectedLevel){
-      pet.level = expectedLevel;
-      pushLog(`Auto level up -> Lv ${pet.level}`);
-    }
-  }
-
-  // persist and update UI
-  currentPlayer = me;
-  savePlayers(all);
-  initUI();
+  if(currentPlayer.pet.lastSleep && now - currentPlayer.pet.lastSleep < 24*60*60*1000) return alert('Hanya bisa tidur 1 kali sehari!');
+  currentPlayer.pet.lastSleep = now;
+  currentPlayer.pet.health = Math.min(1000, (currentPlayer.pet.health||0) + 300);
+  animMode = 'sleep';
+  saveAll(); updateUI();
 }
 
-/* Simple pixel draw with mood/expression */
-let anim = 0;
-function mood(pet){
-  if(!pet) return 'none';
-  if(!pet.alive) return 'dead';
-  if(pet.sleeping) return 'sleep';
-  if(!pet.lastFeed) return 'hungry';
-  const since = Date.now() - pet.lastFeed;
-  if(since < FEED_INTERVAL_MS * 0.6) return 'happy';
-  if(since < FEED_INTERVAL_MS * 1.2) return 'idle';
-  return 'sad';
-}
-function draw(){
-  anim++;
-  ctx.clearRect(0,0,128,128);
-  ctx.fillStyle = '#08121a'; ctx.fillRect(0,0,128,128);
-  const pet = currentPlayer.pet;
-  if(!pet){ ctx.fillStyle='#9fb3b5'; ctx.font='10px monospace'; ctx.fillText('No active pet',18,64); requestAnimationFrame(draw); return; }
-  const m = mood(pet);
-  // base pos
-  const baseX = 40 + Math.sin(anim/12)*8;
-  let baseY = 40 + Math.sin(anim/8)*2;
-  // body
-  ctx.fillStyle = pet.evo >= 3 ? '#7adfff' : pet.evo >=1 ? '#ffd07a' : '#ffdd7a';
-  ctx.fillRect(baseX, baseY, 48, 36);
-  // eyes
-  ctx.fillStyle = '#111';
-  if(m === 'sleep'){ ctx.fillStyle = '#83eef0'; ctx.fillRect(baseX+10, baseY+8, 6,6); ctx.fillRect(baseX+30, baseY+8, 6,6); }
-  else { ctx.fillRect(baseX+10, baseY+8, 6,6); ctx.fillRect(baseX+30, baseY+8, 6,6); }
-  // mouth / expression
-  if(m === 'happy'){ ctx.fillStyle = '#ffb4a2'; ctx.fillRect(baseX+18, baseY+22, 12, 4); }
-  else if(m === 'sad'){ ctx.fillStyle = '#ff6666'; ctx.fillRect(baseX+18, baseY+22, 12, 6); }
-  else if(m === 'dead'){ ctx.fillStyle = '#444'; ctx.fillRect(baseX+12, baseY+18, 24, 6); }
-  else { ctx.fillStyle = '#333'; ctx.fillRect(baseX+18, baseY+22, 12, 4); }
-  requestAnimationFrame(draw);
+function earnCoin(){ currentPlayer.coins += 10; saveAll(); updateUI(); }
+
+function buyPet(){
+  const price = (currentPlayer.pet.level||1) * PET_PRICE_BASE;
+  if(currentPlayer.coins < price) return alert('Coin tidak cukup!');
+  currentPlayer.coins -= price;
+  currentPlayer.pet.level = Math.min(MAX_LEVEL, (currentPlayer.pet.level||1) + 1);
+  currentPlayer.pet.evoIndex = Math.min((currentPlayer.pet.evoIndex||0)+1, 10);
+  saveAll(); updateUI();
 }
 
-/* render log */
-function renderLog(){
-  // load player's audit if exists
-  const arr = currentPlayer.audit || [];
-  logEl.innerHTML = arr.slice(0,80).map(a=>`<div>${new Date(a.t).toLocaleString()} — ${a.msg}</div>`).join('') + logEl.innerHTML;
+function updateUI(){
+  document.getElementById('coinInfo').textContent = `💰 Coin: ${currentPlayer.coins} | Level: ${currentPlayer.pet.level}`;
+  document.getElementById('status').textContent = `Status: ${currentPlayer.pet.alive?'Hidup':'Mati'} | HP: ${currentPlayer.pet.health}`;
 }
 
-/* Boot */
-initUI();
-draw();
-setInterval(dailyAndLevelChecks, 15*1000); // periodic checks (every 15s)
+function topup(){
+  const name = (document.getElementById('topupName').value||'').trim().toLowerCase();
+  const amt  = parseInt(document.getElementById('topupAmount').value||'0');
+  if(!players[name]) return alert('Player tidak ditemukan!');
+  players[name].coins = (players[name].coins||0) + (amt||0);
+  localStorage.setItem('players', JSON.stringify(players));
+  alert(`Top-up ${amt} coin ke ${name} berhasil!`);
+}
 
-/* expose save to console for debug */
-window._savePlayers = persist;
+function unlockAllPets(){
+  currentPlayer.pet.level = MAX_LEVEL;
+  saveAll();
+  alert('Semua pet unlocked!');
+}
+
+function drawPet(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#08121a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const px = 40 + Math.sin(animFrame/10)*10, py = 60;
+  ctx.fillStyle = '#ffd07a'; ctx.fillRect(px,py,40,30); // body
+  ctx.fillStyle = '#111';    ctx.fillRect(px+8, py+8, 5,5); ctx.fillRect(px+26, py+8, 5,5); // eyes
+
+  if(animMode==='happy'){ ctx.fillStyle = '#ff66a6'; ctx.fillRect(px+15, py+18,10,4); }
+  else if(animMode==='sleep'){ ctx.fillStyle = '#88f'; ctx.fillRect(px+10, py+18,20,4); }
+  else { ctx.fillStyle = '#fff'; ctx.fillRect(px+18, py+18,4,4); }
+
+  animFrame++;
+  requestAnimationFrame(drawPet);
+}
+drawPet();
 </script>
 </body>
 </html>
