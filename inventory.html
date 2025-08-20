@@ -1,90 +1,84 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inventory — Tamagotchi</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .panel{background:#101a2b;padding:10px;margin:10px auto;width:90%;max-width:560px;border-radius:8px}
-  button{background:#10b981;border:none;padding:8px;margin:4px;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer}
-  input{padding:6px;margin:4px;border-radius:6px;border:none}
-  .list-item{background:#1a2436;padding:8px;margin:6px;border-radius:8px}
-</style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory — Tamagotchi</title>
+  <style>
+    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+    .panel{background:#101a2b;padding:10px;margin:10px auto;width:90%;max-width:500px;border-radius:8px}
+    button,input{padding:8px;margin:4px;border-radius:6px;border:none;font-size:1em}
+    button{background:#10b981;color:#fff;cursor:pointer}
+    .list-item{background:#1a2436;padding:8px;margin:6px;border-radius:6px;text-align:left}
+  </style>
 </head>
 <body>
-<!-- Proteksi -->
 <script>
   (function(){
-    const current = localStorage.getItem('currentPlayer');
-    if(!current){ alert('Silakan login terlebih dahulu'); location.href='login.html'; return; }
+    const cur = localStorage.getItem('currentPlayer');
+    if(!cur){ alert('Silakan login'); location.href='login.html'; return }
     const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(!players[current]){ localStorage.removeItem('currentPlayer'); alert('Akun tidak ditemukan. Silakan login kembali.'); location.href='login.html'; }
+    if(!players[cur]){ localStorage.removeItem('currentPlayer'); alert('User tidak ditemukan'); location.href='login.html' }
   })();
 </script>
 
 <h2>📦 Inventory</h2>
-<div style="margin-bottom:8px;">
-  <button onclick="goTo('index.html')">🏠 Home</button>
-  <button onclick="goTo('marketplace.html')">🛒 Marketplace</button>
-  <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
-  <button onclick="goTo('chat.html')">💬 Chat</button>
+<div>
+  <button onclick="goTo('index.html')">Home</button>
+  <button onclick="goTo('marketplace.html')">Marketplace</button>
 </div>
-
 <div id="inventoryList" class="panel">Memuat...</div>
 
 <script>
-let players = JSON.parse(localStorage.getItem('players')||'{}');
-const current = localStorage.getItem('currentPlayer');
-let currentPlayer = players[current];
+  const players = JSON.parse(localStorage.getItem('players')||'{}');
+  const current = localStorage.getItem('currentPlayer');
+  let currentPlayer = players[current];
 
-function saveAll(){ players[current]=currentPlayer; localStorage.setItem('players', JSON.stringify(players)); }
-function goTo(p){ location.href=p; }
-
-function renderInventory(){
-  const div = document.getElementById('inventoryList');
-  div.innerHTML = `<h3>${currentPlayer.username} — Coin: ${currentPlayer.coins}</h3>` +
-                  `<p>Pet Aktif: ${(currentPlayer.pet && currentPlayer.pet.name) ? (currentPlayer.pet.name+' (Lv '+currentPlayer.pet.level+')') : '-'}</p>` +
-                  `<h4>Daftar Pet di Inventory</h4>`;
-  if(!currentPlayer.inventory || currentPlayer.inventory.length===0){
-    div.innerHTML += '<p>Tidak ada pet di inventory.</p>';
-    return;
+  function saveAll(){
+    players[current] = currentPlayer;
+    localStorage.setItem('players',JSON.stringify(players));
   }
-  currentPlayer.inventory.forEach((pet, i)=>{
-    div.innerHTML += `
-      <div class="list-item">
-        <b>${pet.name||'Pet'}</b> (Level ${pet.level||1})<br>
-        <button onclick="setActive(${i})">Aktifkan</button>
-        <input id="price${i}" placeholder="Harga jual">
-        <button onclick="sellPet(${i})">Jual</button>
-      </div>
-    `;
-  });
-}
+  function goTo(p){ location.href=p; }
 
-function setActive(i){
-  const pet = currentPlayer.inventory[i];
-  if(!pet) return;
-  currentPlayer.pet = pet;
-  saveAll();
-  alert(`Pet ${pet.name||'Pet'} sekarang aktif`);
-  renderInventory();
-}
+  function render(){
+    const div = document.getElementById('inventoryList');
+    div.innerHTML = `<h3>${currentPlayer.username} — Coin: ${currentPlayer.coins}</h3>`;
+    div.innerHTML += `<h4>Inventory:</h4>`;
+    if(!currentPlayer.inventory.length){
+      div.innerHTML += `<p>Barang tidak ditemukan.</p>`;
+      return;
+    }
+    currentPlayer.inventory.forEach((pet,i)=>{
+      div.innerHTML += `
+        <div class="list-item">
+          <b>${pet.name || 'Pet'}</b> (Lv ${pet.level})<br>
+          <button onclick="setActive(${i})">Aktifkan</button>
+          <input id="price${i}" type="number" placeholder="Harga jual">
+          <button onclick="sell(${i})">Jual</button>
+        </div>`;
+    });
+  }
 
-function sellPet(i){
-  const price = parseInt((document.getElementById('price'+i).value||'').toString(),10);
-  if(!price || price<=0) return alert('Harga tidak valid');
-  const pet = currentPlayer.inventory.splice(i,1)[0];
-  let market = JSON.parse(localStorage.getItem('market')||'{}');
-  const id = 'sale_'+Date.now();
-  market[id] = { seller: currentPlayer.username, pet, price, offers: [] };
-  localStorage.setItem('market', JSON.stringify(market));
-  saveAll();
-  alert('Pet dimasukkan ke marketplace');
-  renderInventory();
-}
+  function setActive(i){
+    currentPlayer.pet = currentPlayer.inventory[i];
+    saveAll();
+    alert('Pet aktif!');
+    render();
+  }
 
-renderInventory();
+  function sell(i){
+    const price = parseInt(document.getElementById('price'+i).value,10);
+    if(!price || price<=0) return alert('Harga tidak valid');
+    const pet = currentPlayer.inventory.splice(i,1)[0];
+    let market = JSON.parse(localStorage.getItem('market')||'{}');
+    const id = 'sale_'+Date.now();
+    market[id] = { seller: currentPlayer.username, pet, price, offers: [] };
+    localStorage.setItem('market', JSON.stringify(market));
+    saveAll();
+    alert('Pet dilelang ke Marketplace');
+    render();
+  }
+
+  render();
 </script>
 </body>
 </html>
