@@ -1,72 +1,66 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Owner Panel — Tamagotchi</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .panel{background:#101a2b;padding:15px;margin:15px auto;width:90%;max-width:560px;border-radius:8px}
-  input,button{padding:8px;margin:5px;border-radius:8px;border:0}
-  button{background:#10b981;color:#fff;font-weight:bold;cursor:pointer}
-</style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Panel — Tamagotchi</title>
+  <style>
+    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+    .panel{background:#101a2b;padding:15px;margin:15px auto;width:90%;max-width:500px;border-radius:8px}
+    input,button{padding:8px;margin:4px;border-radius:6px;border:none;font-size:1em}
+    button{background:#10b981;color:#fff;cursor:pointer}
+  </style>
 </head>
 <body>
-<!-- Proteksi -->
 <script>
   (function(){
-    const current = localStorage.getItem('currentPlayer');
-    if(!current){ alert('Silakan login terlebih dahulu'); location.href='login.html'; return; }
+    const cur = localStorage.getItem('currentPlayer');
+    if(!cur){ alert('Silakan login'); location.href='login.html'; return }
     const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(!players[current]){ localStorage.removeItem('currentPlayer'); alert('Akun tidak ditemukan. Silakan login kembali.'); location.href='login.html'; return; }
-    if(current !== 'owner'){ alert('Hanya owner yang dapat mengakses halaman ini.'); location.href='index.html'; }
+    if(cur !== 'owner'){ alert('Hanya owner yang bisa akses'); location.href='index.html'; return }
   })();
 </script>
 
 <h2>🔐 Owner Panel</h2>
 <div class="panel">
   <h3>Top-up Coin</h3>
-  <input id="targetPlayer" placeholder="Nama Player (username)">
-  <input id="amountCoin" type="number" placeholder="Jumlah Coin">
-  <button onclick="topupCoin()">Kirim Coin</button>
+  <input id="topupUser" placeholder="User target">
+  <input id="topupAmt" type="number" placeholder="Jumlah Coin">
+  <button onclick="topup()">Kirim</button>
 </div>
 
 <div class="panel">
   <h3>Upgrade Pet Level</h3>
-  <input id="targetLevelPlayer" placeholder="Nama Player (username)">
-  <input id="newLevel" type="number" placeholder="Level (max 1000)">
-  <button onclick="upgradeLevel()">Upgrade Level</button>
+  <input id="lvlUser" placeholder="User target">
+  <input id="newLevel" type="number" placeholder="Level (≤1000)">
+  <button onclick="upgrade()">Set Level</button>
 </div>
 
 <div class="panel">
-  <button onclick="goTo('index.html')">🏠 Kembali ke Game</button>
+  <button onclick="goTo('index.html')">Home</button>
 </div>
 
 <script>
-let players = JSON.parse(localStorage.getItem('players')||'{}');
+  const players = JSON.parse(localStorage.getItem('players')||'{}');
+  function goTo(p){ location.href=p }
+  function save(){ localStorage.setItem('players', JSON.stringify(players)) }
 
-function save(){ localStorage.setItem('players', JSON.stringify(players)); }
-function goTo(p){ location.href=p; }
+  function topup(){
+    const u = (document.getElementById('topupUser').value||'').trim().toLowerCase();
+    const a = parseInt((document.getElementById('topupAmt').value||'').toString(),10);
+    if(!players[u]) return alert('User tidak ditemukan');
+    players[u].coins = (players[u].coins||0) + a;
+    save(); alert(`Top-up ${a} coin ke ${u}`);
+  }
 
-function topupCoin(){
-  const name = (document.getElementById('targetPlayer').value||'').trim().toLowerCase();
-  const amt  = parseInt((document.getElementById('amountCoin').value||'').toString(),10);
-  if(!players[name]) return alert('Player tidak ditemukan!');
-  players[name].coins = (players[name].coins||0) + (amt||0);
-  save();
-  alert(`Top-up ${amt} coin ke ${name} berhasil!`);
-}
-
-function upgradeLevel(){
-  const name = (document.getElementById('targetLevelPlayer').value||'').trim().toLowerCase();
-  const level = parseInt((document.getElementById('newLevel').value||'').toString(),10);
-  if(!players[name]) return alert('Player tidak ditemukan!');
-  if(level>1000) return alert('Max level 1000');
-  players[name].pet = players[name].pet || {name:'Chick',level:1,health:1000,alive:true,evoIndex:0};
-  players[name].pet.level = level;
-  save();
-  alert(`Level ${name} diatur ke ${level}`);
-}
+  function upgrade(){
+    const u = (document.getElementById('lvlUser').value||'').trim().toLowerCase();
+    const lv = parseInt((document.getElementById('newLevel').value||'').toString(),10);
+    if(!players[u]) return alert('User tidak ditemukan');
+    if(lv > 1000) return alert('Max level 1000');
+    players[u].pet = players[u].pet || {name:'Chick',level:1,health:1000,maxHealth:1000};
+    players[u].pet.level = lv;
+    save(); alert(`Level ${u} diseting ke ${lv}`);
+  }
 </script>
 </body>
 </html>
