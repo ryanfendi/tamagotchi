@@ -1,91 +1,93 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Owner Panel — Tamagotchi</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamagotchi — Owner Panel</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .panel{background:#101a2b;padding:14px;border-radius:10px;margin:14px auto;max-width:520px}
-  input,button{padding:8px;border-radius:8px;border:0;margin:4px}
-  button{background:#10b981;color:#fff;font-weight:bold}
-  small{opacity:.7}
+  .wrap{max-width:720px;margin:0 auto;padding:12px}
+  .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px;text-align:left}
+  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
+  input,button{padding:10px;border-radius:10px;border:0;margin:4px}
+  button{background:#10b981;color:#042018;font-weight:700}
+  .row{margin:8px 0}
+  .warn{color:#fca5a5}
 </style>
 </head>
 <body>
-<h2>🔐 Owner Panel</h2>
-
-<div class="panel" id="loginBox">
-  <p><small>Demo kredensial:</small></p>
-  <input id="ownerID" placeholder="owner"/>
-  <input id="ownerPass" type="password" placeholder="MainGame123$"/>
-  <button onclick="ownerLogin()">Login</button>
-</div>
-
-<div class="panel" id="ownerPanel" style="display:none">
-  <h3>Halo, Owner!</h3>
-  <div>
-    <h4>Top-up Coin</h4>
-    <input id="tPlayer" placeholder="Nama Player"/>
-    <input id="tAmt" type="number" placeholder="Jumlah Coin"/>
-    <button onclick="topup()">Top-up</button>
+<div class="wrap">
+  <h2>🛠️ Owner Panel</h2>
+  <div class="menu">
+    <a href="index.html">🏠 Home</a>
+    <button onclick="logout()">🚪 Logout</button>
   </div>
-  <hr/>
-  <div>
-    <h4>Set Level Pet Aktif</h4>
-    <input id="lPlayer" placeholder="Nama Player"/>
-    <input id="lVal" type="number" placeholder="Level (max 1000)"/>
-    <button onclick="setLevel()">Set Level</button>
-  </div>
-  <hr/>
-  <button onclick="ownerLogout()">Logout Owner</button>
-</div>
 
-<div style="margin-top:10px;">
-  <a href="index.html" style="color:#10b981">🏠 Kembali ke Game</a>
+  <div id="guard" class="panel">Memeriksa hak akses...</div>
+
+  <div id="ownerUI" class="panel" style="display:none">
+    <h3>Top-up Coin</h3>
+    <div class="row">
+      <input id="tuUser" placeholder="Nama player" />
+      <input id="tuAmt" type="number" placeholder="Jumlah coin" />
+      <button onclick="topup()">Top-up</button>
+    </div>
+    <hr>
+    <h3>Set Level Pet Aktif</h3>
+    <div class="row">
+      <input id="lvUser" placeholder="Nama player" />
+      <input id="lvNum" type="number" placeholder="Level (1..9999)" />
+      <button onclick="setLevel()">Set Level</button>
+    </div>
+    <hr>
+    <h3 class="warn">Hapus Player</h3>
+    <div class="row">
+      <input id="delUser" placeholder="Nama player" />
+      <button onclick="delPlayer()">Hapus</button>
+    </div>
+  </div>
 </div>
 
 <script>
-let players=JSON.parse(localStorage.getItem('players')||'{}');
-
+let players = JSON.parse(localStorage.getItem('players')||'{}');
 function save(){ localStorage.setItem('players', JSON.stringify(players)); }
-function ownerLogin(){
-  const id=document.getElementById('ownerID').value.trim();
-  const pw=document.getElementById('ownerPass').value.trim();
-  if(id==='owner' && pw==='MainGame123$'){
-    localStorage.setItem('ownerAuth','true');
-    document.getElementById('loginBox').style.display='none';
-    document.getElementById('ownerPanel').style.display='block';
-  } else {
-    alert('ID/Password salah');
-  }
-}
-function ownerLogout(){
-  localStorage.removeItem('ownerAuth');
-  location.reload();
+function logout(){ localStorage.removeItem('lastUser'); location.href='index.html'; }
+
+const me = localStorage.getItem('lastUser');
+const guard = document.getElementById('guard');
+if(!me || !players[me]) location.href='index.html';
+if(me.toLowerCase()!=='owner'){
+  guard.innerHTML = 'Akses ditolak. Halaman ini khusus OWNER.';
+}else{
+  guard.style.display='none';
+  document.getElementById('ownerUI').style.display='block';
 }
 
 function topup(){
-  const name=document.getElementById('tPlayer').value.trim();
-  const amt=parseInt(document.getElementById('tAmt').value||'0');
-  if(!players[name]) return alert('Player tidak ditemukan');
-  if(!amt||amt<=0) return alert('Jumlah tidak valid');
-  players[name].coins = (players[name].coins||0) + amt;
+  const u = (document.getElementById('tuUser').value||'').trim().toLowerCase();
+  const a = parseInt(document.getElementById('tuAmt').value||'0');
+  if(!players[u]) return alert('Player tidak ditemukan');
+  if(!a || a<=0) return alert('Jumlah tidak valid');
+  players[u].coins = (players[u].coins||0) + a;
   save(); alert('Top-up berhasil');
 }
 function setLevel(){
-  const name=document.getElementById('lPlayer').value.trim();
-  const lv=parseInt(document.getElementById('lVal').value||'0');
-  if(!players[name]) return alert('Player tidak ditemukan');
-  if(!players[name].pet) return alert('Player tidak punya pet aktif');
-  if(lv<1||lv>1000) return alert('Level 1..1000');
-  players[name].pet.level = lv;
-  save(); alert('Level diatur');
+  const u = (document.getElementById('lvUser').value||'').trim().toLowerCase();
+  const l = parseInt(document.getElementById('lvNum').value||'0');
+  if(!players[u]) return alert('Player tidak ditemukan');
+  if(!l || l<1) return alert('Level tidak valid');
+  if(!players[u].pets || players[u].pets.length===0) return alert('Player tidak punya pet');
+  const idx = players[u].activePet||0;
+  players[u].pets[idx].level = l;
+  players[u].pets[idx].hunger = 100; players[u].pets[idx].energy=100; players[u].pets[idx].hp=100;
+  save(); alert('Level diset');
 }
-
-if(localStorage.getItem('ownerAuth')==='true'){
-  document.getElementById('loginBox').style.display='none';
-  document.getElementById('ownerPanel').style.display='block';
+function delPlayer(){
+  const u = (document.getElementById('delUser').value||'').trim().toLowerCase();
+  if(!players[u]) return alert('Player tidak ditemukan');
+  if(!confirm('Yakin hapus player?')) return;
+  delete players[u];
+  save(); alert('Player dihapus');
 }
 </script>
 </body>
