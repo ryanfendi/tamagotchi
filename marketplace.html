@@ -1,104 +1,71 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marketplace — Tamagotchi</title>
-  <style>
-    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-    .panel{background:#101a2b;padding:10px;margin:10px auto;width:90%;max-width:600px;border-radius:8px}
-    button,input{padding:8px;margin:4px;border-radius:6px;border:none;font-size:1em}
-    button{background:#10b981;color:#fff;cursor:pointer}
-    .list-item{background:#1a2436;padding:8px;margin:6px;border-radius:6px;text-align:left}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketplace</title>
+<style>
+body{ background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+input,button{margin:5px;padding:8px;}
+</style>
 </head>
 <body>
-<script>
-  (function(){
-    const cur = localStorage.getItem('currentPlayer');
-    if(!cur){ alert('Silakan login'); location.href='login.html'; return }
-    const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(!players[cur]){ localStorage.removeItem('currentPlayer'); alert('User tidak ditemukan'); location.href='login.html' }
-  })();
-</script>
+<h1>🛒 Marketplace</h1>
+<h3>Transfer Coin</h3>
+<input id="toUser" placeholder="Kepada siapa">
+<input id="amount" type="number" placeholder="Jumlah">
+<button onclick="sendCoin()">Kirim</button>
 
-<h2>🛒 Marketplace</h2>
-<button onclick="goTo('index.html')">Home</button>
-<div id="marketList" class="panel">Memuat...</div>
+<h3>Jual Pet</h3>
+<input id="sellPrice" type="number" placeholder="Harga pet">
+<button onclick="sellPet()">Jual Pet</button>
 
-<div class="panel" id="ownerPanel" style="display:none;">
-  <h3>OWNER: Tambah Pet ke Marketplace</h3>
-  <input id="petName" placeholder="Nama Pet baru">
-  <input id="petPrice" type="number" placeholder="Harga">
-  <button onclick="ownerSell()">Tambahkan</button>
-</div>
+<div id="market"></div>
+<button onclick="back()">⬅️ Kembali</button>
 
 <script>
-  const players = JSON.parse(localStorage.getItem('players')||'{}');
-  let market = JSON.parse(localStorage.getItem('market')||'{}');
-  const current = localStorage.getItem('currentPlayer');
-  const currentPlayer = players[current];
-  const OWNER = 'owner';
-  if(currentPlayer.username === OWNER){
-    document.getElementById('ownerPanel').style.display = 'block';
-  }
+let players=JSON.parse(localStorage.getItem("players")||"{}");
+let session=JSON.parse(localStorage.getItem("session")||"{}");
+if(!session.currentUser) location.href="login.html";
+let me=players[session.currentUser];
 
-  function saveAll(){
-    players[current] = currentPlayer;
-    localStorage.setItem('players',JSON.stringify(players));
-    localStorage.setItem('market',JSON.stringify(market));
+function sendCoin(){
+  let to=document.getElementById("toUser").value.trim();
+  let amt=parseInt(document.getElementById("amount").value);
+  if(!players[to]) return alert("User tidak ditemukan");
+  if(me.coins<amt) return alert("Coin tidak cukup");
+  me.coins-=amt; players[to].coins+=amt;
+  save(); alert("Transfer berhasil");
+}
+function sellPet(){
+  let price=parseInt(document.getElementById("sellPrice").value);
+  if(!me.pet.alive) return alert("Pet mati tidak bisa dijual");
+  localStorage.setItem("marketPet",JSON.stringify({owner:session.currentUser,pet:me.pet,price}));
+  alert("Pet dijual di marketplace!");
+  renderMarket();
+}
+function buyPet(owner){
+  let data=JSON.parse(localStorage.getItem("marketPet"));
+  if(!data||data.owner!==owner) return;
+  if(me.coins<data.price) return alert("Coin tidak cukup!");
+  me.coins-=data.price; players[owner].coins+=data.price;
+  me.pet=data.pet; 
+  delete players[owner].pet; // pet pindah
+  localStorage.removeItem("marketPet");
+  save(); alert("Berhasil beli pet");
+  renderMarket();
+}
+function renderMarket(){
+  let data=JSON.parse(localStorage.getItem("marketPet"));
+  if(data){
+    document.getElementById("market").innerHTML=`<p>${data.owner} menjual pet Lv.${data.pet.level} seharga 💰${data.price}</p><button onclick="buyPet('${data.owner}')">Beli</button>`;
+  } else {
+    document.getElementById("market").innerHTML="Tidak ada pet dijual";
   }
-  function goTo(p){ location.href=p; }
-
-  function render(){
-    const div = document.getElementById('marketList');
-    div.innerHTML = '<h3>Pet Dijual</h3>';
-    const ids = Object.keys(market);
-    if(!ids.length){ div.innerHTML += '<p>Marketplace kosong.</p>'; return; }
-    ids.forEach(id=>{
-      const itm = market[id];
-      div.innerHTML += `
-        <div class="list-item">
-          <b>${itm.pet.name || 'Pet'}</b> (Lv ${itm.pet.level})<br>
-          Harga: ${itm.price} coin<br>
-          Penjual: ${itm.seller}<br>
-          <button onclick="buy('${id}')">Beli</button>
-          <input id="offer${id}" type="number" placeholder="Tawar">
-          <button onclick="offer('${id}')">Tawar</button>
-        </div>`;
-    });
-  }
-
-  function buy(id){
-    const itm = market[id];
-    if(currentPlayer.coins < itm.price) return alert('Coin tidak cukup');
-    currentPlayer.coins -= itm.price;
-    currentPlayer.inventory.push(itm.pet);
-    delete market[id];
-    saveAll();
-    alert('Pembelian berhasil!');
-    render();
-  }
-
-  function offer(id){
-    const price = parseInt(document.getElementById('offer'+id).value,10);
-    if(!price) return alert('Harga invalid');
-    market[id].offers.push({ buyer: currentPlayer.username, price });
-    localStorage.setItem('market', JSON.stringify(market));
-    alert('Penawaran terkirim');
-  }
-
-  function ownerSell(){
-    const name = (document.getElementById('petName').value||'').trim();
-    const price = parseInt((document.getElementById('petPrice').value||'').toString(),10);
-    if(!name || !price) return alert('Isi nama & harga');
-    const id = 'sale_'+Date.now();
-    market[id] = { seller: OWNER, pet:{ name, level:1 }, price, offers: [] };
-    saveAll();
-    alert('Pet ditambahkan oleh owner');
-    render();
-  }
-
-  render();
+}
+function save(){ localStorage.setItem("players",JSON.stringify(players)); }
+function back(){ location.href="menu.html"; }
+renderMarket();
 </script>
 </body>
 </html>
