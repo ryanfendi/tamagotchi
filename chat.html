@@ -2,31 +2,135 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Chat - Tamagotchi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat - Tamagotchi Online</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
-    #chatBox { height:300px; overflow-y:scroll; border:1px solid #0f0; padding:5px; margin:10px; }
-    input { padding:8px; width:70%; }
-    button { padding:8px; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; margin:0; padding:20px; }
+    h1 { text-align:center; }
+    #chatBox { background:#111; border:1px solid #10b981; border-radius:8px; padding:10px; height:300px; overflow-y:auto; margin-bottom:10px; }
+    .msg { margin:5px 0; padding:5px; border-bottom:1px solid #333; }
+    input, select { padding:6px; margin:3px; border-radius:6px; border:none; }
+    button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; background:#10b981; color:#fff; margin:3px; }
+    #backBtn { background:#f43f5e; }
   </style>
 </head>
 <body>
-  <h2>💬 Chat Room</h2>
-  <div id="chatBox"></div>
-  <input id="chatMsg" placeholder="Tulis pesan...">
-  <button onclick="sendChat()">Kirim</button><br>
-  <input id="privateTo" placeholder="Username tujuan (opsional)">
-  <button onclick="sendPrivateChat()">Kirim Private</button>
-  <br><br>
-  <button onclick="goBack()">⬅️ Kembali</button>
+  <button id="backBtn" onclick="goPage('game.html')">⬅️ Kembali</button>
+  <h1>💬 Chat Room</h1>
 
+  <!-- Kotak Chat -->
+  <div id="chatBox"></div>
+
+  <!-- Form Chat -->
+  <div>
+    <select id="chatMode" onchange="togglePrivate()">
+      <option value="global">🌍 Global</option>
+      <option value="private">🔒 Private</option>
+    </select>
+    <input type="text" id="targetUser" placeholder="Username tujuan" style="display:none;">
+    <br>
+    <input type="text" id="msgInput" placeholder="Tulis pesan..." size="40">
+    <button onclick="sendMsg()">Kirim</button>
+  </div>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="game.js"></script>
+
   <script>
-    loadChat();
-    function goBack(){ location.href="game.html"; }
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    let user=null;
+    let username="";
+
+    auth.onAuthStateChanged(u=>{
+      if(u){
+        user=u;
+        // Ambil username dari database
+        db.ref("profiles/"+user.uid+"/username").once("value").then(snap=>{
+          username = snap.val() || user.email;
+        });
+        loadGlobalChat();
+        loadPrivateChat();
+      }else{
+        window.location.href="index.html";
+      }
+    });
+
+    // Ganti mode chat
+    function togglePrivate(){
+      let mode=document.getElementById("chatMode").value;
+      document.getElementById("targetUser").style.display=(mode==="private"?"inline":"none");
+    }
+
+    // Kirim pesan
+    function sendMsg(){
+      let text=document.getElementById("msgInput").value.trim();
+      if(text==="") return;
+      let mode=document.getElementById("chatMode").value;
+
+      if(mode==="global"){
+        db.ref("chat/global").push({
+          from:username,
+          msg:text,
+          time:Date.now()
+        });
+      }else{
+        let target=document.getElementById("targetUser").value.trim();
+        if(target===""){ alert("Masukkan username tujuan!"); return; }
+        // pesan privat ditaruh di 2 tempat: inbox target & pengirim
+        let data={from:username,to:target,msg:text,time:Date.now()};
+        db.ref("chat/private/"+username).push(data);
+        db.ref("chat/private/"+target).push(data);
+      }
+
+      document.getElementById("msgInput").value="";
+    }
+
+    // Tampilkan chat global
+    function loadGlobalChat(){
+      db.ref("chat/global").limitToLast(50).on("child_added",snap=>{
+        let d=snap.val();
+        showMsg("🌍 "+d.from+": "+d.msg);
+      });
+    }
+
+    // Tampilkan chat privat (hanya milik user)
+    function loadPrivateChat(){
+      db.ref("chat/private").on("child_added",snap=>{
+        if(snap.key===username){
+          snap.ref.limitToLast(50).on("child_added",s=>{
+            let d=s.val();
+            showMsg("🔒 "+d.from+" → "+d.to+": "+d.msg);
+          });
+        }
+      });
+    }
+
+    function showMsg(text){
+      let box=document.getElementById("chatBox");
+      let div=document.createElement("div");
+      div.className="msg";
+      div.innerText=text;
+      box.appendChild(div);
+      box.scrollTop=box.scrollHeight;
+    }
+
+    function goPage(p){ location.href=p; }
   </script>
 </body>
 </html>
