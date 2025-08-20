@@ -1,51 +1,28 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leaderboard — Tamagotchi</title>
-  <style>
-    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-    input,button{padding:8px;margin:4px;border:none;border-radius:6px;font-size:1em}
-    button{background:#10b981;color:#fff;cursor:pointer}
-    .item{background:#101a2b;padding:8px;margin:6px;border-radius:6px;text-align:left}
-    .panel{margin:10px auto;width:90%;max-width:600px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard</title>
+<style>
+body{ background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; }
+</style>
 </head>
 <body>
-<script>
-  (function(){
-    const cur = localStorage.getItem('currentPlayer');
-    if(!cur){ alert('Silakan login'); location.href='login.html'; return }
-    const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(!players[cur]){ localStorage.removeItem('currentPlayer'); alert('User tidak ditemukan'); location.href='login.html' }
-  })();
-</script>
-
-<h2>🏆 Leaderboard</h2>
-<input id="search" placeholder="Cari user..." oninput="render()">
-<div class="panel" id="board">Memuat...</div>
-<button onclick="goTo('index.html')">Home</button>
+<h1>🏆 Leaderboard</h1>
+<ol id="board"></ol>
+<button onclick="back()">⬅️ Kembali</button>
 
 <script>
-  const players = JSON.parse(localStorage.getItem('players')||'{}');
-  function goTo(p){ location.href=p }
+let players=JSON.parse(localStorage.getItem("players")||"{}");
+let session=JSON.parse(localStorage.getItem("session")||"{}");
+if(!session.currentUser) location.href="login.html";
 
-  function render(){
-    const div = document.getElementById('board');
-    const term = (document.getElementById('search').value||'').toLowerCase();
-    let arr = Object.values(players).sort((a,b)=> (b.pet?.level||0) - (a.pet?.level||0));
-    div.innerHTML = '';
-    arr.forEach(p=>{
-      if(term && !p.username.includes(term)) return;
-      div.innerHTML += `
-        <div class="item">
-          <b>${p.username}</b> | Level: ${p.pet.level} | Coin: ${p.coins}<br>
-          Pet: ${p.pet.name || '-'} | Items: ${p.inventory.length}
-        </div>`;
-    });
-  }
+let arr=Object.values(players).map(p=>({name:p.name||Object.keys(players).find(k=>players[k]===p),coins:p.coins,level:p.pet.level}));
+arr.sort((a,b)=>b.coins-a.coins);
+document.getElementById("board").innerHTML=arr.map(p=>`<li>${p.name}: 💰${p.coins}, Lv.${p.level}</li>`).join("");
 
-  render();
+function back(){ location.href="menu.html"; }
 </script>
 </body>
 </html>
