@@ -1,80 +1,90 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tamagotchi Online — Owner Panel</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:720px;margin:0 auto;padding:12px}
-  .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px;text-align:left}
-  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
-  input,button{padding:10px;border-radius:10px;border:0;margin:4px}
-  button{background:#10b981;color:#042018;font-weight:700}
-  .warn{color:#fca5a5}
-</style>
+  <meta charset="UTF-8">
+  <title>Owner Panel - Tamagotchi Online</title>
+  <style>
+    body { font-family: Arial; background:#fff0f0; text-align:center; }
+    .box { border:1px solid #ccc; background:#fff; padding:15px; margin:10px auto; width:300px; border-radius:8px; }
+    button { margin:5px; padding:6px 12px; border:none; border-radius:6px; background:#e91e63; color:white; cursor:pointer; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <h2>🛠️ Owner Panel</h2>
-  <div class="menu">
-    <a href="index.html">🏠 Home</a>
-    <button id="btnLogout">🚪 Logout</button>
+  <h1>🔑 Owner Panel</h1>
+  <div class="box">
+    <h3>Top Up Coin</h3>
+    <input id="toUser" placeholder="Username target"><br>
+    <input id="amount" type="number" placeholder="Jumlah coin"><br>
+    <button onclick="topUp()">Kirim</button>
   </div>
-
-  <div id="guard" class="panel">Memeriksa akses...</div>
-
-  <div id="ownerUI" class="panel" style="display:none">
-    <h3>Top-up Coin</h3>
-    <input id="tuUser" placeholder="Nama player">
-    <input id="tuAmt" type="number" placeholder="Jumlah coin">
-    <button id="btnTopup">Top-up</button>
-    <hr>
-    <h3>Set Level Pet Aktif</h3>
-    <input id="lvUser" placeholder="Nama player">
-    <input id="lvNum" type="number" placeholder="Level">
-    <button id="btnSetLv">Set Level</button>
-    <hr>
-    <h3 class="warn">Hapus Player</h3>
-    <input id="delUser" placeholder="Nama player">
-    <button id="btnDel" class="warn">Hapus</button>
+  <div class="box">
+    <h3>Reset Player</h3>
+    <input id="delUser" placeholder="Username target"><br>
+    <button onclick="resetUser()">Reset</button>
   </div>
-</div>
+  <button onclick="location.href='index.html'">🏠 Kembali</button>
 
-<script type="module" src="js/firebase-config.js"></script>
-<script type="module" src="js/online.js"></script>
-<script type="module">
-import { onAuth, logout, isOwner, ownerTopup, ownerSetLevel, ownerDeletePlayer } from './js/online.js';
-document.getElementById('btnLogout').onclick = ()=> logout();
-const guard = document.getElementById('guard');
-const panel = document.getElementById('ownerUI');
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-onAuth(async (user)=>{
-  if(!user){ location.href='index.html'; return; }
-  if(!(await isOwner(user.uid))){
-    guard.textContent = 'Akses ditolak. Khusus OWNER.'; return;
-  }
-  guard.style.display='none'; panel.style.display='block';
-});
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
 
-document.getElementById('btnTopup').onclick = async ()=>{
-  try{
-    await ownerTopup(document.getElementById('tuUser').value, document.getElementById('tuAmt').value);
-    alert('Top-up berhasil');
-  }catch(e){ alert(e.message); }
-};
-document.getElementById('btnSetLv').onclick = async ()=>{
-  try{
-    await ownerSetLevel(document.getElementById('lvUser').value, document.getElementById('lvNum').value);
-    alert('Level diset');
-  }catch(e){ alert(e.message); }
-};
-document.getElementById('btnDel').onclick = async ()=>{
-  if(!confirm('Yakin hapus?')) return;
-  try{
-    await ownerDeletePlayer(document.getElementById('delUser').value);
-    alert('Player dihapus');
-  }catch(e){ alert(e.message); }
-};
-</script>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    let uid="";
+
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        uid=user.uid;
+        const snap = await get(ref(db,"users/"+uid));
+        if(!snap.exists() || snap.val().role!=="owner"){
+          alert("Bukan owner!");
+          location.href="index.html";
+        }
+      } else {
+        location.href="index.html";
+      }
+    });
+
+    window.topUp = async function() {
+      let uname = document.getElementById("toUser").value;
+      let amt = parseInt(document.getElementById("amount").value);
+      if(!uname || !amt) return;
+      const snap = await get(ref(db,"users"));
+      snap.forEach(child=>{
+        let u = child.val();
+        if(u.username===uname){
+          u.coin = (u.coin||0)+amt;
+          set(ref(db,"users/"+child.key),u);
+          alert("Coin ditambahkan.");
+        }
+      });
+    }
+
+    window.resetUser = async function() {
+      let uname=document.getElementById("delUser").value;
+      const snap=await get(ref(db,"users"));
+      snap.forEach(child=>{
+        let u=child.val();
+        if(u.username===uname){
+          remove(ref(db,"users/"+child.key));
+          alert("User dihapus.");
+        }
+      });
+    }
+  </script>
 </body>
 </html>
