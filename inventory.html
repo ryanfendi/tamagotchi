@@ -6,12 +6,12 @@
 <title>Tamagotchi — Inventory</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:760px;margin:0 auto;padding:10px}
+  .wrap{max-width:820px;margin:0 auto;padding:12px}
   .panel{background:#101a2b;border-radius:12px;padding:14px;margin:10px}
   .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
   button,input,select{padding:10px;border-radius:10px;border:0;margin:4px}
   button{background:#10b981;color:#042018;font-weight:700}
-  .item{background:#1a2436;border-radius:10px;padding:8px;margin:6px 0;text-align:left}
+  .item{background:#1a2436;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
 </style>
 </head>
 <body>
@@ -28,7 +28,7 @@
   <div id="summary" class="panel"></div>
 
   <div class="panel">
-    <h3>Jadikan Pet Koleksi Sebagai Aktif</h3>
+    <h3>Ganti Pet Aktif</h3>
     <select id="selActive"></select>
     <button onclick="setActive()">Aktifkan</button>
   </div>
@@ -51,41 +51,42 @@ function logout(){ localStorage.removeItem('lastUser'); location.href='index.htm
 
 function render(){
   const me = players[user];
+  const p  = me.pets[me.activePet] || me.pets[0];
   document.getElementById('summary').innerHTML = `
     <p><b>Player:</b> ${user}</p>
     <p><b>Coin:</b> ${me.coins}</p>
-    <p><b>Pet Aktif:</b> Lv ${me.pet.level} | HP ${me.pet.hp}% | H ${me.pet.hunger}% | E ${me.pet.energy}%</p>
-    <h4>Koleksi (${me.inventory.length})</h4>
-    ${(me.inventory||[]).map((p,i)=>`<div class="item">#${i+1} — Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</div>`).join('') || '<p>Tidak ada pet.</p>'}
+    <p><b>Pet Aktif:</b> Lv ${p.level} | HP ${p.hp}% | H ${p.hunger}% | E ${p.energy}%</p>
+    <h4>Koleksi (${me.pets.length})</h4>
+    ${me.pets.map((q,i)=>`<div class="item">#${i+1} — <b>${i===me.activePet?'(Aktif)':''}</b> Lv ${q.level} | HP ${q.hp}% | H ${q.hunger}% | E ${q.energy}%</div>`).join('')}
   `;
-  const opts = (me.inventory||[]).map((p,i)=>`<option value="${i}">#${i+1} — Lv ${p.level}</option>`).join('');
-  document.getElementById('selActive').innerHTML = opts || '<option>(kosong)</option>';
-  document.getElementById('selSell').innerHTML   = opts || '<option>(kosong)</option>';
+  const opts = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}${i===me.activePet?' (aktif)':''}</option>`).join('');
+  document.getElementById('selActive').innerHTML = opts;
+  // untuk jual, jangan tampilkan yang aktif (opsional): tetap boleh jual semua kecuali aktif?
+  document.getElementById('selSell').innerHTML   = me.pets.map((x,i)=>`<option value="${i}">#${i+1} — Lv ${x.level}</option>`).join('');
 }
 
 function setActive(){
   const me = players[user];
-  if(!me.inventory || me.inventory.length===0) return alert('Koleksi kosong.');
   const idx = parseInt(document.getElementById('selActive').value||'-1');
-  if(idx<0) return;
-  const chosen = me.inventory.splice(idx,1)[0];
-  me.inventory.push(me.pet);
-  me.pet = chosen;
+  if(isNaN(idx) || idx<0 || idx>=me.pets.length) return;
+  me.activePet = idx;
   saveAll(); render(); alert('Pet aktif diganti!');
 }
 
 function sell(){
   const me = players[user];
-  if(!me.inventory || me.inventory.length===0) return alert('Koleksi kosong.');
   const idx = parseInt(document.getElementById('selSell').value||'-1');
   const price = parseInt(document.getElementById('price').value||'0');
-  if(idx<0) return;
+  if(isNaN(idx) || idx<0 || idx>=me.pets.length) return alert('Pilih pet.');
   if(!price || price<=0) return alert('Harga tidak valid.');
-  const pet = me.inventory.splice(idx,1)[0];
+  if(idx===me.activePet) return alert('Tidak bisa menjual pet yang sedang aktif.');
+  const pet = me.pets.splice(idx,1)[0];
+  if(me.activePet>idx) me.activePet--; // geser index aktif jika perlu
   const id = 'sale_'+Date.now();
-  market[id] = { seller:user, pet, price };
+  market[id] = { id, seller:user, pet, price };
   saveAll(); render(); alert('Pet dimasukkan ke marketplace!');
 }
+
 render();
 </script>
 </body>
