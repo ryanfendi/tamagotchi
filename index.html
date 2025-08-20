@@ -1,213 +1,196 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tamagotchi Online — Game</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:860px;margin:0 auto;padding:12px}
-  canvas{background:#08121a;border-radius:12px;image-rendering:pixelated;margin:10px auto;display:block}
-  .btn{background:#10b981;border:0;color:#042018;font-weight:700;padding:10px 12px;border-radius:10px;margin:5px;cursor:pointer}
-  .btn.gray{background:#1f2937;color:#fff}
-  .hidden{display:none}
-  .bars{max-width:420px;margin:8px auto}
-  .bar{height:18px;background:#263245;border-radius:10px;margin:6px 0;overflow:hidden}
-  .fill{height:100%}
-  .hunger{background:#ef4444}
-  .energy{background:#3b82f6}
-  .hp{background:#10b981}
-  input{padding:10px;border-radius:10px;border:0;margin:4px;width:260px;max-width:90%}
-  small.mono{font-family:ui-monospace,Menlo,monospace;opacity:.75}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamagotchi Online</title>
+  <style>
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; margin:0; padding:0; }
+    canvas { background:#08121a; image-rendering:pixelated; border-radius:8px; margin-top:10px; }
+    .controls button { background:#10b981; border:none; padding:10px; margin:5px; border-radius:8px; font-weight:bold; cursor:pointer; }
+    #gameUI { display:none; }
+    .hidden { display:none; }
+    #ads { background:#111; color:#0f0; padding:5px; margin:10px; border:1px dashed #0f0; }
+    #qrisPopup { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); align-items:center; justify-content:center; }
+    #qrisBox { background:#fff; color:#000; padding:20px; border-radius:10px; text-align:center; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🐣 Tamagotchi Online</h1>
+<h1>🐣 Tamagotchi Online</h1>
 
-  <div id="authBox">
-    <h3>Login</h3>
-    <input id="loginId" placeholder="Username atau Email">
-    <input id="loginPass" type="password" placeholder="Password">
-    <button class="btn" id="btnLogin">Login</button>
+<!-- Login Form -->
+<div id="loginForm">
+  <h3>Login / Daftar</h3>
+  <input id="email" type="email" placeholder="Email"><br>
+  <input id="password" type="password" placeholder="Password"><br>
+  <button onclick="register()">Daftar</button>
+  <button onclick="login()">Login</button>
+</div>
 
-    <h3>Daftar</h3>
-    <input id="regUser" placeholder="Username">
-    <input id="regEmail" type="email" placeholder="Email">
-    <input id="regPass" type="password" placeholder="Password">
-    <button class="btn" id="btnReg">Daftar</button>
+<!-- Game UI -->
+<div id="gameUI">
+  <p id="userInfo"></p>
+  <button onclick="logout()">Logout</button>
 
-    <p><small class="mono">Data disimpan online (Firestore). Login berlaku di semua halaman.</small></p>
+  <canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px;"></canvas>
+
+  <div class="controls">
+    <button onclick="feedPet()">🍎 Feed (1 coin)</button>
+    <button onclick="sleepPet()">💤 Sleep (1 coin)</button>
+    <button onclick="earnCoin()">💰 Tap Coin (+0.01)</button>
+    <button onclick="levelUp()">⬆️ Level Up (100 coin)</button>
+    <button onclick="buyPet()">🛒 Pet Baru (200 coin)</button>
+    <button onclick="topUpQRIS()">💳 Beli Coin</button>
+    <button onclick="goTo('inventory.html')">📦 Inventory</button>
+    <button onclick="goTo('marketplace.html')">🏪 Marketplace</button>
+    <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
+    <button onclick="goTo('chat.html')">💬 Chat</button>
   </div>
 
-  <div id="gameUI" class="hidden">
-    <div class="menu">
-      <a class="btn gray" href="inventory.html">📦 Inventory</a>
-      <a class="btn gray" href="marketplace.html">🏪 Marketplace</a>
-      <a class="btn gray" href="leaderboard.html">🏆 Leaderboard</a>
-      <a class="btn gray" href="chat.html">💬 Chat</a>
-      <a id="ownerLink" class="btn gray hidden" href="owner.html">🛠️ Owner</a>
-      <button class="btn" id="btnLogout">🚪 Logout</button>
-    </div>
+  <div id="status"></div>
+  <div id="coinInfo"></div>
 
-    <p id="welcome"></p>
-    <canvas id="cv" width="128" height="128" style="width:320px;height:320px"></canvas>
-
-    <div class="bars">
-      <div class="bar"><div id="barH" class="fill hunger"></div></div>
-      <div class="bar"><div id="barE" class="fill energy"></div></div>
-      <div class="bar"><div id="barHP" class="fill hp"></div></div>
-    </div>
-
-    <div id="status"></div>
-    <div id="coinInfo" style="margin:.35rem 0 1rem"></div>
-
-    <div>
-      <button class="btn" id="btnFeed">🍎 Feed (+10%, 100c)</button>
-      <button class="btn" id="btnSleep">😴 Sleep (+10%, 100c)</button>
-    </div>
-    <div>
-      <button class="btn" id="btnTap">💰 Tap Coin (+10)</button>
-      <button class="btn" id="btnLv">⬆️ Naik Level (100.000c)</button>
-    </div>
-    <div>
-      <button class="btn" id="btnBuyPet">🐾 Beli Pet Baru (harga dinamis)</button>
-    </div>
+  <!-- Tempat iklan -->
+  <div id="ads">
+    <p>📢 Iklan Teks: Pasang iklanmu di sini!</p>
+    <img src="https://via.placeholder.com/468x60?text=Banner+Iklan" alt="Banner Iklan"><br>
+    <button onclick="showPopupAd()">Tampilkan Iklan Pop-up</button>
   </div>
 </div>
 
-<!-- Firebase Config + Online adapter -->
-<script type="module" src="js/firebase-config.js"></script>
-<script type="module" src="js/online.js"></script>
+<!-- QRIS Popup -->
+<div id="qrisPopup">
+  <div id="qrisBox">
+    <h3>QRIS Pembayaran</h3>
+    <p id="qrisInfo"></p>
+    <img id="qrisImage" src="">
+    <br><button onclick="closeQRIS()">Tutup</button>
+  </div>
+</div>
 
-<script type="module">
-import {
-  auth, db, onAuth, register, login, logout, subPlayer, getPlayer,
-  buyFeed,buySleep,tapCoin,levelUp,buyNewPet, tickDecay, isOwner
-} from './js/online.js';
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-const authBox = document.getElementById('authBox');
-const gameUI  = document.getElementById('gameUI');
-const welcome = document.getElementById('welcome');
-const cv = document.getElementById('cv'); const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
-let uid=null, unsubPlayer=null, player=null, frame=0;
-
-document.getElementById('btnLogin').onclick = async ()=>{
-  try{
-    const id  = document.getElementById('loginId').value;
-    const pwd = document.getElementById('loginPass').value;
-    await login({idOrEmail:id, password:pwd});
-  }catch(e){ alert(e.message); }
+<script>
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+  authDomain: "tamagotchi-2be0c.firebaseapp.com",
+  databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+  projectId: "tamagotchi-2be0c",
+  storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+  messagingSenderId: "202052432703",
+  appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+  measurementId: "G-TWGGSJRX26"
 };
-document.getElementById('btnReg').onclick = async ()=>{
-  try{
-    const u = document.getElementById('regUser').value;
-    const e = document.getElementById('regEmail').value;
-    const p = document.getElementById('regPass').value;
-    await register({username:u, email:e, password:p});
-  }catch(e){ alert(e.message); }
-};
-document.getElementById('btnLogout').onclick = ()=> logout();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
 
-onAuth(async (user)=>{
-  if(user){
-    uid=user.uid;
-    authBox.classList.add('hidden');
-    gameUI.classList.remove('hidden');
-    welcome.textContent = `Selamat datang, ${user.displayName||user.email}!`;
+let user=null, pet={level:1,hunger:100,energy:100,hp:100,coins:50};
 
-    // owner link
-    if(await isOwner(uid)) document.getElementById('ownerLink').classList.remove('hidden');
-
-    // subscribe player realtime
-    if(unsubPlayer) unsubPlayer();
-    unsubPlayer = subPlayer(uid, async (p)=>{
-      player = p;
-      // catch-up decay secara lokal lalu push ke cloud
-      tickDecay(player);
-      // simpan lastTick dan pets jika berubah (debounce ringan)
-      await Promise.resolve(); // biar tidak blocking
-      // Tidak updateDoc tiap frame—hanya saat login & timer 1 menit dari loop di bawah
-      updateUI();
+// Auth
+function register(){
+  let email=document.getElementById("email").value;
+  let pass=document.getElementById("password").value;
+  auth.createUserWithEmailAndPassword(email,pass).catch(e=>alert(e.message));
+}
+function login(){
+  let email=document.getElementById("email").value;
+  let pass=document.getElementById("password").value;
+  auth.signInWithEmailAndPassword(email,pass).catch(e=>alert(e.message));
+}
+function logout(){ auth.signOut(); }
+auth.onAuthStateChanged(u=>{
+  if(u){
+    user=u; document.getElementById("loginForm").style.display="none";
+    document.getElementById("gameUI").style.display="block";
+    db.ref("users/"+u.uid).once("value",snap=>{
+      if(snap.exists()) pet=snap.val();
+      save(); updateUI();
     });
-    startLoops();
   }else{
-    uid=null; player=null;
-    if(unsubPlayer){ unsubPlayer(); unsubPlayer=null; }
-    gameUI.classList.add('hidden');
-    authBox.classList.remove('hidden');
+    user=null; document.getElementById("loginForm").style.display="block";
+    document.getElementById("gameUI").style.display="none";
   }
 });
 
-// UI Actions
-document.getElementById('btnFeed').onclick = ()=> uid && buyFeed(uid).catch(e=>alert(e.message));
-document.getElementById('btnSleep').onclick= ()=> uid && buySleep(uid).catch(e=>alert(e.message));
-document.getElementById('btnTap').onclick  = ()=> uid && tapCoin(uid).catch(e=>alert(e.message));
-document.getElementById('btnLv').onclick   = ()=> uid && levelUp(uid).catch(e=>alert(e.message));
-document.getElementById('btnBuyPet').onclick = ()=> uid && buyNewPet(uid).catch(e=>alert(e.message));
+// Save
+function save(){ if(user) db.ref("users/"+user.uid).set(pet); }
 
-function curPet(){
-  if(!player) return null;
-  const idx = player.activePet || 0;
-  return player.pets?.[idx] || null;
-}
+// UI
 function updateUI(){
-  const p = curPet(); if(!p) return;
-  document.getElementById('barH').style.width  = p.hunger+'%';
-  document.getElementById('barE').style.width  = p.energy+'%';
-  document.getElementById('barHP').style.width = p.hp+'%';
-  document.getElementById('status').textContent = `❤️ HP ${p.hp}% • 🍎 Hunger ${p.hunger}% • 😴 Energy ${p.energy}% • Lv ${p.level}`;
-  document.getElementById('coinInfo').textContent = `💰 Coin: ${player.coins} • Pet Aktif: ${(player.activePet||0)+1}/${player.pets.length}`;
+  document.getElementById("userInfo").innerText=`👤 ${user.email}`;
+  document.getElementById("coinInfo").innerText=`💰 ${pet.coins.toFixed(2)} | Level ${pet.level}`;
+  document.getElementById("status").innerText=`Hunger:${pet.hunger}% | Energy:${pet.energy}% | HP:${pet.hp}`;
 }
 
-function drawPet(){
-  const p = curPet(); if(!p) return;
-  ctx.clearRect(0,0,128,128);
-  ctx.fillStyle='#08121a'; ctx.fillRect(0,0,128,128);
+// Game Actions
+function feedPet(){
+  if(pet.coins<1) return alert("Coin tidak cukup!");
+  pet.coins-=1; pet.hunger=Math.min(100,pet.hunger+10); updateUI(); save();
+}
+function sleepPet(){
+  if(pet.coins<1) return alert("Coin tidak cukup!");
+  pet.coins-=1; pet.energy=Math.min(100,pet.energy+10); updateUI(); save();
+}
+function earnCoin(){ pet.coins+=0.01; updateUI(); save(); }
+function levelUp(){
+  if(pet.coins<100) return alert("Coin tidak cukup!");
+  pet.coins-=100; pet.level++; updateUI(); save();
+}
+function buyPet(){
+  if(pet.coins<200) return alert("Coin tidak cukup!");
+  pet.coins-=200; alert("Pet baru masuk inventory!"); updateUI(); save();
+}
 
-  for(let i=0;i<18;i++){
-    ctx.fillStyle='rgba(255,255,255,.13)';
-    ctx.fillRect((i*13 + frame)%128, (i*7 + frame*0.8)%128, 1, 1);
+// HP Decay
+setInterval(()=>{
+  if(user){
+    pet.hunger=Math.max(0,pet.hunger-1);
+    pet.energy=Math.max(0,pet.energy-1);
+    if(pet.hunger===0||pet.energy===0) pet.hp=Math.max(0,pet.hp-20);
+    if(pet.hp===0){ alert("Pet mati! Mulai ulang Level 1"); pet={level:1,hunger:100,energy:100,hp:100,coins:0}; }
+    updateUI(); save();
   }
-  let tier=0, body='#ffd07a';
-  if(p.level<5){ tier=0; body='#ffd07a'; }
-  else if(p.level<10){ tier=1; body='#93c5fd'; }
-  else if(p.level<20){ tier=2; body='#34d399'; }
-  else if(p.level<50){ tier=3; body='#f472b6'; }
-  else { tier=4; body='#fbbf24'; }
+},60000);
 
-  const wobX = Math.sin(frame/12)*3;
-  const wobY = Math.cos(frame/18)*2;
-  const x=64+wobX, y=70+wobY;
-
-  ctx.fillStyle = body;
-  if(tier===0){ ctx.fillRect(x-14,y-12,28,22); }
-  else if(tier===1){ ctx.beginPath(); ctx.arc(x,y,16,0,Math.PI*2); ctx.fill(); }
-  else if(tier===2){ ctx.fillRect(x-18,y-16,36,30); ctx.fillStyle='#222'; ctx.fillRect(x-10,y-22,20,6); ctx.fillStyle=body; }
-  else if(tier===3){ ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#222'; ctx.fillRect(x-2,y-30,4,10); ctx.fillStyle=body; ctx.fillRect(x-3,y-34,6,4); }
-  else { ctx.beginPath(); ctx.moveTo(x,y-24); ctx.lineTo(x+24,y+20); ctx.lineTo(x-24,y+20); ctx.closePath(); ctx.fill();
-         ctx.fillStyle='#fff'; ctx.fillRect(x-28,y-2,10,4); ctx.fillRect(x+18,y-2,10,4); ctx.fillStyle=body; }
-
-  const blink = Math.floor(frame/50)%2===0;
-  ctx.fillStyle='#0b0b0b';
-  if(blink){ ctx.fillRect(x-6,y-2,3,3); ctx.fillRect(x+3,y-2,3,3); }
-  else{ ctx.fillRect(x-6,y-1,3,1); ctx.fillRect(x+3,y-1,3,1); }
-
-  ctx.fillStyle=(p.hp>50)?'#fff':'#ff7b7b';
-  ctx.fillRect(x-4,y+6,8,2);
-  frame++;
+// QRIS TopUp
+function topUpQRIS(){
+  let jumlah=prompt("Jumlah coin (kelipatan 100):"); 
+  jumlah=parseInt(jumlah);
+  if(isNaN(jumlah) || jumlah<100 || jumlah%100!==0){ alert("Minimal 100 coin dan harus kelipatan 100!"); return; }
+  let harga=(jumlah/100)*10000;
+  db.ref("topupRequests").push({uid:user.uid,email:user.email,coin:jumlah,harga,status:"pending"});
+  document.getElementById("qrisInfo").innerText=`Beli ${jumlah} coin = Rp${harga}`;
+  document.getElementById("qrisImage").src=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAY+${harga}+QRIS`;
+  document.getElementById("qrisPopup").style.display="flex";
 }
+function closeQRIS(){ document.getElementById("qrisPopup").style.display="none"; }
 
-function startLoops(){
-  function raf(){ if(!player) return; drawPet(); requestAnimationFrame(raf); }
-  raf();
-  // tiap 1 menit: apply decay dan push ke server
-  setInterval(async ()=>{
-    if(!uid || !player) return;
-    tickDecay(player);
-    await (await import('./js/online.js')).savePlayer(uid, { pets: player.pets, lastTick: Date.now() });
-  }, 60000);
+// Ads popup
+function showPopupAd(){ alert("📢 Ini iklan pop-up! Hubungi admin untuk pasang iklan."); }
+
+// Navigate
+function goTo(page){ location.href=page; }
+
+// Canvas Sprite
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+ctx.imageSmoothingEnabled=false;
+let frame=0;
+function drawPet(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  let px=40+Math.sin(frame/10)*5; let py=60;
+  ctx.fillStyle=pet.level<5?"#ffd07a":"#7af"; // berubah warna tiap level range
+  ctx.fillRect(px,py,40,30);
+  ctx.fillStyle="#111"; ctx.fillRect(px+8,py+8,5,5); ctx.fillRect(px+26,py+8,5,5);
+  ctx.fillStyle=pet.hunger<20?"#f00":"#fff"; ctx.fillRect(px+18,py+18,4,4);
+  frame++; requestAnimationFrame(drawPet);
 }
+drawPet();
 </script>
 </body>
 </html>
