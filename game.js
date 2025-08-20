@@ -131,3 +131,9 @@ setInterval(() => {
   save();
   updateUI();
 }, 60000); // tiap menit
+
+// Di game.js setelah login berhasil
+db.ref("users/"+uid+"/coins").on("value", snap => {
+  const coins = snap.val() || 0;
+  document.getElementById("coins").textContent = coins.toFixed(2);
+});
