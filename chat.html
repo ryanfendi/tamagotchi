@@ -1,55 +1,136 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tamagotchi Online — Chat</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat — Tamagotchi Online</title>
 <style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif}
-  .wrap{max-width:860px;margin:0 auto;text-align:center;padding:12px}
-  .menu a,.menu button{background:#1f2937;color:#fff;text-decoration:none;padding:8px 10px;border-radius:10px;border:0;display:inline-block;margin:4px}
-  #chatBox{background:#101a2b;height:360px;overflow-y:auto;padding:10px;border-radius:12px;text-align:left;margin:10px}
-  input,button{padding:10px;border-radius:10px;border:0;margin:4px}
-  button{background:#10b981;color:#042018;font-weight:700}
+  body{background:#0b1220;color:#fff;font-family:sans-serif;margin:0;padding:16px}
+  .panel{background:#101a2b;border-radius:12px;padding:12px;margin:10px auto;max-width:780px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input{padding:8px;border-radius:8px;border:0;margin:4px;flex:1}
+  button{background:#10b981;border:0;border-radius:8px;color:#042018;font-weight:700;padding:8px 10px;margin:4px;cursor:pointer}
+  #box{height:360px;overflow:auto;background:#0f172a;border-radius:10px;padding:10px}
+  .me{color:#10b981}
+  .other{color:#e2e8f0}
+  .muted{color:#94a3b8;font-size:12px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h2>💬 Chat Global</h2>
-  <div class="menu">
-    <a href="index.html">🏠 Home</a>
-    <a href="inventory.html">📦 Inventory</a>
-    <a href="marketplace.html">🏪 Marketplace</a>
-    <a href="leaderboard.html">🏆 Leaderboard</a>
-    <button id="btnLogout">🚪 Logout</button>
+  <h2>💬 Chat</h2>
+
+  <div id="authWarn" class="panel" style="display:none">
+    <p>Kamu belum login.</p>
+    <button onclick="location.href='index.html'">Login</button>
   </div>
 
-  <div id="chatBox"></div>
-  <input id="msg" placeholder="Ketik pesan..." style="width:70%">
-  <button id="btnSend">Kirim</button>
-</div>
+  <div id="wrap" style="display:none">
+    <div class="panel">
+      <div class="row">
+        <button onclick="tab('global')" id="btnGlobal">🌐 Global</button>
+        <button onclick="tab('private')" id="btnPrivate">🔒 Private</button>
+        <div style="flex:1"></div>
+        <button onclick="go('index.html')">🏠 Home</button>
+      </div>
+    </div>
 
-<script type="module" src="js/firebase-config.js"></script>
-<script type="module" src="js/online.js"></script>
-<script type="module">
-import { onAuth, logout, subChat, sendChat } from './js/online.js';
-let uid=null, unsub=null;
-document.getElementById('btnLogout').onclick = ()=> logout();
-document.getElementById('btnSend').onclick = async ()=>{
-  const t = (document.getElementById('msg').value||'').trim();
-  if(!t) return;
-  try{ await sendChat(uid, t); document.getElementById('msg').value=''; }catch(e){ alert(e.message); }
+    <div class="panel" id="chatPanel">
+      <div class="row" id="privTools" style="display:none">
+        <input id="emailTo" type="email" placeholder="Email tujuan">
+        <button onclick="startPrivate()">Mulai</button>
+      </div>
+      <div id="box"></div>
+      <div class="row">
+        <input id="msg" placeholder="Tulis pesan...">
+        <button onclick="send()">Kirim</button>
+      </div>
+      <div class="muted" id="info"></div>
+    </div>
+  </div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+  authDomain:"tamagotchi-2be0c.firebaseapp.com",
+  databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+  projectId:"tamagotchi-2be0c",
+  storageBucket:"tamagotchi-2be0c.firebasestorage.app",
+  messagingSenderId:"202052432703",
+  appId:"1:202052432703:web:cb76b50e42149a2c92998a",
+  measurementId:"G-TWGGSJRX26"
 };
-function render(rows){
-  const box = document.getElementById('chatBox');
-  box.innerHTML = rows.map(c=> `<p><b>${c.user}</b>: ${c.msg}</p>`).join('');
-  box.scrollTop = box.scrollHeight;
-}
-onAuth(user=>{
-  if(!user){ location.href='index.html'; return; }
-  uid=user.uid;
-  if(unsub) unsub();
-  unsub = subChat(rows=> render(rows));
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database(), auth=firebase.auth();
+
+let uid=null, myEmail='', mode='global', chatKey=null, unsub=null;
+
+auth.onAuthStateChanged(u=>{
+  if(!u){ document.getElementById('authWarn').style.display='block'; return; }
+  uid=u.uid; myEmail=u.email;
+  document.getElementById('wrap').style.display='block';
+  tab('global');
 });
+
+function tab(m){
+  mode=m;
+  document.getElementById('btnGlobal').style.opacity = m==='global'?'1':'0.6';
+  document.getElementById('btnPrivate').style.opacity = m==='private'?'1':'0.6';
+  document.getElementById('privTools').style.display = m==='private'?'flex':'none';
+  document.getElementById('box').innerHTML='';
+  document.getElementById('info').innerText='';
+  if(unsub){ db.ref(unsub).off(); unsub=null; }
+  if(m==='global'){
+    unsub='chats/global';
+    db.ref(unsub).limitToLast(200).on('child_added', s=>append(s.val()));
+  }
+}
+
+async function startPrivate(){
+  const email = document.getElementById('emailTo').value.trim();
+  if(!email) return alert('Isi email tujuan.');
+  const prof=await db.ref('profiles').once('value');
+  let toUid=null;
+  if(prof.exists()){
+    const v=prof.val();
+    for(const k in v){ if(v[k].email===email){ toUid=k; break; } }
+  }
+  if(!toUid) return alert('Email tidak ditemukan.');
+  chatKey = [uid,toUid].sort().join('__');
+  if(unsub){ db.ref(unsub).off(); unsub=null; }
+  unsub='chats/privates/'+chatKey;
+  document.getElementById('box').innerHTML='';
+  db.ref(unsub).limitToLast(200).on('child_added', s=>append(s.val()));
+  document.getElementById('info').innerText='Private chat dengan '+email;
+}
+
+function send(){
+  const text=(document.getElementById('msg').value||'').trim();
+  if(!text) return;
+  const msg={ from:uid, email:myEmail, text, time:Date.now() };
+  if(mode==='global'){
+    db.ref('chats/global').push(msg);
+  }else{
+    if(!chatKey) return alert('Mulai private chat dulu.');
+    db.ref('chats/privates/'+chatKey).push(msg);
+  }
+  document.getElementById('msg').value='';
+}
+
+function append(m){
+  const box=document.getElementById('box');
+  const p=document.createElement('p');
+  const who=m.from===uid?'me':'other';
+  const t=new Date(m.time||Date.now()).toLocaleString();
+  p.innerHTML=`<span class="${who}"><b>${m.email||m.from}</b></span>: ${m.text} <span class="muted">(${t})</span>`;
+  box.appendChild(p);
+  box.scrollTop=box.scrollHeight;
+}
+
+function go(p){ location.href=p; }
 </script>
 </body>
 </html>
