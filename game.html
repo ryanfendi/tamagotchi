@@ -3,53 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tamagotchi Online - Game</title>
+  <title>Tamagotchi Game</title>
   <style>
-    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; margin:0; padding:0; }
-    canvas { background:#08121a; image-rendering:pixelated; border-radius:8px; margin-top:10px; }
-    button { background:#10b981; border:none; padding:10px; margin:5px; border-radius:8px; font-weight:bold; cursor:pointer; }
-    #ads { background:#111; color:#0f0; padding:5px; margin:10px; border:1px dashed #0f0; }
+    body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; padding:20px; }
+    h1 { color:#10b981; }
+    #pet { width:150px; height:150px; margin:20px auto; }
+    .bar { height:20px; background:#333; border-radius:10px; margin:5px; position:relative; }
+    .fill { height:100%; border-radius:10px; }
+    .menu { margin:15px 0; }
+    .menu button { margin:5px; padding:10px 15px; border:none; border-radius:8px; background:#10b981; cursor:pointer; }
   </style>
 </head>
 <body>
-<h1>🐣 Tamagotchi Game</h1>
-<p id="userInfo"></p>
-<button onclick="logout()">Logout</button>
-
-<canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px;"></canvas>
-
-<div>
-  <button onclick="feedPet()">🍎 Feed (1 coin)</button>
-  <button onclick="sleepPet()">💤 Sleep (1 coin)</button>
-  <button onclick="earnCoin()">💰 Tap Coin (+0.01)</button>
-  <button onclick="levelUp()">⬆️ Level Up (100 coin)</button>
-  <button onclick="buyPet()">🛒 Pet Baru (200 coin)</button>
-  <button onclick="topUpQRIS()">💳 Beli Coin</button>
-</div>
-
-<div id="status"></div>
-<div id="coinInfo"></div>
-
-<div id="ads">
-  <p>📢 Iklan Teks: Pasang iklanmu di sini!</p>
-  <img src="https://via.placeholder.com/468x60?text=Banner+Iklan" alt="Banner Iklan"><br>
-  <button onclick="showPopupAd()">Tampilkan Iklan Pop-up</button>
-</div>
-
-<!-- QRIS -->
-<div id="qrisPopup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;">
-  <div style="background:#fff;color:#000;padding:20px;border-radius:10px;text-align:center;">
-    <h3>QRIS Pembayaran</h3>
-    <p id="qrisInfo"></p>
-    <img id="qrisImage" src="">
-    <br><button onclick="closeQRIS()">Tutup</button>
+  <h1>🐾 Tamagotchi Online</h1>
+  <div id="status">
+    <p><b id="username"></b></p>
+    <p>Coin: <span id="coins">0</span></p>
+    <p>Level: <span id="level">1</span></p>
   </div>
-</div>
 
-<!-- Firebase + Game -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="game.js"></script>
+  <img id="pet" src="assets/pet1.gif" alt="Pet">
+
+  <div>
+    <div class="bar"><div id="hpBar" class="fill" style="background:red;width:100%"></div></div>
+    <div class="bar"><div id="hungerBar" class="fill" style="background:orange;width:100%"></div></div>
+    <div class="bar"><div id="energyBar" class="fill" style="background:yellow;width:100%"></div></div>
+  </div>
+
+  <div class="menu">
+    <button onclick="feedPet()">🍖 Feed</button>
+    <button onclick="sleepPet()">💤 Sleep</button>
+    <button onclick="tapCoin()">💰 Tap Coin</button>
+    <button onclick="buyLevel()">⬆️ Up Level</button>
+    <button onclick="buyPet()">🐕 Beli Pet Baru</button>
+  </div>
+
+  <h3>📌 Menu</h3>
+  <div class="menu">
+    <button onclick="goPage('inventory.html')">📦 Inventory</button>
+    <button onclick="goPage('marketplace.html')">🏪 Marketplace</button>
+    <button onclick="goPage('chat.html')">💬 Chat</button>
+    <button onclick="goPage('leaderboard.html')">🏆 Leaderboard</button>
+    <button onclick="logout()">🚪 Logout</button>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="game.js"></script>
 </body>
 </html>
