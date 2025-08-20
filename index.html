@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tamagotchi — Game</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tamagotchi Online — Game</title>
 <style>
   body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-  .wrap{max-width:820px;margin:0 auto;padding:12px}
+  .wrap{max-width:860px;margin:0 auto;padding:12px}
   canvas{background:#08121a;border-radius:12px;image-rendering:pixelated;margin:10px auto;display:block}
   .btn{background:#10b981;border:0;color:#042018;font-weight:700;padding:10px 12px;border-radius:10px;margin:5px;cursor:pointer}
   .btn.gray{background:#1f2937;color:#fff}
-  .menu a,.menu button{display:inline-block;text-decoration:none}
   .hidden{display:none}
   .bars{max-width:420px;margin:8px auto}
   .bar{height:18px;background:#263245;border-radius:10px;margin:6px 0;overflow:hidden}
@@ -24,18 +23,23 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🐣 Tamagotchi Pixel Game</h1>
+  <h1>🐣 Tamagotchi Online</h1>
 
-  <!-- LOGIN -->
-  <div id="loginBox">
-    <div><input id="loginId" placeholder="Username atau Email" /></div>
-    <div><input id="loginPass" type="password" placeholder="Password" /></div>
-    <div><button class="btn" onclick="doLogin()">Login</button></div>
-    <div><a class="btn gray" href="register.html">Daftar Akun Baru</a></div>
-    <p><small class="mono">Login sekali → halaman lain otomatis mengenali akunmu.</small></p>
+  <div id="authBox">
+    <h3>Login</h3>
+    <input id="loginId" placeholder="Username atau Email">
+    <input id="loginPass" type="password" placeholder="Password">
+    <button class="btn" id="btnLogin">Login</button>
+
+    <h3>Daftar</h3>
+    <input id="regUser" placeholder="Username">
+    <input id="regEmail" type="email" placeholder="Email">
+    <input id="regPass" type="password" placeholder="Password">
+    <button class="btn" id="btnReg">Daftar</button>
+
+    <p><small class="mono">Data disimpan online (Firestore). Login berlaku di semua halaman.</small></p>
   </div>
 
-  <!-- GAME UI -->
   <div id="gameUI" class="hidden">
     <div class="menu">
       <a class="btn gray" href="inventory.html">📦 Inventory</a>
@@ -43,194 +47,128 @@
       <a class="btn gray" href="leaderboard.html">🏆 Leaderboard</a>
       <a class="btn gray" href="chat.html">💬 Chat</a>
       <a id="ownerLink" class="btn gray hidden" href="owner.html">🛠️ Owner</a>
-      <button class="btn" onclick="logout()">🚪 Logout</button>
+      <button class="btn" id="btnLogout">🚪 Logout</button>
     </div>
 
     <p id="welcome"></p>
-
     <canvas id="cv" width="128" height="128" style="width:320px;height:320px"></canvas>
 
     <div class="bars">
-      <div class="bar"><div id="barH" class="fill hunger" style="width:100%"></div></div>
-      <div class="bar"><div id="barE" class="fill energy" style="width:100%"></div></div>
-      <div class="bar"><div id="barHP" class="fill hp" style="width:100%"></div></div>
+      <div class="bar"><div id="barH" class="fill hunger"></div></div>
+      <div class="bar"><div id="barE" class="fill energy"></div></div>
+      <div class="bar"><div id="barHP" class="fill hp"></div></div>
     </div>
 
     <div id="status"></div>
     <div id="coinInfo" style="margin:.35rem 0 1rem"></div>
 
     <div>
-      <button class="btn" onclick="buyFeed()">🍎 Feed (+10%, 100c)</button>
-      <button class="btn" onclick="buySleep()">😴 Sleep (+10%, 100c)</button>
+      <button class="btn" id="btnFeed">🍎 Feed (+10%, 100c)</button>
+      <button class="btn" id="btnSleep">😴 Sleep (+10%, 100c)</button>
     </div>
     <div>
-      <button class="btn" onclick="tapCoin()">💰 Tap Coin (+10)</button>
-      <button class="btn" onclick="levelUpManual()">⬆️ Naik Level (100.000c)</button>
+      <button class="btn" id="btnTap">💰 Tap Coin (+10)</button>
+      <button class="btn" id="btnLv">⬆️ Naik Level (100.000c)</button>
     </div>
     <div>
-      <button class="btn" onclick="buyNewPet()">🐾 Beli Pet Baru (harga dinamis)</button>
+      <button class="btn" id="btnBuyPet">🐾 Beli Pet Baru (harga dinamis)</button>
     </div>
-    <p><small class="mono">
-      Hunger & Energy -1%/menit. Jika keduanya 0% → HP -20%/menit. HP=0 → pet mati & reset Level 1.<br/>
-      Harga Pet Baru: 200.000 × (jumlah pet + 1). Masuk ke Inventory, bisa dijual di Marketplace.
-    </small></p>
   </div>
 </div>
 
-<script>
-/* ====== STORAGE ====== */
-let players = JSON.parse(localStorage.getItem('players')||'{}');
-function savePlayers(){ localStorage.setItem('players', JSON.stringify(players)); }
-function setSession(username){ localStorage.setItem('lastUser', username); }
-function getSession(){ return localStorage.getItem('lastUser'); }
-function clearSession(){ localStorage.removeItem('lastUser'); }
+<!-- Firebase Config + Online adapter -->
+<script type="module" src="js/firebase-config.js"></script>
+<script type="module" src="js/online.js"></script>
 
-/* ====== HELPERS ====== */
-function createPet(level=1){
-  return { id: 'P'+Date.now()+Math.random().toString(16).slice(2), level, hunger:100, energy:100, hp:100 };
-}
-function ensurePlayer(username, pass, email){
-  if(!players[username]){
-    players[username] = {
-      username, email: email||'', password: pass,
-      coins: 1000, pets: [createPet(1)], activePet: 0, lastTick: Date.now()
-    };
+<script type="module">
+import {
+  auth, db, onAuth, register, login, logout, subPlayer, getPlayer,
+  buyFeed,buySleep,tapCoin,levelUp,buyNewPet, tickDecay, isOwner
+} from './js/online.js';
+
+const authBox = document.getElementById('authBox');
+const gameUI  = document.getElementById('gameUI');
+const welcome = document.getElementById('welcome');
+const cv = document.getElementById('cv'); const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled=false;
+let uid=null, unsubPlayer=null, player=null, frame=0;
+
+document.getElementById('btnLogin').onclick = async ()=>{
+  try{
+    const id  = document.getElementById('loginId').value;
+    const pwd = document.getElementById('loginPass').value;
+    await login({idOrEmail:id, password:pwd});
+  }catch(e){ alert(e.message); }
+};
+document.getElementById('btnReg').onclick = async ()=>{
+  try{
+    const u = document.getElementById('regUser').value;
+    const e = document.getElementById('regEmail').value;
+    const p = document.getElementById('regPass').value;
+    await register({username:u, email:e, password:p});
+  }catch(e){ alert(e.message); }
+};
+document.getElementById('btnLogout').onclick = ()=> logout();
+
+onAuth(async (user)=>{
+  if(user){
+    uid=user.uid;
+    authBox.classList.add('hidden');
+    gameUI.classList.remove('hidden');
+    welcome.textContent = `Selamat datang, ${user.displayName||user.email}!`;
+
+    // owner link
+    if(await isOwner(uid)) document.getElementById('ownerLink').classList.remove('hidden');
+
+    // subscribe player realtime
+    if(unsubPlayer) unsubPlayer();
+    unsubPlayer = subPlayer(uid, async (p)=>{
+      player = p;
+      // catch-up decay secara lokal lalu push ke cloud
+      tickDecay(player);
+      // simpan lastTick dan pets jika berubah (debounce ringan)
+      await Promise.resolve(); // biar tidak blocking
+      // Tidak updateDoc tiap frame—hanya saat login & timer 1 menit dari loop di bawah
+      updateUI();
+    });
+    startLoops();
+  }else{
+    uid=null; player=null;
+    if(unsubPlayer){ unsubPlayer(); unsubPlayer=null; }
+    gameUI.classList.add('hidden');
+    authBox.classList.remove('hidden');
   }
-}
-function getUserByLogin(id){
-  id = (id||'').trim().toLowerCase();
-  if(!id) return null;
-  if(id.includes('@')){
-    const hit = Object.entries(players).find(([u,p]) => (p.email||'').toLowerCase()===id);
-    return hit ? hit[0] : null;
-  }
-  return players[id] ? id : null;
-}
+});
 
-/* ====== LOGIN ====== */
-let me=null, myName=null;
-function doLogin(){
-  const id = document.getElementById('loginId').value;
-  const pass = (document.getElementById('loginPass').value||'').trim();
-  if(!id||!pass) return alert('Isi username/email dan password.');
+// UI Actions
+document.getElementById('btnFeed').onclick = ()=> uid && buyFeed(uid).catch(e=>alert(e.message));
+document.getElementById('btnSleep').onclick= ()=> uid && buySleep(uid).catch(e=>alert(e.message));
+document.getElementById('btnTap').onclick  = ()=> uid && tapCoin(uid).catch(e=>alert(e.message));
+document.getElementById('btnLv').onclick   = ()=> uid && levelUp(uid).catch(e=>alert(e.message));
+document.getElementById('btnBuyPet').onclick = ()=> uid && buyNewPet(uid).catch(e=>alert(e.message));
 
-  const uname = getUserByLogin(id);
-  if(!uname){
-    if(id.includes('@')) return alert('Email belum terdaftar. Silakan daftar di halaman Register.');
-    // auto-register cepat jika username belum ada
-    const u = id.trim().toLowerCase();
-    ensurePlayer(u, pass, '');
-    savePlayers();
-    return proceedLogin(u);
-  }
-  if(players[uname].password !== pass) return alert('Username/Email atau password salah');
-  proceedLogin(uname);
+function curPet(){
+  if(!player) return null;
+  const idx = player.activePet || 0;
+  return player.pets?.[idx] || null;
 }
-function proceedLogin(uname){
-  myName = uname; me = players[uname];
-  setSession(uname); savePlayers();
-  showGame();
-}
-function logout(){ clearSession(); location.href='index.html'; }
-
-/* ====== AUTO LOGIN ====== */
-(function auto(){
-  const last = getSession();
-  if(last && players[last]){ myName=last; me=players[last]; showGame(); }
-})();
-
-/* ====== GAME UI ====== */
-const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
-let frame=0;
-
-function showGame(){
-  document.getElementById('loginBox').classList.add('hidden');
-  document.getElementById('gameUI').classList.remove('hidden');
-  document.getElementById('welcome').textContent = `Selamat datang, ${myName}!`;
-  if(myName.toLowerCase()==='owner') document.getElementById('ownerLink').classList.remove('hidden');
-  catchUpDecay();
-  updateUI();
-  loop();
-}
-function pet(){ return me.pets[me.activePet] || me.pets[0]; }
 function updateUI(){
-  const p = pet();
-  document.getElementById('barH').style.width = p.hunger + '%';
-  document.getElementById('barE').style.width = p.energy + '%';
-  document.getElementById('barHP').style.width = p.hp + '%';
+  const p = curPet(); if(!p) return;
+  document.getElementById('barH').style.width  = p.hunger+'%';
+  document.getElementById('barE').style.width  = p.energy+'%';
+  document.getElementById('barHP').style.width = p.hp+'%';
   document.getElementById('status').textContent = `❤️ HP ${p.hp}% • 🍎 Hunger ${p.hunger}% • 😴 Energy ${p.energy}% • Lv ${p.level}`;
-  document.getElementById('coinInfo').textContent = `💰 Coin: ${me.coins} • Pet Aktif: ${me.activePet+1}/${me.pets.length}`;
+  document.getElementById('coinInfo').textContent = `💰 Coin: ${player.coins} • Pet Aktif: ${(player.activePet||0)+1}/${player.pets.length}`;
 }
 
-/* ====== MEKANIK ====== */
-function buyFeed(){
-  const p = pet();
-  if(me.coins<100) return alert('Coin tidak cukup');
-  me.coins -= 100;
-  p.hunger = Math.min(100, p.hunger + 10);
-  savePlayers(); updateUI();
-}
-function buySleep(){
-  const p = pet();
-  if(me.coins<100) return alert('Coin tidak cukup');
-  me.coins -= 100;
-  p.energy = Math.min(100, p.energy + 10);
-  savePlayers(); updateUI();
-}
-function tapCoin(){ me.coins += 10; savePlayers(); updateUI(); }
-function levelUpManual(){
-  const p = pet();
-  if(me.coins < 100000) return alert('Coin tidak cukup (butuh 100.000)');
-  me.coins -= 100000; p.level += 1;
-  p.hunger=100; p.energy=100; p.hp=100;
-  savePlayers(); updateUI();
-}
-function buyNewPet(){
-  const price = 200000 * (me.pets.length + 1);
-  if(me.coins < price) return alert(`Coin tidak cukup. Harga: ${price}`);
-  me.coins -= price;
-  me.pets.push(createPet(1));
-  savePlayers(); updateUI();
-  alert('Pet baru dibeli! Cek Inventory untuk mengaktifkan atau menjual.');
-}
-function decayOneMinute(p){
-  p.hunger = Math.max(0, p.hunger - 1);
-  p.energy = Math.max(0, p.energy - 1);
-  if(p.hunger===0 && p.energy===0){ p.hp = Math.max(0, p.hp - 20); }
-  if(p.hp<=0){
-    alert('💀 Pet aktif mati! Reset ke Level 1.');
-    p.level=1; p.hunger=100; p.energy=100; p.hp=100;
-  }
-}
-function catchUpDecay(){
-  const p = pet();
-  const now = Date.now();
-  const last = me.lastTick || now;
-  const diffMin = Math.floor((now-last)/60000);
-  for(let i=0;i<diffMin;i++) decayOneMinute(p);
-  me.lastTick = now; savePlayers();
-}
-setInterval(()=>{
-  if(!me) return;
-  decayOneMinute(pet());
-  me.lastTick = Date.now();
-  savePlayers(); updateUI();
-}, 60000);
-
-/* ====== SPRITE & ANIM ====== */
 function drawPet(){
-  const p = pet();
+  const p = curPet(); if(!p) return;
   ctx.clearRect(0,0,128,128);
-  ctx.fillStyle = '#08121a'; ctx.fillRect(0,0,128,128);
+  ctx.fillStyle='#08121a'; ctx.fillRect(0,0,128,128);
 
-  // bintang latar
   for(let i=0;i<18;i++){
-    ctx.fillStyle = 'rgba(255,255,255,.13)';
+    ctx.fillStyle='rgba(255,255,255,.13)';
     ctx.fillRect((i*13 + frame)%128, (i*7 + frame*0.8)%128, 1, 1);
   }
-
-  // tier warna bentuk
   let tier=0, body='#ffd07a';
   if(p.level<5){ tier=0; body='#ffd07a'; }
   else if(p.level<10){ tier=1; body='#93c5fd'; }
@@ -240,7 +178,7 @@ function drawPet(){
 
   const wobX = Math.sin(frame/12)*3;
   const wobY = Math.cos(frame/18)*2;
-  const x = 64 + wobX, y = 70 + wobY;
+  const x=64+wobX, y=70+wobY;
 
   ctx.fillStyle = body;
   if(tier===0){ ctx.fillRect(x-14,y-12,28,22); }
@@ -250,19 +188,26 @@ function drawPet(){
   else { ctx.beginPath(); ctx.moveTo(x,y-24); ctx.lineTo(x+24,y+20); ctx.lineTo(x-24,y+20); ctx.closePath(); ctx.fill();
          ctx.fillStyle='#fff'; ctx.fillRect(x-28,y-2,10,4); ctx.fillRect(x+18,y-2,10,4); ctx.fillStyle=body; }
 
-  // mata
   const blink = Math.floor(frame/50)%2===0;
-  ctx.fillStyle = '#0b0b0b';
+  ctx.fillStyle='#0b0b0b';
   if(blink){ ctx.fillRect(x-6,y-2,3,3); ctx.fillRect(x+3,y-2,3,3); }
   else{ ctx.fillRect(x-6,y-1,3,1); ctx.fillRect(x+3,y-1,3,1); }
 
-  // mulut berubah sesuai HP
-  ctx.fillStyle = (p.hp>50)?'#fff':'#ff7b7b';
+  ctx.fillStyle=(p.hp>50)?'#fff':'#ff7b7b';
   ctx.fillRect(x-4,y+6,8,2);
-
   frame++;
 }
-function loop(){ if(!me) return; drawPet(); requestAnimationFrame(loop); }
+
+function startLoops(){
+  function raf(){ if(!player) return; drawPet(); requestAnimationFrame(raf); }
+  raf();
+  // tiap 1 menit: apply decay dan push ke server
+  setInterval(async ()=>{
+    if(!uid || !player) return;
+    tickDecay(player);
+    await (await import('./js/online.js')).savePlayer(uid, { pets: player.pets, lastTick: Date.now() });
+  }, 60000);
+}
 </script>
 </body>
 </html>
