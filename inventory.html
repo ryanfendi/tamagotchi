@@ -1,163 +1,124 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventory — Tamagotchi Online</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:16px}
-  .panel{background:#101a2b;border-radius:12px;padding:12px;margin:10px auto;max-width:680px}
-  button{background:#10b981;border:0;border-radius:8px;color:#042018;font-weight:700;padding:8px 10px;margin:4px;cursor:pointer}
-  input,select{padding:8px;border-radius:8px;border:0;margin:4px}
-  .item{background:#0f172a;border-radius:10px;padding:10px;margin:8px 0;text-align:left}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-  .muted{color:#a3b3c6;font-size:12px}
-</style>
+  <meta charset="UTF-8">
+  <title>Inventory - Tamagotchi Online</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f0f8ff; text-align:center; }
+    .box { border:1px solid #ccc; background:#fff; padding:20px; margin:20px; border-radius:10px; display:inline-block; }
+    button { margin:5px; padding:8px 15px; border:none; border-radius:8px; background:#4caf50; color:white; cursor:pointer; }
+    button:hover { background:#45a049; }
+    .pet { border:1px solid #ddd; padding:10px; margin:10px; border-radius:8px; }
+  </style>
 </head>
 <body>
-  <h2>📦 Inventory</h2>
+  <h1>📦 Inventory</h1>
+  <p>Selamat datang, <span id="playerName"></span></p>
+  <p>💰 Coin: <span id="coin"></span> | ⭐ Level: <span id="level"></span></p>
 
-  <div id="authWarn" class="panel" style="display:none">
-    <p>Kamu belum login.</p>
-    <button onclick="location.href='index.html'">Login</button>
+  <div id="petsBox" class="box">
+    <h2>Daftar Pet</h2>
+    <div id="petList"></div>
   </div>
 
-  <div id="wrap" class="panel" style="display:none">
-    <div class="row">
-      <div>👤 <span id="meEmail"></span></div>
-      <div>
-        <button onclick="go('index.html')">🏠 Home</button>
-        <button onclick="go('marketplace.html')">🏪 Marketplace</button>
-        <button onclick="go('leaderboard.html')">🏆 Leaderboard</button>
-        <button onclick="go('chat.html')">💬 Chat</button>
-      </div>
-    </div>
-    <div class="row">
-      <div>💰 Coin: <b id="coins">0</b></div>
-      <div>🐣 Active Lv: <b id="activeLv">1</b></div>
-    </div>
+  <br>
+  <button onclick="location.href='index.html'">🏠 Kembali ke Game</button>
+  <button onclick="logout()">Logout</button>
 
-    <h3>Pet Aktif</h3>
-    <div class="item" id="activePetBox"></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    <h3>Daftar Pet (Inventory)</h3>
-    <div id="list"></div>
-  </div>
+    // === Firebase config ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script>
-const firebaseConfig = {
-  apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-  authDomain:"tamagotchi-2be0c.firebaseapp.com",
-  databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-  projectId:"tamagotchi-2be0c",
-  storageBucket:"tamagotchi-2be0c.firebasestorage.app",
-  messagingSenderId:"202052432703",
-  appId:"1:202052432703:web:cb76b50e42149a2c92998a",
-  measurementId:"G-TWGGSJRX26"
-};
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database(), auth=firebase.auth();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
 
-let uid=null, me=null;
+    let player = {};
+    let uid = "";
 
-auth.onAuthStateChanged(async u=>{
-  if(!u){ document.getElementById('authWarn').style.display='block'; return; }
-  uid=u.uid;
-  document.getElementById('wrap').style.display='block';
-  document.getElementById('meEmail').innerText=u.email;
+    // Cek login
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        uid = user.uid;
+        const snap = await get(ref(db, "users/" + uid));
+        if (snap.exists()) {
+          player = snap.val();
+          showPlayer();
+        }
+      } else {
+        alert("Harus login dulu!");
+        location.href = "index.html";
+      }
+    });
 
-  const snap=await db.ref('users/'+uid).once('value');
-  me=snap.val()||{level:1,hunger:100,energy:100,hp:100,coins:0};
-  render();
-});
+    function showPlayer() {
+      document.getElementById("playerName").innerText = player.username;
+      document.getElementById("coin").innerText = player.coin;
+      document.getElementById("level").innerText = player.level;
 
-function render(){
-  document.getElementById('coins').innerText=(me.coins||0).toFixed?.(2)||me.coins||0;
-  document.getElementById('activeLv').innerText=me.level||1;
+      let petsBox = document.getElementById("petList");
+      petsBox.innerHTML = "";
 
-  // Active pet box
-  const box=document.getElementById('activePetBox');
-  box.innerHTML = `
-    <div class="row">
-      <div>
-        <div>Level: <b>${me.level||1}</b></div>
-        <div class="muted">HP ${me.hp||100}% · Hunger ${me.hunger||100}% · Energy ${me.energy||100}%</div>
-      </div>
-      <div>
-        <button onclick="heal()">🔧 Heal (Free)</button>
-      </div>
-    </div>`;
+      if (!player.pets) player.pets = [];
 
-  const inv = me.inventory||{};
-  const list=document.getElementById('list');
-  list.innerHTML='';
-  const keys=Object.keys(inv);
-  if(keys.length===0){
-    list.innerHTML='<p class="muted">Belum ada pet di inventory.</p>';
-    return;
-  }
-  keys.forEach(id=>{
-    const p=inv[id];
-    const div=document.createElement('div');
-    div.className='item';
-    div.innerHTML=`
-      <div class="row">
-        <div>🐾 <b>${p.name||'Pet'}</b> — Level <b>${p.level||1}</b></div>
-        <div>
-          <button onclick="activate('${id}')">Aktifkan</button>
-          <input id="price_${id}" type="number" placeholder="Harga (coin)" style="width:140px">
-          <button onclick="sell('${id}')">Jual</button>
-        </div>
-      </div>`;
-    list.appendChild(div);
-  });
-}
+      player.pets.forEach((p, i) => {
+        let div = document.createElement("div");
+        div.className = "pet";
+        div.innerHTML = `
+          <p>🐶 Pet Level ${p.level} | ID: ${i+1}</p>
+          <button onclick="sellPet(${i})">Jual ke Marketplace</button>
+        `;
+        petsBox.appendChild(div);
+      });
 
-async function heal(){
-  me.hp=100; me.hunger=100; me.energy=100;
-  await save();
-  render();
-}
+      if (player.pets.length === 0) {
+        petsBox.innerHTML = "<p>Belum ada pet. Beli di Marketplace.</p>";
+      }
+    }
 
-async function activate(id){
-  const pet = (me.inventory||{})[id];
-  if(!pet) return alert('Pet tidak ditemukan.');
-  // Jadikan aktif (ambil level pet tsb)
-  me.level = pet.level||1;
-  me.hp = 100; me.hunger=100; me.energy=100;
-  await save();
-  alert('Pet diaktifkan!');
-  render();
-}
+    // jual pet
+    window.sellPet = async function(i) {
+      const pet = player.pets[i];
+      if (!pet) return;
 
-async function sell(id){
-  const pet=(me.inventory||{})[id];
-  if(!pet) return alert('Pet tidak ada.');
-  const price=parseInt(document.getElementById('price_'+id).value||'0',10);
-  if(isNaN(price)||price<=0) return alert('Harga tidak valid.');
-  const listingId = 'L'+Date.now();
-  // Simpan listing
-  await db.ref('marketplace/pets/'+listingId).set({
-    id: listingId,
-    sellerUid: uid,
-    sellerEmail: firebase.auth().currentUser.email,
-    pet,
-    price,
-    createdAt: Date.now()
-  });
-  // Hapus dari inventory
-  delete me.inventory[id];
-  await save();
-  alert('Pet dimasukkan ke marketplace.');
-  render();
-}
+      // harga = 200 coin x level
+      let harga = 200 * pet.level;
 
-function save(){ return db.ref('users/'+uid).set(me); }
-function go(p){ location.href=p; }
-</script>
+      // push ke marketplace
+      let marketRef = ref(db, "marketplace/" + uid + "_" + Date.now());
+      await set(marketRef, {
+        owner: player.username,
+        pet: pet,
+        price: harga
+      });
+
+      // hapus dari inventory
+      player.pets.splice(i, 1);
+      await set(ref(db, "users/" + uid), player);
+
+      alert("Pet dijual di marketplace seharga " + harga + " coin.");
+      showPlayer();
+    }
+
+    // logout
+    window.logout = async function() {
+      await signOut(auth);
+      localStorage.removeItem("username");
+      location.href = "index.html";
+    }
+  </script>
 </body>
 </html>
