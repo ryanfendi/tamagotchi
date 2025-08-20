@@ -10,6 +10,12 @@
     .controls button { background:#10b981; border:none; padding:10px; margin:5px; border-radius:8px; font-weight:bold; cursor:pointer; }
     .hidden { display:none; }
     #ownerPanel { background:#222; padding:10px; margin:10px 0; border-radius:8px; }
+    .bar-container { width:80%; background:#333; border-radius:6px; margin:5px auto; height:16px; overflow:hidden; }
+    .bar { height:100%; }
+    .bar.health { background:#f87171; }
+    .bar.hunger { background:#facc15; }
+    .bar.energy { background:#60a5fa; }
+    #warning { color:#facc15; font-weight:bold; margin-top:5px; }
 </style>
 </head>
 <body>
@@ -21,19 +27,19 @@
 
 <canvas id="gameCanvas" width="128" height="128" style="width:300px;height:300px;"></canvas>
 
+<!-- Status Bars -->
+<div id="bars"></div>
+
 <div class="controls">
     <button onclick="feedPet()">🍎 Feed (500 coin)</button>
     <button onclick="sleepPet()">💤 Sleep</button>
     <button onclick="earnCoin()">💰 Tap Coin</button>
     <button onclick="buyPet()">🛒 Beli Pet Baru</button>
-    <button onclick="goTo('inventory.html')">📦 Inventory</button>
-    <button onclick="goTo('marketplace.html')">🏪 Marketplace</button>
-    <button onclick="goTo('leaderboard.html')">🏆 Leaderboard</button>
-    <button onclick="goTo('chat.html')">💬 Chat</button>
 </div>
 
 <div id="status"></div>
 <div id="coinInfo"></div>
+<div id="warning"></div>
 
 <!-- Owner Panel (hidden by default) -->
 <div id="ownerPanel" class="hidden">
@@ -54,9 +60,10 @@ let players = JSON.parse(localStorage.getItem("players")||"{}");
 let animFrame = 0;
 let animMode = 'idle';
 
-const OWNER_NAME = "OWNER"; // owner name fixed
+const OWNER_NAME = "OWNER"; 
 const PET_PRICE_BASE = 10000;
 const MAX_LEVEL = 1000;
+const DEATH_TIMEOUT = 24*60*60*1000; // 24 jam
 
 // Login
 function login(){
@@ -66,31 +73,77 @@ function login(){
         players[name] = {
             name,
             coins: name===OWNER_NAME?999999999:1000,
-            pet:{ level:1, health:1000, evoIndex:0, lastFeed:null, lastSleep:null, ageDays:0, alive:true },
+            pet:{
+                level:1, health:1000, hunger:100, energy:100,
+                evoIndex:0, lastFeed:Date.now(), lastSleep:Date.now(), alive:true, deathTime:null
+            },
             inventory: []
         };
     }
     currentPlayer = players[name];
     save();
     if(name===OWNER_NAME) document.getElementById("ownerPanel").classList.remove("hidden");
-    updateUI();
-    drawPet();
+    updateUI(); updateBars();
 }
 
 // Update UI
 function updateUI(){
-    document.getElementById("coinInfo").innerHTML = `💰 Coin: ${currentPlayer.coins} | Level: ${currentPlayer.pet.level}`;
-    document.getElementById("status").innerHTML = `Status: ${currentPlayer.pet.alive?"Hidup":"Mati"} | HP: ${currentPlayer.pet.health}`;
+    if(!currentPlayer) return;
+    document.getElementById("coinInfo").innerHTML = 
+        `💰 Coin: ${currentPlayer.coins} | Level: ${currentPlayer.pet.level}`;
+    document.getElementById("status").innerHTML = 
+        `Status: ${currentPlayer.pet.alive?"Hidup":"💀 Mati"} | HP: ${currentPlayer.pet.health}`;
+    updateWarning();
+}
+
+// Update Bars
+function updateBars(){
+    if(!currentPlayer) return;
+    const pet = currentPlayer.pet;
+    document.getElementById("bars").innerHTML = `
+        <div class="bar-container"><div class="bar health" style="width:${pet.health/10}%"></div></div>
+        <div class="bar-container"><div class="bar hunger" style="width:${pet.hunger}%"></div></div>
+        <div class="bar-container"><div class="bar energy" style="width:${pet.energy}%"></div></div>
+        <small>❤️ Health | 🍏 Hunger | 🔋 Energy</small>
+    `;
+}
+
+// Update Warning
+function updateWarning(){
+    if(!currentPlayer) return;
+    const pet = currentPlayer.pet;
+    let warn = "";
+    if(!pet.alive){
+        warn = "💀 Pet sudah mati!";
+    } else {
+        if(pet.hunger < 20) warn += "⚠️ Pet lapar! ";
+        if(pet.energy < 20) warn += "⚠️ Pet kelelahan! ";
+        if(pet.health < 200) warn += "⚠️ Pet sakit!";
+    }
+    document.getElementById("warning").innerText = warn;
 }
 
 // Save
-function save(){
-    localStorage.setItem("players", JSON.stringify(players));
+function save(){ localStorage.setItem("players", JSON.stringify(players)); }
+
+// Check Death Condition
+function checkDeath(){
+    if(!currentPlayer || !currentPlayer.pet.alive) return;
+
+    const pet = currentPlayer.pet;
+    const now = Date.now();
+
+    if(pet.health <= 0){ pet.alive=false; pet.deathTime=now; }
+    if(pet.hunger<=0 && now - pet.lastFeed > DEATH_TIMEOUT){ pet.alive=false; pet.deathTime=now; }
+    if(pet.energy<=0 && now - pet.lastSleep > DEATH_TIMEOUT){ pet.alive=false; pet.deathTime=now; }
+
+    save(); updateUI(); updateBars();
 }
 
 // Feed Pet
 function feedPet(){
     if(!currentPlayer) return;
+    if(!currentPlayer.pet.alive) return alert("Pet sudah mati!");
     if(currentPlayer.coins<500) return alert("Coin tidak cukup!");
     const now = Date.now();
     if(currentPlayer.pet.lastFeed && now - currentPlayer.pet.lastFeed < 4*60*60*1000){
@@ -98,32 +151,35 @@ function feedPet(){
     }
     currentPlayer.coins -= 500;
     currentPlayer.pet.lastFeed = now;
-    currentPlayer.pet.health = Math.min(1000, currentPlayer.pet.health+200);
+    currentPlayer.pet.hunger = Math.min(100, currentPlayer.pet.hunger+30);
+    currentPlayer.pet.health = Math.min(1000, currentPlayer.pet.health+100);
     animMode = "happy";
-    save();
-    updateUI();
+    save(); updateUI(); updateBars();
 }
 
 // Sleep Pet
 function sleepPet(){
     if(!currentPlayer) return;
+    if(!currentPlayer.pet.alive) return alert("Pet sudah mati!");
     const now = Date.now();
     if(currentPlayer.pet.lastSleep && now - currentPlayer.pet.lastSleep < 24*60*60*1000){
         return alert("Hanya bisa tidur 1 kali sehari!");
     }
     currentPlayer.pet.lastSleep = now;
-    currentPlayer.pet.health = Math.min(1000, currentPlayer.pet.health+300);
+    currentPlayer.pet.energy = Math.min(100, currentPlayer.pet.energy+50);
+    currentPlayer.pet.health = Math.min(1000, currentPlayer.pet.health+200);
     animMode = "sleep";
-    save();
-    updateUI();
+    save(); updateUI(); updateBars();
 }
 
-// Earn Coin by Tap
+// Earn Coin
 function earnCoin(){
     if(!currentPlayer) return;
+    if(!currentPlayer.pet.alive) return alert("Pet sudah mati!");
     currentPlayer.coins += 10;
-    updateUI();
-    save();
+    currentPlayer.pet.energy = Math.max(0, currentPlayer.pet.energy-1);
+    currentPlayer.pet.hunger = Math.max(0, currentPlayer.pet.hunger-1);
+    save(); updateUI(); updateBars();
 }
 
 // Buy New Pet
@@ -134,29 +190,28 @@ function buyPet(){
     currentPlayer.coins -= price;
     currentPlayer.pet.level += 1;
     currentPlayer.pet.evoIndex = Math.min(currentPlayer.pet.evoIndex+1,10);
-    save();
-    updateUI();
+
+    if(!currentPlayer.pet.alive){
+        currentPlayer.pet.alive=true;
+        currentPlayer.pet.health=500;
+        currentPlayer.pet.hunger=50;
+        currentPlayer.pet.energy=50;
+    }
+    save(); updateUI(); updateBars();
 }
 
-// Owner Functions
+// Owner
 function topup(){
     const name = document.getElementById("topupName").value.trim();
     const amt = parseInt(document.getElementById("topupAmount").value);
     if(!players[name]) return alert("Player tidak ditemukan!");
     players[name].coins += amt;
-    save();
-    alert(`Top-up berhasil ke ${name} sejumlah ${amt} coin`);
+    save(); alert(`Top-up berhasil ke ${name} sejumlah ${amt} coin`);
 }
 function unlockAllPets(){
     if(!currentPlayer) return;
     currentPlayer.pet.level = MAX_LEVEL;
-    save();
-    alert("Semua pet unlocked!");
-}
-
-// Go to other page
-function goTo(page){
-    location.href = page;
+    save(); alert("Semua pet unlocked!");
 }
 
 // Draw Pet Animation
@@ -166,35 +221,36 @@ function drawPet(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     if(currentPlayer){
-        let px = 40 + Math.sin(animFrame/10)*10;
-        let py = 60;
-        ctx.fillStyle = "#ffd07a";
-        ctx.fillRect(px,py,40,30);
+        if(currentPlayer.pet.alive){
+            let px = 40 + Math.sin(animFrame/10)*10;
+            let py = 60;
+            ctx.fillStyle = "#ffd07a";
+            ctx.fillRect(px,py,40,30);
 
-        // Mata
-        ctx.fillStyle = "#111";
-        ctx.fillRect(px+8, py+8, 5,5);
-        ctx.fillRect(px+26, py+8, 5,5);
+            ctx.fillStyle = "#111";
+            ctx.fillRect(px+8, py+8, 5,5);
+            ctx.fillRect(px+26, py+8, 5,5);
 
-        // Ekspresi
-        if(animMode==="happy"){
-            ctx.fillStyle = "#ff66a6"; 
-            ctx.fillRect(px+15, py+18,10,4);
-        } else if(animMode==="sleep"){
-            ctx.fillStyle = "#88f"; 
-            ctx.fillRect(px+10, py+18,20,4);
+            if(animMode==="happy"){
+                ctx.fillStyle = "#ff66a6"; ctx.fillRect(px+15, py+18,10,4);
+            } else if(animMode==="sleep"){
+                ctx.fillStyle = "#88f"; ctx.fillRect(px+10, py+18,20,4);
+            } else {
+                ctx.fillStyle = "#fff"; ctx.fillRect(px+18, py+18,4,4);
+            }
         } else {
-            ctx.fillStyle = "#fff"; 
-            ctx.fillRect(px+18, py+18,4,4);
+            ctx.fillStyle="#888";
+            ctx.font="14px sans-serif";
+            ctx.fillText("💀 Pet Mati", 30, 70);
         }
     } else {
-        // Kalau belum login tampilkan teks
-        ctx.fillStyle = "#fff";
-        ctx.font = "12px sans-serif";
-        ctx.fillText("Login dulu", 20, 64);
+        ctx.fillStyle="#fff";
+        ctx.font="12px sans-serif";
+        ctx.fillText("Login dulu", 30, 70);
     }
 
     animFrame++;
+    checkDeath();
     requestAnimationFrame(drawPet);
 }
 drawPet();
