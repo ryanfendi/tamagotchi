@@ -161,28 +161,37 @@ function goTo(page){
 
 // Draw Pet Animation
 function drawPet(){
-    if(!currentPlayer) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = "#08121a";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    let px = 40 + Math.sin(animFrame/10)*10;
-    let py = 60;
-    ctx.fillStyle = "#ffd07a";
-    ctx.fillRect(px,py,40,30);
+    if(currentPlayer){
+        let px = 40 + Math.sin(animFrame/10)*10;
+        let py = 60;
+        ctx.fillStyle = "#ffd07a";
+        ctx.fillRect(px,py,40,30);
 
-    // Eyes
-    ctx.fillStyle = "#111";
-    ctx.fillRect(px+8, py+8, 5,5);
-    ctx.fillRect(px+26, py+8, 5,5);
+        // Mata
+        ctx.fillStyle = "#111";
+        ctx.fillRect(px+8, py+8, 5,5);
+        ctx.fillRect(px+26, py+8, 5,5);
 
-    // Expression
-    if(animMode==="happy"){
-        ctx.fillStyle = "#ff66a6"; ctx.fillRect(px+15, py+18,10,4);
-    } else if(animMode==="sleep"){
-        ctx.fillStyle = "#88f"; ctx.fillRect(px+10, py+18,20,4);
+        // Ekspresi
+        if(animMode==="happy"){
+            ctx.fillStyle = "#ff66a6"; 
+            ctx.fillRect(px+15, py+18,10,4);
+        } else if(animMode==="sleep"){
+            ctx.fillStyle = "#88f"; 
+            ctx.fillRect(px+10, py+18,20,4);
+        } else {
+            ctx.fillStyle = "#fff"; 
+            ctx.fillRect(px+18, py+18,4,4);
+        }
     } else {
-        ctx.fillStyle = "#fff"; ctx.fillRect(px+18, py+18,4,4);
+        // Kalau belum login tampilkan teks
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px sans-serif";
+        ctx.fillText("Login dulu", 20, 64);
     }
 
     animFrame++;
