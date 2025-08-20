@@ -1,66 +1,92 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Owner Panel — Tamagotchi</title>
-  <style>
-    body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
-    .panel{background:#101a2b;padding:15px;margin:15px auto;width:90%;max-width:500px;border-radius:8px}
-    input,button{padding:8px;margin:4px;border-radius:6px;border:none;font-size:1em}
-    button{background:#10b981;color:#fff;cursor:pointer}
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Owner Panel — Tamagotchi</title>
+<style>
+  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center}
+  .panel{background:#101a2b;padding:14px;border-radius:10px;margin:14px auto;max-width:520px}
+  input,button{padding:8px;border-radius:8px;border:0;margin:4px}
+  button{background:#10b981;color:#fff;font-weight:bold}
+  small{opacity:.7}
+</style>
 </head>
 <body>
-<script>
-  (function(){
-    const cur = localStorage.getItem('currentPlayer');
-    if(!cur){ alert('Silakan login'); location.href='login.html'; return }
-    const players = JSON.parse(localStorage.getItem('players')||'{}');
-    if(cur !== 'owner'){ alert('Hanya owner yang bisa akses'); location.href='index.html'; return }
-  })();
-</script>
-
 <h2>🔐 Owner Panel</h2>
-<div class="panel">
-  <h3>Top-up Coin</h3>
-  <input id="topupUser" placeholder="User target">
-  <input id="topupAmt" type="number" placeholder="Jumlah Coin">
-  <button onclick="topup()">Kirim</button>
+
+<div class="panel" id="loginBox">
+  <p><small>Demo kredensial:</small></p>
+  <input id="ownerID" placeholder="owner"/>
+  <input id="ownerPass" type="password" placeholder="MainGame123$"/>
+  <button onclick="ownerLogin()">Login</button>
 </div>
 
-<div class="panel">
-  <h3>Upgrade Pet Level</h3>
-  <input id="lvlUser" placeholder="User target">
-  <input id="newLevel" type="number" placeholder="Level (≤1000)">
-  <button onclick="upgrade()">Set Level</button>
+<div class="panel" id="ownerPanel" style="display:none">
+  <h3>Halo, Owner!</h3>
+  <div>
+    <h4>Top-up Coin</h4>
+    <input id="tPlayer" placeholder="Nama Player"/>
+    <input id="tAmt" type="number" placeholder="Jumlah Coin"/>
+    <button onclick="topup()">Top-up</button>
+  </div>
+  <hr/>
+  <div>
+    <h4>Set Level Pet Aktif</h4>
+    <input id="lPlayer" placeholder="Nama Player"/>
+    <input id="lVal" type="number" placeholder="Level (max 1000)"/>
+    <button onclick="setLevel()">Set Level</button>
+  </div>
+  <hr/>
+  <button onclick="ownerLogout()">Logout Owner</button>
 </div>
 
-<div class="panel">
-  <button onclick="goTo('index.html')">Home</button>
+<div style="margin-top:10px;">
+  <a href="index.html" style="color:#10b981">🏠 Kembali ke Game</a>
 </div>
 
 <script>
-  const players = JSON.parse(localStorage.getItem('players')||'{}');
-  function goTo(p){ location.href=p }
-  function save(){ localStorage.setItem('players', JSON.stringify(players)) }
+let players=JSON.parse(localStorage.getItem('players')||'{}');
 
-  function topup(){
-    const u = (document.getElementById('topupUser').value||'').trim().toLowerCase();
-    const a = parseInt((document.getElementById('topupAmt').value||'').toString(),10);
-    if(!players[u]) return alert('User tidak ditemukan');
-    players[u].coins = (players[u].coins||0) + a;
-    save(); alert(`Top-up ${a} coin ke ${u}`);
+function save(){ localStorage.setItem('players', JSON.stringify(players)); }
+function ownerLogin(){
+  const id=document.getElementById('ownerID').value.trim();
+  const pw=document.getElementById('ownerPass').value.trim();
+  if(id==='owner' && pw==='MainGame123$'){
+    localStorage.setItem('ownerAuth','true');
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('ownerPanel').style.display='block';
+  } else {
+    alert('ID/Password salah');
   }
+}
+function ownerLogout(){
+  localStorage.removeItem('ownerAuth');
+  location.reload();
+}
 
-  function upgrade(){
-    const u = (document.getElementById('lvlUser').value||'').trim().toLowerCase();
-    const lv = parseInt((document.getElementById('newLevel').value||'').toString(),10);
-    if(!players[u]) return alert('User tidak ditemukan');
-    if(lv > 1000) return alert('Max level 1000');
-    players[u].pet = players[u].pet || {name:'Chick',level:1,health:1000,maxHealth:1000};
-    players[u].pet.level = lv;
-    save(); alert(`Level ${u} diseting ke ${lv}`);
-  }
+function topup(){
+  const name=document.getElementById('tPlayer').value.trim();
+  const amt=parseInt(document.getElementById('tAmt').value||'0');
+  if(!players[name]) return alert('Player tidak ditemukan');
+  if(!amt||amt<=0) return alert('Jumlah tidak valid');
+  players[name].coins = (players[name].coins||0) + amt;
+  save(); alert('Top-up berhasil');
+}
+function setLevel(){
+  const name=document.getElementById('lPlayer').value.trim();
+  const lv=parseInt(document.getElementById('lVal').value||'0');
+  if(!players[name]) return alert('Player tidak ditemukan');
+  if(!players[name].pet) return alert('Player tidak punya pet aktif');
+  if(lv<1||lv>1000) return alert('Level 1..1000');
+  players[name].pet.level = lv;
+  save(); alert('Level diatur');
+}
+
+if(localStorage.getItem('ownerAuth')==='true'){
+  document.getElementById('loginBox').style.display='none';
+  document.getElementById('ownerPanel').style.display='block';
+}
 </script>
 </body>
 </html>
