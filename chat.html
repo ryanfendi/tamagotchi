@@ -1,172 +1,200 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Clone Chat</title>
+  <title>Chat App</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #ece5dd;
-    }
-    /* Header */
-    .header {
-      background: #075E54;
-      color: white;
-      padding: 15px;
-      text-align: center;
-      font-weight: bold;
-    }
-    /* Chat container */
-    .chat-container {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    /* Messages area */
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-    }
-    .message {
-      display: flex;
-      align-items: flex-end;
-      margin-bottom: 12px;
-    }
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-right: 8px;
-      object-fit: cover;
-    }
-    .bubble {
-      max-width: 70%;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
-      line-height: 1.4;
-      position: relative;
-    }
-    .bubble.left {
-      background: white;
-      border-top-left-radius: 0;
-    }
-    .bubble.right {
-      background: #DCF8C6;
-      border-top-right-radius: 0;
-      margin-left: auto;
-    }
-    /* Input */
-    .input-area {
-      display: flex;
-      padding: 10px;
-      background: #f0f0f0;
-    }
-    .input-area input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 20px;
-      border: 1px solid #ccc;
-      outline: none;
-    }
-    .input-area button {
-      margin-left: 10px;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 50%;
-      background: #075E54;
-      color: white;
-      cursor: pointer;
-    }
+    body { margin:0; font-family:sans-serif; }
+    .sidebar { width:30%; border-right:1px solid #ccc; height:100vh; overflow-y:auto; }
+    .chat-area { flex:1; display:none; flex-direction:column; }
+    .container { display:flex; height:100vh; }
+    .chat-header { display:flex; align-items:center; padding:10px; border-bottom:1px solid #ccc; }
+    .chat-messages { flex:1; padding:10px; overflow-y:auto; }
+    .chat-input { display:flex; border-top:1px solid #ccc; }
+    .chat-input input { flex:1; padding:10px; border:none; }
+    .chat-input button { padding:10px; border:none; background:#25d366; color:white; }
+    .message { margin:5px 0; }
+    .me { text-align:right; }
+    #popup { position:fixed; top:0; left:0; right:0; bottom:0; background:#0008; display:flex; align-items:center; justify-content:center; }
+    #popupContent { background:white; padding:20px; border-radius:10px; text-align:center; }
+    .avatar { width:50px; height:50px; border-radius:50%; margin:5px; cursor:pointer; border:2px solid transparent; }
+    .avatar.selected { border-color:#25d366; }
   </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="header">WhatsApp Clone</div>
-    <div class="messages" id="messages"></div>
-    <div class="input-area">
-      <input type="text" id="messageInput" placeholder="Type a message...">
-      <button id="sendBtn">➤</button>
+<div id="popup">
+  <div id="popupContent">
+    <h2>Masuk ke Chat</h2>
+    <input id="usernameInput" placeholder="Masukkan nama"><br><br>
+    <div id="avatarContainer"></div>
+    <br>
+    <button onclick="enterChat()">Masuk</button>
+  </div>
+</div>
+
+<div class="container" id="chatContainer" style="display:none;">
+  <div class="sidebar" id="sidebar">
+    <h3 style="padding:10px;">Chats</h3>
+    <div id="roomList"></div>
+  </div>
+  <div class="chat-area" id="chatArea">
+    <div class="chat-header">
+      <button id="backBtn">←</button>
+      <img id="chatAvatar" src="" width="40" height="40" style="border-radius:50%;margin-right:10px;">
+      <div>
+        <div id="chatName">Pilih Chat</div>
+        <div id="chatStatus" style="font-size:12px;color:gray;"></div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input id="msgInput" placeholder="Ketik pesan...">
+      <button onclick="sendMessage()">Kirim</button>
     </div>
   </div>
+</div>
 
-  <!-- Notif sound -->
-  <audio id="notifSound" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3"></audio>
+<script type="module">
+  // Firebase import
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getDatabase, ref, set, push, onChildAdded, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
-  <script type="module">
-    // Firebase config (punyamu)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, serverTimestamp } 
-      from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+  // Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+    authDomain: "tamagotchi-2be0c.firebaseapp.com",
+    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+    projectId: "tamagotchi-2be0c",
+    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+    messagingSenderId: "202052432703",
+    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+    measurementId: "G-TWGGSJRX26"
+  };
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Global vars
+  let currentUser = null;
+  let currentAvatar = null;
+  let activeRoom = null;
+
+  // Avatars
+  const avatars = [
+    "https://i.pravatar.cc/100?img=12",
+    "https://i.pravatar.cc/100?img=32",
+    "https://i.pravatar.cc/100?img=47",
+    "https://i.pravatar.cc/100?img=65"
+  ];
+  const avatarContainer = document.getElementById("avatarContainer");
+  avatars.forEach(url=>{
+    const img=document.createElement("img");
+    img.src=url;
+    img.className="avatar";
+    img.onclick=()=>{
+      document.querySelectorAll(".avatar").forEach(a=>a.classList.remove("selected"));
+      img.classList.add("selected");
+      currentAvatar=url;
     };
+    avatarContainer.appendChild(img);
+  });
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const messagesRef = ref(db, "chat");
-
-    const messagesDiv = document.getElementById("messages");
-    const input = document.getElementById("messageInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const notifSound = document.getElementById("notifSound");
-
-    const username = "User" + Math.floor(Math.random() * 1000);
-    const avatarUrl = "https://i.pravatar.cc/150?u=" + username; // default avatar unik
-
-    // Kirim pesan
-    sendBtn.onclick = () => {
-      const text = input.value.trim();
-      if (!text) return;
-      push(messagesRef, {
-        from: username,
-        avatar: avatarUrl,
-        text: text,
-        timestamp: Date.now()
-      });
-      input.value = "";
-    };
-
-    // Tampilkan pesan
-    onChildAdded(messagesRef, (snap) => {
-      const msg = snap.val();
-      const div = document.createElement("div");
-      div.classList.add("message");
-
-      // Avatar
-      const img = document.createElement("img");
-      img.src = msg.avatar || "https://i.pravatar.cc/150";
-      img.classList.add("avatar");
-
-      // Bubble
-      const bubble = document.createElement("div");
-      bubble.classList.add("bubble");
-      bubble.innerText = msg.from + ": " + msg.text;
-
-      if (msg.from === username) {
-        bubble.classList.add("right");
-      } else {
-        bubble.classList.add("left");
-        notifSound.play(); // bunyi notif kalau pesan dari orang lain
-      }
-
-      div.appendChild(img);
-      div.appendChild(bubble);
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  // Masuk
+  function setUserStatus(isOnline){
+    set(ref(db,"users/"+currentUser),{
+      avatar: currentAvatar,
+      online: isOnline,
+      lastSeen: Date.now()
     });
-  </script>
+  }
+
+  window.enterChat=function(){
+    const name=document.getElementById("usernameInput").value.trim();
+    if(!name || !currentAvatar){ alert("Isi nama & pilih avatar!"); return; }
+    currentUser=name;
+    document.getElementById("popup").style.display="none";
+    document.getElementById("chatContainer").style.display="flex";
+    setUserStatus(true);
+    loadRooms();
+  };
+
+  window.addEventListener("beforeunload",()=>setUserStatus(false));
+
+  // Rooms
+  function loadRooms(){
+    const rooms=[
+      {id:"global",name:"Global Chat"},
+      {id:"private1",name:"Private Chat 1"},
+      {id:"private2",name:"Private Chat 2"}
+    ];
+    const roomList=document.getElementById("roomList");
+    roomList.innerHTML="";
+    rooms.forEach(r=>{
+      const div=document.createElement("div");
+      div.textContent=r.name;
+      div.style.padding="10px";
+      div.style.cursor="pointer";
+      div.onclick=()=>openChat(r.id,r.name);
+      roomList.appendChild(div);
+    });
+  }
+
+  function openChat(roomId,roomName){
+    activeRoom=roomId;
+    document.getElementById("chatName").textContent=roomName;
+    document.getElementById("chatAvatar").src="https://i.pravatar.cc/100?u="+roomId;
+    document.getElementById("chatMessages").innerHTML="";
+    document.getElementById("chatArea").style.display="flex";
+
+    // status user (kalau private)
+    if(roomId.startsWith("private")){
+      const target="UserX"; // nanti bisa dinamis
+      onValue(ref(db,"users/"+target),(snap)=>{
+        const u=snap.val();
+        if(!u) return;
+        if(u.online){
+          document.getElementById("chatStatus").textContent="Online";
+        } else {
+          let d=new Date(u.lastSeen);
+          let jam=d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+          document.getElementById("chatStatus").textContent="Terakhir terlihat "+jam;
+        }
+      });
+    } else {
+      document.getElementById("chatStatus").textContent="";
+    }
+
+    // listen pesan
+    onChildAdded(ref(db,"chatRooms/"+roomId+"/messages"),snap=>{
+      const msg=snap.val();
+      showMessage(msg.from,msg.text,msg.avatar);
+    });
+  }
+
+  // Kirim pesan
+  window.sendMessage=function(){
+    const input=document.getElementById("msgInput");
+    const text=input.value.trim();
+    if(!text || !activeRoom) return;
+    const msgRef=push(ref(db,"chatRooms/"+activeRoom+"/messages"));
+    set(msgRef,{
+      from:currentUser,
+      text,
+      avatar:currentAvatar,
+      timestamp:Date.now()
+    });
+    input.value="";
+  };
+
+  // Tampilkan pesan
+  function showMessage(from,text,avatar){
+    const div=document.createElement("div");
+    div.className="message "+(from===currentUser?"me":"");
+    div.innerHTML=`<img src="${avatar}" width="25" style="border-radius:50%;vertical-align:middle;margin-right:5px;"> 
+                   <b>${from}</b>: ${text}`;
+    document.getElementById("chatMessages").appendChild(div);
+    document.getElementById("chatMessages").scrollTop=document.getElementById("chatMessages").scrollHeight;
+  }
+</script>
 </body>
 </html>
