@@ -2,196 +2,193 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Login - Tamagotchi</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Tamagotchi</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #6a11cb, #2575fc);
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 0;
+      margin: 0; padding: 0;
+      display: flex; justify-content: center; align-items: center;
+      height: 100vh; background: #f0f0f0;
+      opacity: 0; transition: opacity 0.4s ease;
     }
+    body.fade-in { opacity: 1; }
+    body.fade-out { opacity: 0; }
+
     .container {
-      background: #fff;
-      padding: 25px;
-      border-radius: 15px;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
+      width: 90%; max-width: 400px;
+      background: white; padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    h2 {
-      margin-bottom: 20px;
-      color: #333;
-    }
+    h2 { text-align: center; margin-bottom: 15px; }
     input {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
+      width: 100%; padding: 10px;
+      margin: 8px 0; border: 1px solid #ccc;
       border-radius: 8px;
-      font-size: 14px;
     }
     button {
-      width: 100%;
-      padding: 12px;
+      width: 100%; padding: 10px;
       margin-top: 10px;
-      border: none;
-      border-radius: 8px;
-      background: #2575fc;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.3s;
+      border: none; border-radius: 8px;
+      background: #4CAF50; color: white;
+      font-size: 16px; cursor: pointer;
     }
-    button:hover {
-      background: #6a11cb;
-    }
-    #usernameStatus {
-      font-size: 13px;
-      margin-bottom: 5px;
-    }
+    button:hover { background: #45a049; }
+
     .link {
-      margin-top: 15px;
-      font-size: 14px;
+      display: block; margin-top: 12px;
+      text-align: center; color: #007bff;
+      cursor: pointer;
     }
-    .link a {
-      color: #2575fc;
-      text-decoration: none;
+    .loader {
+      display: none; margin: 10px auto;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%; width: 28px; height: 28px;
+      animation: spin 1s linear infinite;
     }
+    @keyframes spin {
+      0% { transform: rotate(0deg);}
+      100% { transform: rotate(360deg);}
+    }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px; border-radius: 8px;
+      color: white; display: none;
+    }
+    .toast.success { background: #28a745; }
+    .toast.error { background: #dc3545; }
   </style>
 </head>
 <body>
-
-<div class="container">
-  <h2>Login Tamagotchi</h2>
-
-  <!-- Email -->
-  <input type="email" id="emailField" placeholder="Email" required>
-
-  <!-- Password -->
-  <input type="password" id="passwordField" placeholder="Password" required>
-
-  <!-- Username (untuk daftar) -->
-  <input type="text" id="usernameField" placeholder="Username (untuk daftar)">
-  <div id="usernameStatus"></div>
-
-  <!-- Tombol -->
-  <button id="loginBtn">Login</button>
-  <button id="registerBtn">Daftar</button>
-
-  <div class="link">
-    <a href="#">Lupa password?</a>
+  <div class="container">
+    <h2>Login Tamagotchi</h2>
+    <input type="text" id="usernameField" placeholder="Username (saat daftar)">
+    <input type="email" id="emailField" placeholder="Email">
+    <input type="password" id="passwordField" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <button id="registerBtn">Daftar</button>
+    <div class="link" id="forgotPasswordLink">Lupa Password?</div>
+    <div class="loader" id="loader"></div>
   </div>
-</div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <div class="toast" id="toast"></div>
 
-<script>
-  // 🔥 Config Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-    authDomain: "tamagotchi-2be0c.firebaseapp.com",
-    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-    projectId: "tamagotchi-2be0c",
-    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-    messagingSenderId: "202052432703",
-    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-    measurementId: "G-TWGGSJRX26"
-  };
-  firebase.initializeApp(firebaseConfig);
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  const auth = firebase.auth();
-  const db = firebase.database();
+  <script>
+    // 🔑 Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-  let usernameValid = false;
+    const loader = document.getElementById("loader");
+    const toast = document.getElementById("toast");
 
-  // ✅ Cek username unik realtime
-  document.getElementById("usernameField").addEventListener("input", function(){
-    const username = this.value.trim().toLowerCase();
-    if(username.length < 3){
-      document.getElementById("usernameStatus").innerHTML = "<span style='color:red'>Minimal 3 huruf</span>";
-      usernameValid = false;
-      return;
+    function showLoader(show){
+      loader.style.display = show ? "block" : "none";
     }
-    db.ref("usernames/"+username).once("value").then((snap)=>{
-      if(snap.exists()){
-        document.getElementById("usernameStatus").innerHTML = "<span style='color:red'>❌ Username sudah dipakai</span>";
-        usernameValid = false;
-      }else{
-        document.getElementById("usernameStatus").innerHTML = "<span style='color:green'>✅ Username tersedia</span>";
-        usernameValid = true;
-      }
+    function showToast(msg, type="success"){
+      toast.innerText = msg;
+      toast.className = "toast " + type;
+      toast.style.display = "block";
+      setTimeout(()=> toast.style.display="none", 3000);
+    }
+
+    // 🚀 Fade in saat buka
+    window.addEventListener("load", ()=> {
+      document.body.classList.add("fade-in");
     });
-  });
 
-  // 🔑 Login
-  document.getElementById("loginBtn").addEventListener("click", function(){
-    const email = document.getElementById("emailField").value;
-    const password = document.getElementById("passwordField").value;
+    // ✅ Login
+    document.getElementById("loginBtn").addEventListener("click", ()=>{
+      const email = document.getElementById("emailField").value;
+      const password = document.getElementById("passwordField").value;
 
-    auth.signInWithEmailAndPassword(email, password)
-      .then(()=>{
-        window.location.href = "game.html";
-      })
-      .catch(err=>{
-        alert(err.message);
-      });
-  });
+      if(!email || !password) {
+        showToast("❌ Email & Password wajib diisi!", "error");
+        return;
+      }
 
-  // 📝 Register
-  document.getElementById("registerBtn").addEventListener("click", function(){
-    const email = document.getElementById("emailField").value;
-    const password = document.getElementById("passwordField").value;
-    const username = document.getElementById("usernameField").value.trim().toLowerCase();
-
-    if(!usernameValid){
-      alert("Username belum valid atau sudah dipakai!");
-      return;
-    }
-
-    auth.createUserWithEmailAndPassword(email, password)
-      .then((userCredential)=>{
-        const user = userCredential.user;
-
-        // Simpan username unik
-        db.ref("usernames/"+username).set(user.uid);
-
-        // Simpan data user
-        db.ref("users/"+user.uid).set({
-          email: email,
-          username: username,
-          coins: 100,
-          pet: {
-            level: 1,
-            exp: 0,
-            hunger: 100,
-            happiness: 100
-          },
-          createdAt: firebase.database.ServerValue.TIMESTAMP
+      showLoader(true);
+      auth.signInWithEmailAndPassword(email, password)
+        .then(()=>{
+          showLoader(false);
+          showToast("✅ Login berhasil!", "success");
+          document.body.classList.add("fade-out");
+          setTimeout(()=> window.location.href = "game.html", 400);
+        })
+        .catch(err=>{
+          showLoader(false);
+          showToast("❌ " + err.message, "error");
         });
+    });
 
-        alert("Akun berhasil dibuat! Silakan login.");
-        window.location.href = "login.html";
-      })
-      .catch(err=>{
-        alert(err.message);
+    // ✅ Register
+    document.getElementById("registerBtn").addEventListener("click", ()=>{
+      const email = document.getElementById("emailField").value;
+      const password = document.getElementById("passwordField").value;
+      const username = document.getElementById("usernameField").value.trim().toLowerCase();
+
+      if(!email || !password || !username) {
+        showToast("❌ Semua field wajib diisi!", "error");
+        return;
+      }
+
+      showLoader(true);
+      db.ref("usernames/"+username).once("value", snapshot=>{
+        if(snapshot.exists()){
+          showLoader(false);
+          showToast("❌ Username sudah dipakai!", "error");
+        } else {
+          auth.createUserWithEmailAndPassword(email, password)
+            .then(userCredential=>{
+              const user = userCredential.user;
+              db.ref("usernames/"+username).set(user.uid);
+              db.ref("users/"+user.uid).set({
+                email: email,
+                username: username,
+                coins: 100,
+                pet: { level: 1, exp: 0, hunger: 100, happiness: 100 },
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+              });
+              showLoader(false);
+              showToast("✅ Akun dibuat! Silakan login.", "success");
+            })
+            .catch(err=>{
+              showLoader(false);
+              showToast("❌ " + err.message, "error");
+            });
+        }
       });
-  });
+    });
 
-  // 🚀 Auto redirect jika sudah login
-  auth.onAuthStateChanged(user=>{
-    if(user){
-      window.location.href = "game.html";
-    }
-  });
-</script>
-
+    // 🔑 Reset Password
+    document.getElementById("forgotPasswordLink").addEventListener("click", ()=>{
+      const email = document.getElementById("emailField").value;
+      if(!email){
+        showToast("❌ Masukkan email untuk reset!", "error");
+        return;
+      }
+      auth.sendPasswordResetEmail(email)
+        .then(()=> showToast("📩 Link reset password terkirim ke email!", "success"))
+        .catch(err=> showToast("❌ " + err.message, "error"));
+    });
+  </script>
 </body>
 </html>
