@@ -11,8 +11,11 @@
     .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
     .from { font-weight:bold; color:#38bdf8; }
     input, select { padding:6px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#f8fafc; }
-    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:2px; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:4px 0; }
+    button:hover { background:#2563eb; }
     .tab { margin:10px; }
+    #privateBtn { position:relative; }
+    #notifDot { position:absolute; top:0; right:0; background:red; color:white; font-size:12px; border-radius:50%; padding:2px 5px; display:none; }
   </style>
 </head>
 <body>
@@ -21,7 +24,9 @@
   <!-- Tabs -->
   <div class="tab">
     <button onclick="switchTab('global')">🌍 Global</button>
-    <button onclick="switchTab('private')">👤 Private</button>
+    <button id="privateBtn" onclick="switchTab('private')">👤 Private 
+      <span id="notifDot">🔔</span>
+    </button>
     <button onclick="nav('game.html')">⬅️ Kembali</button>
   </div>
 
@@ -29,7 +34,7 @@
   <div id="globalTab">
     <h3>🌍 Global Chat</h3>
     <div class="chat-box" id="globalMessages"></div>
-    <input type="text" id="globalInput" placeholder="Tulis pesan..." onkeypress="if(event.key==='Enter')sendGlobal()">
+    <input type="text" id="globalInput" placeholder="Tulis pesan...">
     <button onclick="sendGlobal()">Kirim</button>
   </div>
 
@@ -40,9 +45,12 @@
       <select id="userSelect"></select>
     </label>
     <div class="chat-box" id="privateMessages"></div>
-    <input type="text" id="privateInput" placeholder="Tulis pesan privat..." onkeypress="if(event.key==='Enter')sendPrivate()">
+    <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
     <button onclick="sendPrivate()">Kirim</button>
   </div>
+
+  <!-- 🔊 Suara notifikasi -->
+  <audio id="notifSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -63,15 +71,22 @@
     const auth=firebase.auth(), db=firebase.database();
 
     let currentUser=null, currentRoom=null;
+    let activeTab="global";
 
     function nav(p){ location.href=p; }
 
     function switchTab(tab){
+      activeTab=tab;
       document.getElementById('globalTab').style.display = tab==='global'?'block':'none';
       document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
+
+      // reset notif kalau masuk tab private
+      if(tab==="private"){
+        document.getElementById("notifDot").style.display="none";
+      }
     }
 
-    // ----------------- GLOBAL CHAT -----------------
+    // ✅ Global Chat
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
       if(!txt || !currentUser) return;
@@ -93,38 +108,36 @@
         div.className="msg";
         div.innerHTML=`<span class="from">${d.from}:</span> ${d.text}`;
         box.appendChild(div);
-        box.scrollTop=box.scrollHeight;
+        box.scrollTop = box.scrollHeight;
       });
     }
 
-    // ----------------- PRIVATE CHAT -----------------
+    // ✅ Private Chat
     function setupPrivateChat(toUid,toName){
-      if(!toUid) return;
       const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
       currentRoom = roomId;
-
       // register membership
-      db.ref(`privateChat/${roomId}/members/${currentUser.uid}`).set(true);
-      db.ref(`privateChat/${roomId}/members/${toUid}`).set(true);
+      db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
+      db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
 
       const box=document.getElementById("privateMessages");
       box.innerHTML="";
-      db.ref(`privateChat/${roomId}/messages`).off();
-      db.ref(`privateChat/${roomId}/messages`).limitToLast(50).on("child_added",snap=>{
+      db.ref("privateChat/"+roomId+"/messages").off();
+      db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
         const div=document.createElement("div");
         div.className="msg";
         const from=(d.from===currentUser.uid? "Saya": toName);
         div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
         box.appendChild(div);
-        box.scrollTop=box.scrollHeight;
+        box.scrollTop = box.scrollHeight;
       });
     }
 
     function sendPrivate(){
       const txt=document.getElementById('privateInput').value.trim();
       if(!txt || !currentRoom) return;
-      db.ref(`privateChat/${currentRoom}/messages`).push({
+      db.ref("privateChat/"+currentRoom+"/messages").push({
         from: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -137,35 +150,53 @@
         const sel=document.getElementById("userSelect");
         sel.innerHTML="";
         snap.forEach(ch=>{
+          const u=ch.val();
           if(ch.key!==currentUser.uid){
-            const u=ch.val();
             const opt=document.createElement("option");
             opt.value=ch.key;
-            opt.text=u.username||u.email||"User";
+            opt.text=u.username||u.email;
             sel.appendChild(opt);
           }
         });
-        if(sel.options.length>0){
-          sel.selectedIndex=0;
-          const uid=sel.value;
-          const name=sel.options[sel.selectedIndex].text;
-          setupPrivateChat(uid,name);
-        }
         sel.onchange=()=>{
           const uid=sel.value;
           const name=sel.options[sel.selectedIndex].text;
           setupPrivateChat(uid,name);
         };
+        if(sel.options.length>0){
+          sel.selectedIndex=0;
+          sel.onchange();
+        }
       });
     }
 
-    // ----------------- AUTH -----------------
+    // 🔔 Deteksi pesan privat baru untuk notif + suara
+    function monitorPrivateNotif(){
+      db.ref("privateChat").on("child_added",snap=>{
+        const room=snap.key;
+        // cek apakah currentUser termasuk member
+        db.ref("privateChat/"+room+"/members/"+currentUser.uid).once("value",m=>{
+          if(m.exists()){
+            db.ref("privateChat/"+room+"/messages").limitToLast(1).on("child_added",msgSnap=>{
+              const d=msgSnap.val();
+              if(d.from!==currentUser.uid && activeTab!=="private"){
+                document.getElementById("notifDot").style.display="inline";
+                document.getElementById("notifSound").play().catch(()=>{}); // 🔊 play ding
+              }
+            });
+          }
+        });
+      });
+    }
+
+    // 🔑 Cek login
     auth.onAuthStateChanged(u=>{
       if(!u){ nav("index.html"); return; }
       db.ref("users/"+u.uid).once("value",snap=>{
-        currentUser={uid:u.uid,...snap.val(), email:u.email};
+        currentUser={uid:u.uid,...snap.val()};
         loadGlobal();
         loadUsers();
+        monitorPrivateNotif(); // mulai pantau notif privat
       });
     });
   </script>
