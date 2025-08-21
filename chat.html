@@ -1,200 +1,424 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat App</title>
+  <meta charset="UTF-8" />
+  <title>Tamagotchi — Chat</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1,user-scalable=no" />
   <style>
-    body { margin:0; font-family:sans-serif; }
-    .sidebar { width:30%; border-right:1px solid #ccc; height:100vh; overflow-y:auto; }
-    .chat-area { flex:1; display:none; flex-direction:column; }
-    .container { display:flex; height:100vh; }
-    .chat-header { display:flex; align-items:center; padding:10px; border-bottom:1px solid #ccc; }
-    .chat-messages { flex:1; padding:10px; overflow-y:auto; }
-    .chat-input { display:flex; border-top:1px solid #ccc; }
-    .chat-input input { flex:1; padding:10px; border:none; }
-    .chat-input button { padding:10px; border:none; background:#25d366; color:white; }
-    .message { margin:5px 0; }
-    .me { text-align:right; }
-    #popup { position:fixed; top:0; left:0; right:0; bottom:0; background:#0008; display:flex; align-items:center; justify-content:center; }
-    #popupContent { background:white; padding:20px; border-radius:10px; text-align:center; }
-    .avatar { width:50px; height:50px; border-radius:50%; margin:5px; cursor:pointer; border:2px solid transparent; }
-    .avatar.selected { border-color:#25d366; }
+    :root{
+      --bg:#0b1220; --card:#0f172a; --ink:#e5eefc; --muted:#94a3b8;
+      --accent:#22c55e; --accent-2:#10b981; --border:#1f2a44; --me:#1f6feb; --them:#1e293b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--border);padding:10px}
+    .row{display:flex;align-items:center;gap:8px}
+    .space{flex:1}
+    .btn{background:var(--accent);color:#06261f;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+    .ghost{background:#1e293b;color:#cfe;border:1px solid var(--border)}
+    .tabs{display:flex;gap:8px;margin-top:8px}
+    .tab-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe;cursor:pointer}
+    .tab-btn.active{background:#12203b;border-color:#284069}
+    .wrap{display:flex;height:calc(100vh - 140px);gap:8px;padding:8px}
+    @media(max-width:800px){.wrap{flex-direction:column;height:auto}}
+    .left{width:320px;min-width:280px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .right{flex:1;min-height:420px;background:var(--card);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column}
+    .search{padding:8px;border-bottom:1px solid var(--border)}
+    .search input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe}
+    .list{overflow:auto;max-height:60vh}
+    .item{display:flex;gap:10px;padding:10px;border-bottom:1px solid var(--border);cursor:pointer}
+    .item:hover{background:#0e1a31}
+    .ava{width:42px;height:42px;border-radius:999px;border:1px solid #1f2a44;object-fit:cover;background:#111}
+    .chat-header{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)}
+    .chat-body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px;background:
+      radial-gradient( circle at 20% 0%, rgba(34,197,94,.07) 0 25%, transparent 26% ) 0 0/160px 160px,
+      radial-gradient( circle at 80% 100%, rgba(37,99,235,.07) 0 25%, transparent 26% ) 0 0/200px 200px,
+      #0b1220}
+    .b{max-width:78%;padding:8px 10px;border-radius:14px;border:1px solid var(--border);position:relative;word-wrap:break-word;white-space:pre-wrap}
+    .me{align-self:flex-end;background:var(--me);border-color:#2059b6;color:#fff;border-bottom-right-radius:6px}
+    .them{align-self:flex-start;background:var(--them);border-bottom-left-radius:6px}
+    .meta{font-size:11px;color:#dbeafe;opacity:.8;margin-top:3px;display:flex;align-items:center;gap:6px}
+    .ticks{font-size:12px;opacity:.9}
+    .composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}
+    .composer input{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe}
+    .composer button{padding:10px 12px;border-radius:10px;border:0;background:var(--accent-2);color:#06261f;font-weight:700;cursor:pointer}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#0c1426;color:#cfe;cursor:pointer}
+    .grid-ava{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+    .grid-ava img{width:100%;border-radius:12px;cursor:pointer;border:2px solid transparent}
+    .grid-ava img.sel{border-color:var(--accent)}
+    .small{font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
-<div id="popup">
-  <div id="popupContent">
-    <h2>Masuk ke Chat</h2>
-    <input id="usernameInput" placeholder="Masukkan nama"><br><br>
-    <div id="avatarContainer"></div>
-    <br>
-    <button onclick="enterChat()">Masuk</button>
-  </div>
-</div>
+  <header>
+    <div class="row">
+      <button class="btn ghost" onclick="nav('game.html')">⟵ Kembali</button>
+      <div class="space"></div>
+      <button class="pill" id="btnGlobal">🌍 Global</button>
+      <button class="pill" id="btnPrivate">👤 Private</button>
+      <button class="pill" id="btnProfile">🖼️ Avatar</button>
+      <button class="btn" id="btnLogout">Logout</button>
+    </div>
+    <div class="tabs">
+      <button id="tabGlobal" class="tab-btn active">🌍 Global</button>
+      <button id="tabPrivate" class="tab-btn">👤 Private</button>
+    </div>
+  </header>
 
-<div class="container" id="chatContainer" style="display:none;">
-  <div class="sidebar" id="sidebar">
-    <h3 style="padding:10px;">Chats</h3>
-    <div id="roomList"></div>
+  <div class="wrap">
+    <!-- LEFT: daftar user & rooms -->
+    <section class="left">
+      <div class="search">
+        <input id="searchUser" placeholder="Cari member…" />
+      </div>
+      <div id="userList" class="list"></div>
+    </section>
+
+    <!-- RIGHT: chat -->
+    <section class="right">
+      <div class="chat-header">
+        <img id="chatAva" class="ava" src="" alt="">
+        <div>
+          <div id="chatTitle" style="font-weight:700">Pilih chat</div>
+          <div id="chatSub" class="small">—</div>
+        </div>
+        <div class="space"></div>
+        <span class="small" id="whoMe">Memuat…</span>
+      </div>
+
+      <div id="chatBody" class="chat-body"></div>
+
+      <div class="composer">
+        <input id="msgInput" placeholder="Tulis pesan…" />
+        <button id="btnSend">Kirim</button>
+      </div>
+    </section>
   </div>
-  <div class="chat-area" id="chatArea">
-    <div class="chat-header">
-      <button id="backBtn">←</button>
-      <img id="chatAvatar" src="" width="40" height="40" style="border-radius:50%;margin-right:10px;">
-      <div>
-        <div id="chatName">Pilih Chat</div>
-        <div id="chatStatus" style="font-size:12px;color:gray;"></div>
+
+  <!-- Modal profil/Avatar sederhana -->
+  <div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;">
+    <div style="width:min(520px,95vw);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px">
+      <h3 style="margin:6px 0 8px">Profil</h3>
+      <div class="row" style="gap:10px;margin-bottom:8px">
+        <img id="meAva" class="ava" src="" alt="">
+        <input id="meName" placeholder="Username" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe">
+        <input type="file" id="meFile" accept="image/*" style="display:none">
+        <button class="pill" id="btnUpload">Upload Foto</button>
+      </div>
+      <div class="small">Atau pilih avatar anime lucu:</div>
+      <div id="avaChoices" class="grid-ava"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:10px">
+        <button class="pill" id="btnCloseProfile">Tutup</button>
+        <button class="btn" id="btnSaveProfile">Simpan</button>
       </div>
     </div>
-    <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input">
-      <input id="msgInput" placeholder="Ketik pesan...">
-      <button onclick="sendMessage()">Kirim</button>
-    </div>
   </div>
-</div>
 
-<script type="module">
-  // Firebase import
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getDatabase, ref, set, push, onChildAdded, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+  <!-- Notifikasi suara (mirip WA, pendek & lembut) -->
+  <audio id="snd" preload="auto"
+    src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQAAAP//AACiTEFNRTMuMTAwA8MAAAAAAAAAAAAAAABNAAAAGAAAAGZz...">
+  </audio>
+  <!-- (Catatan: ini data URI mp3 pendek. Bila tidak bunyi di beberapa browser, bisa ganti file lokal .mp3 kecil) -->
 
-  // Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-    authDomain: "tamagotchi-2be0c.firebaseapp.com",
-    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-    projectId: "tamagotchi-2be0c",
-    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-    messagingSenderId: "202052432703",
-    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-    measurementId: "G-TWGGSJRX26"
-  };
+  <!-- Firebase v9 (modular) -->
+  <script type="module">
+    // ==== Firebase imports ====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref, child, get, set, push, onChildAdded, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  // Global vars
-  let currentUser = null;
-  let currentAvatar = null;
-  let activeRoom = null;
-
-  // Avatars
-  const avatars = [
-    "https://i.pravatar.cc/100?img=12",
-    "https://i.pravatar.cc/100?img=32",
-    "https://i.pravatar.cc/100?img=47",
-    "https://i.pravatar.cc/100?img=65"
-  ];
-  const avatarContainer = document.getElementById("avatarContainer");
-  avatars.forEach(url=>{
-    const img=document.createElement("img");
-    img.src=url;
-    img.className="avatar";
-    img.onclick=()=>{
-      document.querySelectorAll(".avatar").forEach(a=>a.classList.remove("selected"));
-      img.classList.add("selected");
-      currentAvatar=url;
+    // ==== Config (punyamu) ====
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
     };
-    avatarContainer.appendChild(img);
-  });
 
-  // Masuk
-  function setUserStatus(isOnline){
-    set(ref(db,"users/"+currentUser),{
-      avatar: currentAvatar,
-      online: isOnline,
-      lastSeen: Date.now()
-    });
-  }
+    // ==== Init ====
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
 
-  window.enterChat=function(){
-    const name=document.getElementById("usernameInput").value.trim();
-    if(!name || !currentAvatar){ alert("Isi nama & pilih avatar!"); return; }
-    currentUser=name;
-    document.getElementById("popup").style.display="none";
-    document.getElementById("chatContainer").style.display="flex";
-    setUserStatus(true);
-    loadRooms();
-  };
+    // ==== Helpers ====
+    const $ = q => document.querySelector(q);
+    const el = (tag, props={}) => Object.assign(document.createElement(tag), props);
+    const nav = p => location.href = p;
 
-  window.addEventListener("beforeunload",()=>setUserStatus(false));
+    // State
+    let me = null;          // {uid, username, avatar}
+    let mode = 'global';    // 'global' | 'private'
+    let currentPeer = null; // {uid, username, avatar}
+    let currentRoom = null; // roomId string
+    let messagesUnsub = null;
 
-  // Rooms
-  function loadRooms(){
-    const rooms=[
-      {id:"global",name:"Global Chat"},
-      {id:"private1",name:"Private Chat 1"},
-      {id:"private2",name:"Private Chat 2"}
+    // UI refs
+    const userList = $('#userList');
+    const searchUser = $('#searchUser');
+    const chatBody = $('#chatBody');
+    const chatTitle = $('#chatTitle');
+    const chatSub = $('#chatSub');
+    const chatAva = $('#chatAva');
+    const msgInput = $('#msgInput');
+    const btnSend = $('#btnSend');
+    const btnLogout = $('#btnLogout');
+    const tabGlobal = $('#tabGlobal');
+    const tabPrivate = $('#tabPrivate');
+    const btnGlobal = $('#btnGlobal');
+    const btnPrivate = $('#btnPrivate');
+    const whoMe = $('#whoMe');
+    const snd = $('#snd');
+
+    // Avatar modal refs
+    const modal = $('#profileModal');
+    const btnProfile = $('#btnProfile');
+    const btnCloseProfile = $('#btnCloseProfile');
+    const btnSaveProfile = $('#btnSaveProfile');
+    const btnUpload = $('#btnUpload');
+    const meFile = $('#meFile');
+    const meAva = $('#meAva');
+    const meName = $('#meName');
+    const avaChoices = $('#avaChoices');
+
+    // Avatar presets (anime cute)
+    const PRESETS = [
+      "https://i.imgur.com/3k9d8h3.png",
+      "https://i.imgur.com/0m7pQnq.png",
+      "https://i.imgur.com/3n0Q8c7.png",
+      "https://i.imgur.com/3xZ0kXv.png",
+      "https://i.imgur.com/7m2m4mB.png",
+      "https://i.imgur.com/bkqvQvU.png",
+      "https://i.imgur.com/5q2YzXm.png",
+      "https://i.imgur.com/6x2vQ1y.png"
     ];
-    const roomList=document.getElementById("roomList");
-    roomList.innerHTML="";
-    rooms.forEach(r=>{
-      const div=document.createElement("div");
-      div.textContent=r.name;
-      div.style.padding="10px";
-      div.style.cursor="pointer";
-      div.onclick=()=>openChat(r.id,r.name);
-      roomList.appendChild(div);
-    });
-  }
-
-  function openChat(roomId,roomName){
-    activeRoom=roomId;
-    document.getElementById("chatName").textContent=roomName;
-    document.getElementById("chatAvatar").src="https://i.pravatar.cc/100?u="+roomId;
-    document.getElementById("chatMessages").innerHTML="";
-    document.getElementById("chatArea").style.display="flex";
-
-    // status user (kalau private)
-    if(roomId.startsWith("private")){
-      const target="UserX"; // nanti bisa dinamis
-      onValue(ref(db,"users/"+target),(snap)=>{
-        const u=snap.val();
-        if(!u) return;
-        if(u.online){
-          document.getElementById("chatStatus").textContent="Online";
-        } else {
-          let d=new Date(u.lastSeen);
-          let jam=d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
-          document.getElementById("chatStatus").textContent="Terakhir terlihat "+jam;
-        }
+    let chosenPreset = null;
+    function renderPresetGrid(selUrl){
+      avaChoices.innerHTML = '';
+      PRESETS.forEach(url=>{
+        const im = el('img',{src:url});
+        if(selUrl && url===selUrl) im.classList.add('sel');
+        im.onclick=()=>{
+          chosenPreset=url;
+          [...avaChoices.querySelectorAll('img')].forEach(i=>i.classList.remove('sel'));
+          im.classList.add('sel');
+          meAva.src = url;
+        };
+        avaChoices.appendChild(im);
       });
-    } else {
-      document.getElementById("chatStatus").textContent="";
     }
 
-    // listen pesan
-    onChildAdded(ref(db,"chatRooms/"+roomId+"/messages"),snap=>{
-      const msg=snap.val();
-      showMessage(msg.from,msg.text,msg.avatar);
-    });
-  }
+    // Tabs switch
+    function setMode(m){
+      mode = m;
+      tabGlobal.classList.toggle('active', m==='global');
+      tabPrivate.classList.toggle('active', m==='private');
+      btnGlobal.classList.toggle('active', m==='global');
+      btnPrivate.classList.toggle('active', m==='private');
+      chatBody.innerHTML='';
+      msgInput.value='';
+      if(m==='global'){
+        currentRoom=null; currentPeer=null;
+        chatTitle.textContent='Global Chat';
+        chatSub.textContent='Semua pemain';
+        chatAva.src='https://i.imgur.com/sg1m2mM.png';
+        startGlobalStream();
+      }else{
+        stopStream();
+        chatTitle.textContent='Pilih kontak';
+        chatSub.textContent='Private chat';
+        chatAva.src='';
+      }
+    }
 
-  // Kirim pesan
-  window.sendMessage=function(){
-    const input=document.getElementById("msgInput");
-    const text=input.value.trim();
-    if(!text || !activeRoom) return;
-    const msgRef=push(ref(db,"chatRooms/"+activeRoom+"/messages"));
-    set(msgRef,{
-      from:currentUser,
-      text,
-      avatar:currentAvatar,
-      timestamp:Date.now()
-    });
-    input.value="";
-  };
+    tabGlobal.onclick=()=>setMode('global');
+    tabPrivate.onclick=()=>setMode('private');
+    btnGlobal.onclick=()=>setMode('global');
+    btnPrivate.onclick=()=>setMode('private');
 
-  // Tampilkan pesan
-  function showMessage(from,text,avatar){
-    const div=document.createElement("div");
-    div.className="message "+(from===currentUser?"me":"");
-    div.innerHTML=`<img src="${avatar}" width="25" style="border-radius:50%;vertical-align:middle;margin-right:5px;"> 
-                   <b>${from}</b>: ${text}`;
-    document.getElementById("chatMessages").appendChild(div);
-    document.getElementById("chatMessages").scrollTop=document.getElementById("chatMessages").scrollHeight;
-  }
-</script>
+    // Stream helpers
+    function stopStream(){
+      if(messagesUnsub){ messagesUnsub(); messagesUnsub=null; }
+    }
+
+    function scrollBottom(){
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function fmtTime(ts){
+      const d=new Date(ts);
+      return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    }
+
+    // Render bubble
+    function renderMsg(m){
+      const mine = m.uid===me.uid;
+      const box = el('div',{className:'b '+(mine?'me':'them')});
+      box.textContent = m.text;
+      const meta = el('div',{className:'meta'});
+      meta.innerHTML = `<img src="${m.avatar||''}" class="ava" style="width:18px;height:18px;border-radius:50%;"> 
+                        <span>${m.from}</span> · <span>${fmtTime(m.timestamp||Date.now())}</span>
+                        ${mine ? `<span class="ticks">${m.seenBy && Object.keys(m.seenBy).length>1 ? '✓✓' : '✓'}</span>` : ''}`;
+      box.appendChild(meta);
+      chatBody.appendChild(box);
+      scrollBottom();
+    }
+
+    // Global stream
+    function startGlobalStream(){
+      stopStream();
+      const q = ref(db,'chat');
+      messagesUnsub = onChildAdded(q, snap=>{
+        const m = snap.val();
+        renderMsg(m);
+        if(m.uid!==me.uid) try{ snd.currentTime=0; snd.play(); }catch{}
+      });
+    }
+
+    // Private stream
+    function startPrivateStream(roomId, peer){
+      stopStream();
+      currentRoom = roomId;
+      currentPeer = peer;
+      chatBody.innerHTML='';
+      chatTitle.textContent = peer.username || peer.email || 'Teman';
+      chatSub.textContent = 'Private chat';
+      chatAva.src = peer.avatar || '';
+
+      // set membership (idempotent)
+      set(ref(db,`privateChat/${roomId}/members/${me.uid}`), true);
+      set(ref(db,`privateChat/${roomId}/members/${peer.uid}`), true);
+
+      const q = ref(db,`privateChat/${roomId}/messages`);
+      messagesUnsub = onChildAdded(q, snap=>{
+        const m = snap.val();
+        renderMsg(m);
+        // read receipt: tandai sudah dilihat
+        if(m.uid!==me.uid){
+          update(child(ref(db,`privateChat/${roomId}/messages`), snap.key), {
+            [`seenBy/${me.uid}`]: true
+          });
+          try{ snd.currentTime=0; snd.play(); }catch{}
+        }
+      });
+    }
+
+    // Kirim pesan
+    async function send(){
+      const txt = msgInput.value.trim();
+      if(!txt) return;
+      const payload = {
+        uid: me.uid,
+        from: me.username || me.email || 'Player',
+        avatar: me.avatar || '',
+        text: txt,
+        timestamp: Date.now()
+      };
+      if(mode==='global'){
+        await push(ref(db,'chat'), payload);
+      }else if(currentRoom){
+        await push(ref(db,`privateChat/${currentRoom}/messages`), payload);
+      }else{
+        alert('Pilih kontak dulu pada tab Private'); return;
+      }
+      msgInput.value='';
+    }
+    btnSend.onclick = send;
+    msgInput.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); send(); }
+    });
+
+    // Build roomId (berurutan supaya konsisten)
+    function roomIdFor(a,b){
+      return a<b ? `room_${a}_${b}` : `room_${b}_${a}`;
+    }
+
+    // Load daftar user
+    function loadUsers(){
+      onValue(ref(db,'users'), snap=>{
+        const term = (searchUser.value||'').toLowerCase();
+        userList.innerHTML='';
+        snap.forEach(ch=>{
+          if(!ch.exists()) return;
+          const u = ch.val(); const id = ch.key;
+          if(id===me.uid) return; // skip diri sendiri
+          const nm = (u.username||u.email||'Player').toLowerCase();
+          if(term && !nm.includes(term)) return;
+          const it = el('div',{className:'item'});
+          it.innerHTML = `<img class="ava" src="${u.avatar||''}" alt="">
+                          <div>
+                            <div style="font-weight:700">${u.username||u.email||'Player'}</div>
+                            <div class="small">${u.email||''}</div>
+                          </div>`;
+          it.onclick=()=>{
+            setMode('private');
+            startPrivateStream( roomIdFor(me.uid,id), {uid:id, username:u.username||u.email, avatar:u.avatar||''} );
+          };
+          userList.appendChild(it);
+        });
+      });
+    }
+    searchUser.addEventListener('input', loadUsers);
+
+    // Profile modal
+    btnProfile.onclick = ()=>{ modal.style.display='grid'; renderPresetGrid(me?.avatar); meAva.src = me?.avatar||''; meName.value = me?.username||''; };
+    btnCloseProfile.onclick = ()=> modal.style.display='none';
+    btnUpload.onclick = ()=> meFile.click();
+    meFile.onchange = async (e)=>{
+      const f = e.target.files?.[0];
+      if(!f) return;
+      // upload ke storage
+      const r = sRef(storage, `avatars/${me.uid}.jpg`);
+      await uploadBytes(r, f);
+      const url = await getDownloadURL(r);
+      meAva.src = url;
+      chosenPreset = null; // pakai upload
+    };
+    btnSaveProfile.onclick = async ()=>{
+      const username = meName.value.trim() || me.email;
+      let avatarUrl = meAva.src || '';
+      if(chosenPreset) avatarUrl = chosenPreset;
+      await update(ref(db,`users/${me.uid}`), { username, avatar: avatarUrl });
+      me.username = username; me.avatar = avatarUrl;
+      whoMe.textContent = `${me.username} (${me.email})`;
+      modal.style.display='none';
+    };
+
+    // Logout
+    btnLogout.onclick = ()=> signOut(auth).then(()=>nav('login.html'));
+
+    // ===== Auth & bootstrap =====
+    onAuthStateChanged(auth, async (u)=>{
+      if(!u){ nav('login.html'); return; }
+      // Pastikan profile ada
+      const us = await get(ref(db,`users/${u.uid}`));
+      let profile = us.exists()? us.val() : null;
+      if(!profile){
+        // profil baru
+        profile = {
+          email: u.email,
+          username: (u.email||'').split('@')[0],
+          avatar: PRESETS[ Math.floor(Math.random()*PRESETS.length) ]
+        };
+        await set(ref(db,`users/${u.uid}`), profile);
+      }
+      me = { uid: u.uid, email: u.email, username: profile.username, avatar: profile.avatar };
+      whoMe.textContent = `${me.username} (${me.email})`;
+      meAva.src = me.avatar||'';
+      chatAva.src = 'https://i.imgur.com/sg1m2mM.png';
+      chatTitle.textContent = 'Global Chat';
+      chatSub.textContent = 'Semua pemain';
+
+      // Mulai
+      setMode('global');     // aktifkan stream global
+      loadUsers();           // isi daftar user
+    });
+  </script>
 </body>
 </html>
