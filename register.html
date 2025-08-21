@@ -4,14 +4,77 @@
   <meta charset="UTF-8">
   <title>Tamagotchi - Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Firebase v9 modular -->
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 320px;
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #FF6F61;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #e85b50;
+    }
+    .link {
+      margin-top: 10px;
+      display: block;
+      color: #007BFF;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Register</h2>
+    <input type="text" id="username" placeholder="Username unik" required><br>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="register()">Daftar</button>
+    <a class="link" href="login.html">Sudah punya akun? Login</a>
+  </div>
+
   <script type="module">
-    // 🔥 Import Firebase modular SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-    import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    // ✅ Config
+    // 🔥 Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -23,15 +86,14 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // ✅ Init
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
     // 📝 Register function
     async function register() {
-      const username = document.getElementById('username').value.trim().toLowerCase();
-      const email = document.getElementById('email').value;
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
 
       if (!username || !email || !password) {
@@ -39,20 +101,20 @@
         return;
       }
 
-      try {
-        // 🔎 Cek apakah username sudah ada
-        const usernameRef = ref(db, "usernames/" + username);
-        const snapshot = await get(usernameRef);
-        if (snapshot.exists()) {
-          alert("❌ Username sudah dipakai, pilih yang lain.");
-          return;
-        }
+      // ✅ Cek apakah username sudah dipakai
+      const usernameRef = ref(db, "usernames/" + username);
+      const snapshot = await get(usernameRef);
+      if (snapshot.exists()) {
+        alert("⚠️ Username sudah dipakai, silakan pilih yang lain.");
+        return;
+      }
 
-        // ✅ Buat user auth
+      try {
+        // ✅ Buat akun baru
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Simpan data user
+        // Simpan data user ke database
         await set(ref(db, "users/" + user.uid), {
           username: username,
           email: email,
@@ -65,58 +127,20 @@
         });
 
         // Simpan mapping username → uid
-        await set(ref(db, "usernames/" + username), user.uid);
+        await set(ref(db, "usernames/" + username), {
+          uid: user.uid
+        });
 
-        alert("✅ Registrasi berhasil! Silakan login.");
+        alert("🎉 Registrasi berhasil! Silakan login.");
         window.location.href = "login.html";
+
       } catch (error) {
         alert("❌ Error: " + error.message);
       }
     }
 
-    // Expose ke global biar bisa dipanggil onclick
+    // expose ke global
     window.register = register;
   </script>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex; justify-content: center; align-items: center;
-      height: 100vh; margin: 0;
-      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    }
-    .container {
-      background: white; padding: 20px;
-      border-radius: 15px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      width: 320px; text-align: center;
-    }
-    input {
-      width: 90%; padding: 10px; margin: 10px 0;
-      border-radius: 8px; border: 1px solid #ccc;
-    }
-    button {
-      width: 100%; padding: 10px; margin: 10px 0;
-      background: #FF6F61; color: white; border: none;
-      border-radius: 8px; cursor: pointer;
-      transition: background 0.2s ease;
-    }
-    button:hover { background: #e85b50; }
-    .link {
-      margin-top: 10px; display: block; color: #007BFF;
-      cursor: pointer; text-decoration: none;
-    }
-    .link:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Register</h2>
-    <input type="text" id="username" placeholder="Username unik" required><br>
-    <input type="email" id="email" placeholder="Email" required><br>
-    <input type="password" id="password" placeholder="Password" required><br>
-    <button onclick="register()">Daftar</button>
-    <a class="link" href="login.html">Sudah punya akun? Login</a>
-  </div>
 </body>
 </html>
