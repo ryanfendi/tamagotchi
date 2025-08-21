@@ -4,12 +4,73 @@
   <meta charset="UTF-8">
   <title>Tamagotchi - Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Firebase Modular SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-    import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 320px;
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #FF6F61;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #e85b50;
+    }
+    .link {
+      margin-top: 10px;
+      display: block;
+      color: #007BFF;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Register</h2>
+    <input type="text" id="username" placeholder="Username unik" required><br>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="register()">Daftar</button>
+    <a class="link" href="login.html">Sudah punya akun? Login</a>
+  </div>
 
+  <script>
+    // 🔥 Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -21,73 +82,61 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // ✅ Inisialisasi
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    // 🔧 Init Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-    // Register function
-    window.register = async function() {
+    // 📝 Register function
+    async function register() {
       const username = document.getElementById('username').value.trim();
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const log = document.getElementById("log");
-      log.innerText = "";
 
       if (!username || !email || !password) {
-        log.innerText = "❌ Harap isi semua field!";
+        alert("Harap isi semua field!");
         return;
       }
 
       try {
-        // 🔍 Cek username
-        const usernameRef = ref(db, "usernames/" + username);
-        const snapshot = await get(usernameRef);
+        console.log("🔍 Cek username:", username);
+        const usernameRef = db.ref("usernames/" + username);
+        const snapshot = await usernameRef.get();
+
         if (snapshot.exists()) {
-          log.innerText = "❌ Username sudah dipakai!";
+          alert("❌ Username sudah dipakai, silakan pilih yang lain.");
           return;
         }
 
-        // ✅ Buat user
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // ✅ Buat akun
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // Simpan data user
-        await set(ref(db, "users/" + user.uid), {
+        // ✅ Simpan data user
+        await db.ref("users/" + user.uid).set({
           username: username,
           email: email,
           coins: 0,
-          pet: { level: 1, hunger: 100, happiness: 100 }
+          pet: {
+            level: 1,
+            hunger: 100,
+            happiness: 100
+          }
         });
 
-        // Simpan mapping username → uid
-        await set(ref(db, "usernames/" + username), { uid: user.uid });
+        // ✅ Simpan mapping username → uid
+        await db.ref("usernames/" + username).set({
+          uid: user.uid
+        });
 
-        alert("Registrasi berhasil! Silakan login.");
+        alert("🎉 Registrasi berhasil! Silakan login.");
         window.location.href = "login.html";
 
-      } catch (err) {
-        log.innerText = "🔥 ERROR: " + err.message;
+      } catch (error) {
+        console.error("🔥 ERROR:", error.message);
+        alert("Error: " + error.message);
       }
     }
   </script>
-  <style>
-    body { font-family: Arial, sans-serif; background:#fcb69f; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
-    .container { background:white; padding:20px; border-radius:15px; width:320px; box-shadow:0 4px 12px rgba(0,0,0,0.2); text-align:center; }
-    input, button { width:90%; margin:8px 0; padding:10px; border-radius:8px; border:1px solid #ccc; }
-    button { background:#FF6F61; color:white; border:none; cursor:pointer; }
-    button:hover { background:#e85b50; }
-    #log { margin-top:10px; font-size:14px; color:red; white-space:pre-line; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h2>Register</h2>
-    <input type="text" id="username" placeholder="Username unik"><br>
-    <input type="email" id="email" placeholder="Email"><br>
-    <input type="password" id="password" placeholder="Password"><br>
-    <button onclick="register()">Daftar</button>
-    <div id="log"></div>
-  </div>
 </body>
 </html>
