@@ -1,32 +1,25 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamagotchi Online — Login</title>
-<style>
-  body{background:#0b1220;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:24px}
-  .card{display:inline-block;background:#101a2b;padding:18px;border-radius:12px;min-width:300px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-  input,button{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:0}
-  button{background:#10b981;color:#06261f;font-weight:700;cursor:pointer}
-  .muted{color:#9fb3b5;font-size:13px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <style>
+    body {background:#0b1220;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+    .card {background:#101a2b;padding:20px;border-radius:12px;width:300px;box-shadow:0 4px 12px rgba(0,0,0,0.4);text-align:center}
+    input {width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#fff}
+    button {width:100%;padding:10px;margin-top:10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;font-weight:700;cursor:pointer}
+    button:hover {background:#2563eb}
+    a {color:#38bdf8;text-decoration:none;display:block;margin-top:12px}
+  </style>
 </head>
 <body>
-  <h1>🐣 Tamagotchi Online</h1>
   <div class="card">
-    <h3>Login</h3>
-    <input id="loginId" placeholder="Email atau Username">
-    <input id="loginPass" type="password" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <p class="muted">Belum punya akun? Daftar di bawah</p>
-    <hr style="border-color:#223;">
-    <h3>Daftar</h3>
-    <input id="regEmail" type="email" placeholder="Email">
-    <input id="regUser" placeholder="Username (unik, huruf/angka)">
-    <input id="regPass" type="password" placeholder="Password (min 6)">
-    <button id="regBtn">Daftar</button>
-    <div id="msg" class="muted"></div>
+    <h2>Login</h2>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <a href="register.html">Belum punya akun? Daftar</a>
   </div>
 
   <!-- Firebase -->
@@ -34,7 +27,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
-    // --- Firebase config (sesuai permintaan) ---
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -47,75 +39,25 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db   = firebase.database();
 
-    // Helper
-    const byId = id => document.getElementById(id);
-    function defaultProfile(email, username){
-      return {
-        email, username,
-        coins: 50, level: 1,
-        hunger: 100, energy: 100, hp: 100,
-        currentPet: 0,
-        inventory: [{name:"Chick", level:1, kind:"egg"}],
-        createdAt: Date.now()
-      };
+    async function login(){
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      if(!email || !password) return alert("Email & password wajib diisi!");
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        alert("✅ Login berhasil!");
+        location.href = "game.html";
+      } catch(err){
+        alert("❌ Gagal login: " + err.message);
+      }
     }
 
-    // --- Register ---
-    byId('regBtn').onclick = async () => {
-      const email = byId('regEmail').value.trim().toLowerCase();
-      const usernameRaw = byId('regUser').value.trim();
-      const password = byId('regPass').value;
-      const username = usernameRaw.toLowerCase();
-
-      if(!email || !username || !password){ alert('Isi semua kolom'); return; }
-      if(!/^[a-z0-9_]{3,20}$/.test(username)){ alert('Username 3–20 huruf/angka/_'); return; }
-
-      try{
-        // Cek ketersediaan username via peta 'usernames'
-        const mapSnap = await db.ref('usernames/'+username).once('value');
-        if(mapSnap.exists()){ alert('Username sudah dipakai — pilih yang lain'); return; }
-
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
-        const uid = cred.user.uid;
-
-        // Tulis profil + peta username
-        await db.ref('users/'+uid).set(defaultProfile(email, username));
-        await db.ref('usernames/'+username).set(uid);
-
-        location.href = 'game.html';
-      }catch(err){
-        alert('Gagal daftar: ' + err.message);
-      }
-    };
-
-    // --- Login (email ATAU username) ---
-    byId('loginBtn').onclick = async () => {
-      const id = byId('loginId').value.trim().toLowerCase();
-      const pass = byId('loginPass').value;
-      if(!id || !pass){ alert('Isi email/username & password'); return; }
-
-      try{
-        let email = id;
-        if(!id.includes('@')){
-          // id adalah username → resolve ke email lewat 'usernames'
-          const uidSnap = await db.ref('usernames/'+id).once('value');
-          if(!uidSnap.exists()){ alert('Username tidak ditemukan'); return; }
-          const uid = uidSnap.val();
-          const profSnap = await db.ref('users/'+uid).once('value');
-          email = (profSnap.val() && profSnap.val().email) || '';
-          if(!email){ alert('Email tidak ditemukan untuk username tsb'); return; }
-        }
-        await auth.signInWithEmailAndPassword(email, pass);
-        location.href = 'game.html';
-      }catch(err){
-        alert('Gagal login: ' + err.message);
-      }
-    };
-
-    // Skip login jika sudah masuk
-    auth.onAuthStateChanged(u=>{ if(u) location.href='game.html'; });
+    // kalau sudah login, langsung masuk game
+    auth.onAuthStateChanged(user=>{
+      if(user) location.href = "game.html";
+    });
   </script>
 </body>
 </html>
