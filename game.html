@@ -28,7 +28,7 @@
 <body>
   <header>
     <div style="display:flex;justify-content:space-between;width:100%;max-width:720px">
-      <button class="btn ghost" onclick="nav('login.html')">⟵ Keluar</button>
+      <button class="btn ghost" onclick="nav('login.html')">⟵ Keluar</button> <!-- ✅ ubah ke login.html -->
       <div id="who">Memuat…</div>
     </div>
     <div class="menu">
@@ -38,6 +38,9 @@
       <button class="btn ghost" onclick="nav('chat.html')">💬 Chat</button>
       <button class="btn" onclick="logout()">Logout</button>
     </div>
+    <p id="ownerMenu" style="display:none;margin-top:8px">
+      <button class="btn" onclick="nav('owner.html')">👑 Owner Panel</button>
+    </p>
   </header>
 
   <canvas id="cv" width="128" height="128"></canvas>
@@ -76,6 +79,8 @@
     firebase.initializeApp(firebaseConfig);
     const auth=firebase.auth(), db=firebase.database();
 
+    const OWNER_UID = "vNuT6n1TD2XSjkywNbE5mROL8sa2";
+
     let me=null, uid=null, prof=null;
 
     const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
@@ -83,7 +88,7 @@
     let t=0;
 
     function nav(p){ location.href=p; }
-    function logout(){ auth.signOut().then(()=>location.href='login.html'); }
+    function logout(){ auth.signOut().then(()=>location.href='login.html'); } // ✅ ubah ke login.html
 
     function def(){ return {
       email: me.email, username: (prof&&prof.username)||'player',
@@ -198,14 +203,14 @@
       setTimeout(()=>el.remove(),1000);
     }
 
-    // fix tap+hold bug → hanya sekali per klik/touch
     const tapBtn=document.getElementById("tapBtn");
     tapBtn.addEventListener("click", tap);
-    tapBtn.addEventListener("touchend", e=>{ e.preventDefault(); tap(); }, {passive:false});
+    tapBtn.addEventListener("touchstart", e=>{ e.preventDefault(); tap(); }, {passive:false});
 
     auth.onAuthStateChanged(async u=>{
-      if(!u){ location.href='login.html'; return; }
+      if(!u){ location.href='login.html'; return; } // ✅ redirect ke login.html
       me=u; uid=u.uid;
+      if(u.uid===OWNER_UID){ document.getElementById("ownerMenu").style.display="block"; }
       const snap=await db.ref('users/'+uid).once('value');
       prof = snap.exists()? snap.val() : def();
       if(!snap.exists()) await save();
