@@ -10,32 +10,9 @@
     .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
     .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
     .from { font-weight:bold; color:#38bdf8; }
-    input, select { padding:6px; border-radius:6px; border:1px solid #334155; margin:4px 0; }
-    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:2px; }
+    input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
     .tab { margin:10px; }
-
-    /* ✅ Toast Notification */
-    #toastContainer {
-      position: fixed;
-      bottom: 15px;
-      right: 15px;
-      z-index: 1000;
-    }
-    .toast {
-      background: #1e293b;
-      color: #f8fafc;
-      padding: 10px 16px;
-      margin-top: 8px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      opacity: 0;
-      transform: translateY(20px);
-      transition: all 0.3s ease;
-    }
-    .toast.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
   </style>
 </head>
 <body>
@@ -60,18 +37,16 @@
   <div id="privateTab" style="display:none">
     <h3>👤 Private Chat</h3>
     <label>Cari User: 
-      <input type="text" id="userSearch" placeholder="Cari nama..." oninput="renderUserList(this.value)">
-    </label><br>
-    <label>Pilih User:
+      <input type="text" id="userSearch" placeholder="Ketik nama/email...">
+    </label>
+    <br><br>
+    <label>Pilih User: 
       <select id="userSelect"></select>
     </label>
     <div class="chat-box" id="privateMessages"></div>
     <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
     <button onclick="sendPrivate()">Kirim</button>
   </div>
-
-  <!-- 🔔 Toast Container -->
-  <div id="toastContainer"></div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -82,8 +57,7 @@
     firebase.initializeApp(cfg);
     const auth=firebase.auth(), db=firebase.database();
 
-    let currentUser, currentRoom=null;
-    let usersData={};
+    let currentUser, currentRoom=null, allUsers=[];
 
     function nav(p){ location.href=p; }
 
@@ -92,31 +66,12 @@
       document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
     }
 
-    function formatTime(ts){
-      const d=new Date(ts);
-      return d.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
-    }
-
-    // ✅ Toast function
-    function showToast(msg){
-      const container=document.getElementById("toastContainer");
-      const t=document.createElement("div");
-      t.className="toast";
-      t.textContent=msg;
-      container.appendChild(t);
-      setTimeout(()=>t.classList.add("show"),50);
-      setTimeout(()=>{
-        t.classList.remove("show");
-        setTimeout(()=>t.remove(),300);
-      },3000);
-    }
-
     // Global Chat
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
       if(!txt) return;
       db.ref("chat").push({
-        from: currentUser.username,
+        from: currentUser.username || currentUser.email || "Anon",
         uid: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -139,7 +94,6 @@
     function setupPrivateChat(toUid,toName){
       const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
       currentRoom = roomId;
-
       db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
       db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
 
@@ -149,7 +103,7 @@
         const d=snap.val();
         const div=document.createElement("div");
         div.className="msg";
-        const from=(d.from===currentUser.uid? "Saya": toName);
+        const from=(d.uid===currentUser.uid? "Saya": toName);
         div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
         document.getElementById("privateMessages").appendChild(div);
         div.scrollIntoView();
@@ -160,72 +114,59 @@
       const txt=document.getElementById('privateInput').value.trim();
       if(!txt || !currentRoom) return;
       db.ref("privateChat/"+currentRoom+"/messages").push({
-        from: currentUser.uid,
+        from: currentUser.username || currentUser.email || "Anon",
+        uid: currentUser.uid,
         text: txt,
         time: Date.now()
       });
       document.getElementById('privateInput').value='';
     }
 
-    // Dropdown Users
     function renderUserList(filter=""){
       const sel=document.getElementById("userSelect");
       sel.innerHTML="";
-      Object.keys(usersData).forEach(uid=>{
-        if(uid!==currentUser.uid){
-          const u=usersData[uid];
-          const name=u.username||u.email||"User";
-          if(name.toLowerCase().includes(filter.toLowerCase())){
-            const opt=document.createElement("option");
-            let status="⚪";
-            if(u.online) status="🟢";
-            else if(u.lastSeen) status=`⚪ (${formatTime(u.lastSeen)})`;
-            opt.value=uid;
-            opt.text=`${name} ${status}`;
-            sel.appendChild(opt);
-          }
+      allUsers.forEach(u=>{
+        const name=u.username || u.email || "User";
+        if(name.toLowerCase().includes(filter.toLowerCase())){
+          const opt=document.createElement("option");
+          opt.value=u.uid;
+          opt.text=name;
+          sel.appendChild(opt);
         }
       });
-      sel.onchange=()=>{
-        const uid=sel.value;
-        if(!uid) return;
-        const name=sel.options[sel.selectedIndex].text.split(" ")[0];
-        setupPrivateChat(uid,name);
-      };
       if(sel.options.length>0){
         sel.selectedIndex=0;
-        sel.onchange();
+        const uid=sel.value;
+        const name=sel.options[sel.selectedIndex].text;
+        setupPrivateChat(uid,name);
+      } else {
+        document.getElementById("privateMessages").innerHTML="<i>Tidak ada user ditemukan</i>";
       }
     }
 
-    // Auth & Presence
+    function loadUsers(){
+      db.ref("users").once("value",snap=>{
+        allUsers=[];
+        snap.forEach(ch=>{
+          const u=ch.val();
+          if(ch.key!==currentUser.uid){
+            allUsers.push({uid:ch.key,...u});
+          }
+        });
+        renderUserList();
+      });
+    }
+
+    document.getElementById("userSearch").addEventListener("input",e=>{
+      renderUserList(e.target.value);
+    });
+
     auth.onAuthStateChanged(u=>{
       if(!u){ nav("index.html"); return; }
       db.ref("users/"+u.uid).once("value",snap=>{
         currentUser={uid:u.uid,...snap.val()};
-
-        const userStatusRef = db.ref("usersData/"+u.uid);
-        db.ref(".info/connected").on("value", function(snap) {
-          if (snap.val() === true) {
-            userStatusRef.onDisconnect().update({online:false,lastSeen:firebase.database.ServerValue.TIMESTAMP});
-            userStatusRef.update({online:true,lastSeen:firebase.database.ServerValue.TIMESTAMP,username:currentUser.username,email:currentUser.email});
-          }
-        });
-
         loadGlobal();
-
-        db.ref("usersData").on("child_changed", snap=>{
-          const u=snap.val();
-          if(u && u.username && u.uid!==currentUser.uid){
-            if(u.online) showToast(`🟢 ${u.username} baru online`);
-            else showToast(`⚪ ${u.username} offline`);
-          }
-        });
-
-        db.ref("usersData").on("value", snap=>{
-          usersData = snap.val() || {};
-          renderUserList(document.getElementById("userSearch").value);
-        });
+        loadUsers();
       });
     });
   </script>
