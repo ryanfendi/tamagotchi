@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Tamagotchi - Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Firebase v8 (lebih stabil untuk hp / web sederhana) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -26,7 +25,7 @@
       width: 320px;
       text-align: center;
     }
-    input {
+    input, button {
       width: 90%;
       padding: 10px;
       margin: 10px 0;
@@ -34,13 +33,9 @@
       border: 1px solid #ccc;
     }
     button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
       background: #FF6F61;
       color: white;
       border: none;
-      border-radius: 8px;
       cursor: pointer;
       transition: background 0.2s ease;
     }
@@ -82,13 +77,12 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // Init Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
 
     // 📝 Register function
-    function register() {
+    async function register() {
       const username = document.getElementById('username').value.trim();
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
@@ -98,38 +92,35 @@
         return;
       }
 
-      // ✅ Cek username unik
-      db.ref("usernames/" + username).once("value")
-        .then((snapshot) => {
-          if (snapshot.exists()) {
-            alert("⚠️ Username sudah dipakai, pilih yang lain.");
-          } else {
-            // ✅ Buat akun
-            auth.createUserWithEmailAndPassword(email, password)
-              .then((userCredential) => {
-                const user = userCredential.user;
+      try {
+        // Cek username
+        const snapshot = await db.ref("usernames/" + username).once("value");
+        if (snapshot.exists()) {
+          alert("⚠️ Username sudah dipakai, pilih yang lain.");
+          return;
+        }
 
-                // Simpan data user
-                db.ref("users/" + user.uid).set({
-                  username: username,
-                  email: email,
-                  coins: 0,
-                  pet: { level: 1, hunger: 100, happiness: 100 }
-                });
+        // Buat akun
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
 
-                // Simpan mapping username → uid
-                db.ref("usernames/" + username).set({
-                  uid: user.uid
-                });
-
-                alert("🎉 Registrasi berhasil!");
-                window.location.href = "login.html";
-              })
-              .catch((error) => {
-                alert("🔥 ERROR: " + error.message);
-              });
-          }
+        // Simpan data user
+        await db.ref("users/" + user.uid).set({
+          username: username,
+          email: email,
+          coins: 0,
+          pet: { level: 1, hunger: 100, happiness: 100 }
         });
+
+        // Simpan mapping username
+        await db.ref("usernames/" + username).set({ uid: user.uid });
+
+        alert("🎉 Registrasi berhasil!");
+        window.location.href = "login.html";
+      } catch (error) {
+        alert("🔥 ERROR: " + error.message);
+        console.error(error);
+      }
     }
   </script>
 </body>
