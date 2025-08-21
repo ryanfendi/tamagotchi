@@ -1,156 +1,454 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat App</title>
-  <style>
-    body { font-family: Arial; margin: 0; display: flex; height: 100vh; }
-    #sidebar { width: 250px; background: #f5f5f5; padding: 10px; border-right: 1px solid #ddd; }
-    #main { flex: 1; display: flex; flex-direction: column; }
-    #messages, #privateMessages { flex: 1; overflow-y: auto; padding: 10px; }
-    li { list-style: none; margin: 5px 0; }
-    img.avatar { width: 35px; height: 35px; border-radius: 50%; vertical-align: middle; margin-right: 5px; }
-    .msg { display: flex; align-items: center; }
-    .msg span { background: #e1ffc7; padding: 5px 10px; border-radius: 10px; }
-    #inputBar { display: flex; padding: 10px; border-top: 1px solid #ddd; }
-    #inputBar input { flex: 1; padding: 8px; }
-    #inputBar button { padding: 8px; margin-left: 5px; }
-  </style>
+<meta charset="UTF-8" />
+<title>Tamagotchi — Chat</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1,user-scalable=no" />
+<style>
+  :root{--bg:#0b1220;--card:#0f172a;--ink:#e5eefc;--muted:#94a3b8;--accent:#22c55e;--accent-2:#10b981;--border:#1f2a44;--me:#1f6feb;--them:#1e293b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+  header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--border);padding:10px}
+  .row{display:flex;align-items:center;gap:8px}.space{flex:1}
+  .btn{background:var(--accent);color:#06261f;border:0;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+  .ghost{background:#1e293b;color:#cfe;border:1px solid var(--border)}
+  .tabs{display:flex;gap:8px;margin-top:8px}.tab-btn{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe;cursor:pointer}
+  .tab-btn.active{background:#12203b;border-color:#284069}
+  .wrap{display:flex;height:calc(100vh - 140px);gap:8px;padding:8px}
+  @media(max-width:800px){.wrap{flex-direction:column;height:auto}}
+  .left{width:320px;min-width:280px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .right{flex:1;min-height:420px;background:var(--card);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column}
+  .search{padding:8px;border-bottom:1px solid var(--border)} .search input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe}
+  .list{overflow:auto;max-height:60vh} .item{display:flex;gap:10px;padding:10px;border-bottom:1px solid var(--border);cursor:pointer} .item:hover{background:#0e1a31}
+  .ava{width:42px;height:42px;border-radius:999px;border:1px solid #1f2a44;object-fit:cover;background:#111}
+  .chat-header{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--border)}
+  .chat-body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:6px;background:radial-gradient(circle at 20% 0%,rgba(34,197,94,.07) 0 25%,transparent 26%) 0 0/160px 160px,radial-gradient(circle at 80% 100%,rgba(37,99,235,.07) 0 25%,transparent 26%) 0 0/200px 200px,#0b1220}
+  .b{max-width:78%;padding:8px 10px;border-radius:14px;border:1px solid var(--border);position:relative;word-wrap:break-word;white-space:pre-wrap}
+  .me{align-self:flex-end;background:var(--me);border-color:#2059b6;color:#fff;border-bottom-right-radius:6px}
+  .them{align-self:flex-start;background:var(--them);border-bottom-left-radius:6px}
+  .meta{font-size:11px;color:#dbeafe;opacity:.85;margin-top:4px;display:flex;align-items:center;gap:6px}
+  .ticks{font-size:12px;opacity:.95}
+  .composer{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)}
+  .composer input{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe}
+  .composer button, .icon-btn{padding:10px 12px;border-radius:10px;border:0;background:#1f2a44;color:#cfe;cursor:pointer}
+  .send-btn{background:var(--accent-2);color:#06261f;font-weight:700}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#0c1426;color:#cfe;cursor:pointer}
+  .small{font-size:12px;color:var(--muted)}
+  .grid-ava{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+  .grid-ava img{width:100%;border-radius:12px;cursor:pointer;border:2px solid transparent}
+  .grid-ava img.sel{border-color:var(--accent)}
+  /* Call modal */
+  #callModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:50;place-items:center}
+  .call-card{width:min(720px,95vw);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .video-wrap{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  video{width:100%;background:#000;border-radius:12px}
+</style>
 </head>
 <body>
-  <div id="sidebar">
-    <h3>Chat Menu</h3>
-    <button id="googleLogin">Login Google</button>
-    <div id="profileBox" style="display:none;">
-      <img id="profileAvatar" class="avatar" src="">
-      <p id="profileName"></p>
-      <input type="file" id="avatarUpload">
-      <button id="saveAvatar">Simpan Avatar</button>
-    </div>
-    <hr>
-    <button onclick="showGlobal()">🌍 Global Chat</button>
-    <button onclick="showPrivate()">🔒 Private Chat</button>
+<header>
+  <div class="row">
+    <button class="btn ghost" onclick="nav('game.html')">⟵ Kembali</button>
+    <div class="space"></div>
+    <button class="pill" id="btnGlobal">🌍 Global</button>
+    <button class="pill" id="btnPrivate">👤 Private</button>
+    <button class="pill" id="btnProfile">🖼️ Avatar</button>
+    <button class="btn" id="btnLogout">Logout</button>
   </div>
+  <div class="tabs">
+    <button id="tabGlobal" class="tab-btn active">🌍 Global</button>
+    <button id="tabPrivate" class="tab-btn">👤 Private</button>
+  </div>
+</header>
 
-  <div id="main">
-    <!-- Global Chat -->
-    <div id="globalBox">
-      <ul id="messages"></ul>
-      <div id="inputBar">
-        <input id="messageInput" placeholder="Ketik pesan global...">
-        <button id="sendBtn">Kirim</button>
-      </div>
+<div class="wrap">
+  <section class="left">
+    <div class="search"><input id="searchUser" placeholder="Cari member…"></div>
+    <div id="userList" class="list"></div>
+  </section>
+
+  <section class="right">
+    <div class="chat-header">
+      <img id="chatAva" class="ava" src="" alt="">
+      <div><div id="chatTitle" style="font-weight:700">Pilih chat</div><div id="chatSub" class="small">—</div></div>
+      <div class="space"></div>
+      <span class="small" id="whoMe">Memuat…</span>
     </div>
+    <div id="chatBody" class="chat-body"></div>
+    <div class="composer">
+      <button class="icon-btn" id="btnAttach" title="Kirim gambar">📎</button>
+      <button class="icon-btn" id="btnRec" title="Voice note">🎤</button>
+      <button class="icon-btn" id="btnCall" title="Voice call">☎️</button>
+      <button class="icon-btn" id="btnVCall" title="Video call">🎥</button>
+      <input id="msgInput" placeholder="Tulis pesan…">
+      <button class="send-btn" id="btnSend">Kirim</button>
+      <input type="file" id="fileImage" accept="image/*" style="display:none">
+    </div>
+  </section>
+</div>
 
-    <!-- Private Chat -->
-    <div id="privateBox" style="display:none;">
-      <ul id="privateMessages"></ul>
-      <div id="inputBar">
-        <input id="privateInput" placeholder="Ketik pesan privat...">
-        <button id="privateSendBtn">Kirim</button>
-      </div>
+<!-- Modal profil/Avatar sederhana -->
+<div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);place-items:center;">
+  <div style="width:min(520px,95vw);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px">
+    <h3 style="margin:6px 0 8px">Profil</h3>
+    <div class="row" style="gap:10px;margin-bottom:8px">
+      <img id="meAva" class="ava" src="" alt="">
+      <input id="meName" placeholder="Username" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#0c1426;color:#cfe">
+      <input type="file" id="meFile" accept="image/*" style="display:none">
+      <button class="pill" id="btnUpload">Upload Foto</button>
+    </div>
+    <div class="small">Atau pilih avatar:</div>
+    <div id="avaChoices" class="grid-ava"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px">
+      <button class="pill" id="btnCloseProfile">Tutup</button>
+      <button class="btn" id="btnSaveProfile">Simpan</button>
     </div>
   </div>
+</div>
 
-  <script type="module">
-    // Firebase SDK
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+<!-- Call modal -->
+<div id="callModal">
+  <div class="call-card">
+    <div class="row" style="margin-bottom:8px">
+      <strong id="callTitle">Panggilan</strong>
+      <div class="space"></div>
+      <button class="pill" id="btnHangup">Akhiri</button>
+    </div>
+    <div class="video-wrap" id="videoWrap">
+      <video id="localVideo" autoplay playsinline muted></video>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    <div class="small" id="callHint" style="margin-top:6px">Menghubungkan…</div>
+  </div>
+</div>
 
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
+<!-- Suara notif (pendek mirip WA) -->
+<audio id="snd" preload="auto"
+  src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQAAAP//AACiTEFNRTMuMTAwA8MAAAAAAAAAAAAAAABNAAAAGAAAAGZzAAA...">
+</audio>
 
-    // Init
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-    const storage = getStorage(app);
+<!-- Firebase v9 -->
+<script type="module">
+  // Firebase
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getDatabase, ref, child, get, set, push, onChildAdded, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    let me = null;
-    let roomId = "demoRoom"; // sementara 1 room private
+  const firebaseConfig = {
+    apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+    authDomain:"tamagotchi-2be0c.firebaseapp.com",
+    databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+    projectId:"tamagotchi-2be0c",
+    storageBucket:"tamagotchi-2be0c.firebasestorage.app",
+    messagingSenderId:"202052432703",
+    appId:"1:202052432703:web:cb76b50e42149a2c92998a",
+    measurementId:"G-TWGGSJRX26"
+  };
 
-    // Login
-    document.getElementById("googleLogin").onclick = async () => {
-      await signInWithPopup(auth, provider);
-    };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+  const storage = getStorage(app);
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        me = { uid: user.uid, name: user.displayName, avatar: user.photoURL || "" };
-        document.getElementById("profileBox").style.display = "block";
-        document.getElementById("profileName").innerText = me.name;
-        document.getElementById("profileAvatar").src = me.avatar || "https://via.placeholder.com/35";
+  // Helpers & UI refs
+  const $ = q => document.querySelector(q);
+  const el = (t,p={})=>Object.assign(document.createElement(t),p);
+  const nav = p => location.href=p;
+
+  const userList=$('#userList'), searchUser=$('#searchUser'), chatBody=$('#chatBody');
+  const chatTitle=$('#chatTitle'), chatSub=$('#chatSub'), chatAva=$('#chatAva');
+  const msgInput=$('#msgInput'), btnSend=$('#btnSend'), btnLogout=$('#btnLogout');
+  const tabGlobal=$('#tabGlobal'), tabPrivate=$('#tabPrivate'), btnGlobal=$('#btnGlobal'), btnPrivate=$('#btnPrivate');
+  const whoMe=$('#whoMe'), snd=$('#snd');
+  const btnAttach=$('#btnAttach'), fileImage=$('#fileImage');
+  const btnRec=$('#btnRec'), btnCall=$('#btnCall'), btnVCall=$('#btnVCall');
+
+  // Profile modal refs
+  const modal=$('#profileModal'), btnProfile=$('#btnProfile'), btnCloseProfile=$('#btnCloseProfile'),
+        btnSaveProfile=$('#btnSaveProfile'), btnUpload=$('#btnUpload'), meFile=$('#meFile'),
+        meAva=$('#meAva'), meName=$('#meName'), avaChoices=$('#avaChoices');
+
+  // Call modal refs
+  const callModal=$('#callModal'), callTitle=$('#callTitle'), callHint=$('#callHint'),
+        localVideo=$('#localVideo'), remoteVideo=$('#remoteVideo'), btnHangup=$('#btnHangup');
+
+  // Preset avatar
+  const PRESETS=[
+    "https://i.imgur.com/3k9d8h3.png","https://i.imgur.com/0m7pQnq.png","https://i.imgur.com/3n0Q8c7.png","https://i.imgur.com/3xZ0kXv.png",
+    "https://i.imgur.com/7m2m4mB.png","https://i.imgur.com/bkqvQvU.png","https://i.imgur.com/5q2YzXm.png","https://i.imgur.com/6x2vQ1y.png"
+  ];
+  function renderPresetGrid(sel){ avaChoices.innerHTML=''; PRESETS.forEach(u=>{ const im=el('img',{src:u}); if(sel===u) im.classList.add('sel'); im.onclick=()=>{ [...avaChoices.children].forEach(c=>c.classList.remove('sel')); im.classList.add('sel'); meAva.src=u; }; avaChoices.appendChild(im); }); }
+
+  // State
+  let me=null, mode='global', currentPeer=null, currentRoom=null, messagesUnsub=null;
+
+  // Tabs
+  function setMode(m){
+    mode=m;
+    tabGlobal.classList.toggle('active',m==='global'); tabPrivate.classList.toggle('active',m==='private');
+    btnGlobal.classList.toggle('active',m==='global'); btnPrivate.classList.toggle('active',m==='private');
+    chatBody.innerHTML=''; msgInput.value='';
+    if(m==='global'){ currentRoom=null; currentPeer=null; chatTitle.textContent='Global Chat'; chatSub.textContent='Semua pemain'; chatAva.src='https://i.imgur.com/sg1m2mM.png'; startGlobalStream(); }
+    else { stopStream(); chatTitle.textContent='Pilih kontak'; chatSub.textContent='Private chat'; chatAva.src=''; }
+  }
+  tabGlobal.onclick=()=>setMode('global'); tabPrivate.onclick=()=>setMode('private');
+  btnGlobal.onclick=()=>setMode('global'); btnPrivate.onclick=()=>setMode('private');
+
+  function stopStream(){ if(messagesUnsub){ messagesUnsub(); messagesUnsub=null; } }
+  function scrollBottom(){ chatBody.scrollTop=chatBody.scrollHeight; }
+  function fmtTime(ts){ const d=new Date(ts); return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+
+  function renderMsg(m){
+    const mine = m.uid===me.uid;
+    const box=el('div',{className:'b '+(mine?'me':'them')});
+    if(m.type==='image'){
+      const im=el('img',{src:m.url,style:'max-width:220px;border-radius:10px;display:block'});
+      box.appendChild(im);
+    }else if(m.type==='audio'){
+      const au=el('audio',{controls:true,src:m.url,style:'width:220px;display:block'});
+      box.appendChild(au);
+    }else{
+      box.textContent=m.text||'';
+    }
+    const meta=el('div',{className:'meta'});
+    meta.innerHTML = `<img src="${m.avatar||''}" class="ava" style="width:18px;height:18px;border-radius:50%"> 
+                      <span>${m.from}</span> · <span>${fmtTime(m.timestamp||Date.now())}</span>
+                      ${mine ? `<span class="ticks">${m.seenBy && Object.keys(m.seenBy).length>1 ? '✓✓' : '✓'}</span>` : ''}`;
+    box.appendChild(meta);
+    chatBody.appendChild(box); scrollBottom();
+  }
+
+  // Streams
+  function startGlobalStream(){
+    stopStream();
+    messagesUnsub = onChildAdded(ref(db,'chat'), snap=>{
+      const m=snap.val(); renderMsg(m); if(m.uid!==me.uid) try{ snd.currentTime=0; snd.play(); }catch{}
+    });
+  }
+  function startPrivateStream(roomId, peer){
+    stopStream();
+    currentRoom=roomId; currentPeer=peer; chatBody.innerHTML='';
+    chatTitle.textContent=peer.username||peer.email||'Teman'; chatSub.textContent='Private chat'; chatAva.src=peer.avatar||'';
+    set(ref(db,`privateChat/${roomId}/members/${me.uid}`),true);
+    set(ref(db,`privateChat/${roomId}/members/${peer.uid}`),true);
+    messagesUnsub = onChildAdded(ref(db,`privateChat/${roomId}/messages`), snap=>{
+      const m=snap.val(); renderMsg(m);
+      if(m.uid!==me.uid){
+        update(child(ref(db,`privateChat/${roomId}/messages`),snap.key),{[`seenBy/${me.uid}`]:true});
+        try{ snd.currentTime=0; snd.play(); }catch{}
       }
     });
+  }
 
-    // Upload avatar
-    document.getElementById("saveAvatar").onclick = async () => {
-      const file = document.getElementById("avatarUpload").files[0];
-      if (!file || !me) return;
-      const storageRef = sRef(storage, "avatars/" + me.uid);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      me.avatar = url;
-      document.getElementById("profileAvatar").src = url;
-    };
+  // Send text / image / audio
+  async function sendPayload(path, payload){ await push(ref(db,path), payload); }
+  function payloadBase(){ return { uid:me.uid, from:me.username||me.email||'Player', avatar:me.avatar||'', timestamp:Date.now() }; }
 
-    // Global Chat
-    const messages = document.getElementById("messages");
-    document.getElementById("sendBtn").onclick = async () => {
-      const text = document.getElementById("messageInput").value.trim();
-      if (!text || !me) return;
-      await push(ref(db, "chat"), {
-        from: me.name, uid: me.uid, avatar: me.avatar, text, timestamp: Date.now()
+  async function sendText(){
+    const txt = msgInput.value.trim(); if(!txt) return;
+    const p = { ...payloadBase(), type:'text', text:txt };
+    if(mode==='global') await sendPayload('chat', p);
+    else if(currentRoom) await sendPayload(`privateChat/${currentRoom}/messages`, p);
+    msgInput.value='';
+  }
+  btnSend.onclick=sendText; msgInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();sendText();} });
+
+  btnAttach.onclick=()=> fileImage.click();
+  fileImage.onchange = async (e)=>{
+    const f=e.target.files?.[0]; if(!f) return;
+    if(!currentRoom && mode!=='global'){ alert('Pilih kontak dulu.'); return; }
+    const path = `chat/${mode==='global'?'global':currentRoom}/${Date.now()}_${f.name}`;
+    const r=sRef(storage,path); await uploadBytes(r,f); const url=await getDownloadURL(r);
+    const p={...payloadBase(), type:'image', url};
+    if(mode==='global') await sendPayload('chat',p); else await sendPayload(`privateChat/${currentRoom}/messages`,p);
+    fileImage.value='';
+  };
+
+  // Voice Note (MediaRecorder)
+  let rec, chunks=[]; let recording=false;
+  btnRec.onclick = async ()=>{
+    if(!recording){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        rec = new MediaRecorder(stream); chunks=[];
+        rec.ondataavailable = e=>{ if(e.data.size>0) chunks.push(e.data); };
+        rec.onstop = async ()=>{
+          const blob=new Blob(chunks,{type:'audio/webm'}); chunks=[];
+          const fname=`vn_${Date.now()}.webm`;
+          const path=`chat/${mode==='global'?'global':currentRoom}/${fname}`;
+          const r=sRef(storage,path); await uploadBytes(r,new Uint8Array(await blob.arrayBuffer()));
+          const url=await getDownloadURL(r);
+          const p={...payloadBase(), type:'audio', url};
+          if(mode==='global') await sendPayload('chat',p); else await sendPayload(`privateChat/${currentRoom}/messages`,p);
+        };
+        rec.start(); recording=true; btnRec.textContent='⏹️';
+      }catch(e){ alert('Tidak bisa akses mikrofon: '+e.message); }
+    }else{
+      rec.stop(); recording=false; btnRec.textContent='🎤';
+    }
+  };
+
+  // User list
+  function roomIdFor(a,b){ return a<b?`room_${a}_${b}`:`room_${b}_${a}`; }
+  function loadUsers(){
+    onValue(ref(db,'users'), snap=>{
+      const term=(searchUser.value||'').toLowerCase(); userList.innerHTML='';
+      snap.forEach(ch=>{
+        if(!ch.exists()) return; const u=ch.val(); const id=ch.key;
+        if(id===me.uid) return;
+        const nm=(u.username||u.email||'').toLowerCase(); if(term && !nm.includes(term)) return;
+        const it=el('div',{className:'item'});
+        it.innerHTML=`<img class="ava" src="${u.avatar||''}"><div><div style="font-weight:700">${u.username||u.email}</div><div class="small">${u.email||''}</div></div>`;
+        it.onclick=()=>{ setMode('private'); startPrivateStream(roomIdFor(me.uid,id), {uid:id,username:u.username||u.email,avatar:u.avatar||''}); };
+        userList.appendChild(it);
       });
-      document.getElementById("messageInput").value = "";
-    };
-    onChildAdded(ref(db, "chat"), (snap) => {
-      const msg = snap.val();
-      const li = document.createElement("li");
-      li.innerHTML = `<div class="msg"><img src="${msg.avatar || 'https://via.placeholder.com/35'}" class="avatar"><span><b>${msg.from}:</b> ${msg.text}</span></div>`;
-      messages.appendChild(li);
-      messages.scrollTop = messages.scrollHeight;
     });
+  }
+  searchUser.addEventListener('input',loadUsers);
 
-    // Private Chat
-    const privateMessages = document.getElementById("privateMessages");
-    document.getElementById("privateSendBtn").onclick = async () => {
-      const text = document.getElementById("privateInput").value.trim();
-      if (!text || !me) return;
-      await push(ref(db, "privateChat/" + roomId + "/messages"), {
-        from: me.name, uid: me.uid, avatar: me.avatar, text, timestamp: Date.now()
-      });
-      document.getElementById("privateInput").value = "";
+  // Profile
+  btnProfile.onclick=()=>{ modal.style.display='grid'; meAva.src=me?.avatar||''; meName.value=me?.username||''; renderPresetGrid(me?.avatar); };
+  $('#btnCloseProfile').onclick=()=> modal.style.display='none';
+  $('#btnUpload').onclick=()=> meFile.click();
+  meFile.onchange=async e=>{ const f=e.target.files?.[0]; if(!f) return; const r=sRef(storage,`avatars/${me.uid}.jpg`); await uploadBytes(r,f); meAva.src=await getDownloadURL(r); };
+  btnSaveProfile.onclick=async ()=>{ const username=meName.value.trim()||me.email; await update(ref(db,`users/${me.uid}`),{username,avatar:meAva.src}); me.username=username; me.avatar=meAva.src; whoMe.textContent=`${me.username} (${me.email})`; modal.style.display='none'; };
+
+  // Logout
+  btnLogout.onclick=()=>signOut(auth).then(()=>nav('login.html'));
+
+  // ====== WebRTC (voice & video call) ======
+  let pc=null, localStream=null, remoteStream=null, callUnsubs=[];
+  const rtcCfg={ iceServers:[{urls:'stun:stun.l.google.com:19302'}] };
+
+  function clearCallListeners(){ callUnsubs.forEach(u=>u&&u()); callUnsubs=[]; }
+  async function endCall(){
+    clearCallListeners();
+    if(pc){ pc.onicecandidate=null; pc.ontrack=null; pc.close(); pc=null; }
+    if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+    if(remoteStream){ remoteStream.getTracks().forEach(t=>t.stop()); remoteStream=null; }
+    localVideo.srcObject=null; remoteVideo.srcObject=null;
+    callModal.style.display='none';
+    if(currentRoom) { // bersihkan signaling lama
+      await remove(ref(db,`calls/${currentRoom}`)).catch(()=>{});
+    }
+  }
+  btnHangup.onclick=endCall;
+
+  async function startCall(kind){ // 'voice' | 'video'
+    if(!currentRoom || !currentPeer){ alert('Pilih kontak dulu di tab Private.'); return; }
+    callTitle.textContent = (kind==='video'?'Video':'Voice')+' call dengan '+(currentPeer.username||'Teman');
+    callModal.style.display='grid'; $('#videoWrap').style.display = kind==='video' ? 'grid' : 'none';
+    callHint.textContent='Meminta izin perangkat…';
+    try{
+      localStream = await navigator.mediaDevices.getUserMedia({audio:true, video: (kind==='video')});
+    }catch(e){ alert('Gagal akses mic/kamera: '+e.message); endCall(); return; }
+
+    pc = new RTCPeerConnection(rtcCfg);
+    localStream.getTracks().forEach(t=>pc.addTrack(t, localStream));
+    remoteStream = new MediaStream();
+    pc.ontrack = e=>{ e.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t)); remoteVideo.srcObject=remoteStream; };
+    localVideo.srcObject=localStream;
+
+    // Signaling paths
+    const callRef = ref(db, `calls/${currentRoom}`);
+    // ICE
+    pc.onicecandidate = e=>{
+      if(e.candidate){
+        const cRef = child(callRef,'callerCandidates');
+        push(cRef, e.candidate.toJSON());
+      }
     };
-    onChildAdded(ref(db, "privateChat/" + roomId + "/messages"), (snap) => {
-      const msg = snap.val();
-      const li = document.createElement("li");
-      li.innerHTML = `<div class="msg"><img src="${msg.avatar || 'https://via.placeholder.com/35'}" class="avatar"><span><b>${msg.from}:</b> ${msg.text}</span></div>`;
-      privateMessages.appendChild(li);
-      privateMessages.scrollTop = privateMessages.scrollHeight;
+
+    // Create offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await set(child(callRef,'offer'), { sdp:offer.sdp, type:offer.type, from:me.uid, kind, ts:Date.now() });
+    callHint.textContent='Memanggil… menunggu jawaban';
+
+    // Listen answer
+    const unsubAns = onValue(child(callRef,'answer'), async snap=>{
+      const ans=snap.val(); if(!ans) return;
+      await pc.setRemoteDescription(new RTCSessionDescription(ans));
+      callHint.textContent='Terhubung ✅';
+    }); callUnsubs.push(unsubAns);
+
+    // Listen callee ICE
+    const unsubCalleeIce = onChildAdded(child(callRef,'calleeCandidates'), async s=>{
+      try{ await pc.addIceCandidate(s.val()); }catch{}
+    }); callUnsubs.push(unsubCalleeIce);
+
+    // Kirim pesan status ke chat
+    await push(ref(db,`privateChat/${currentRoom}/messages`), { ...payloadBase(), type:'call', kind, text:`Memulai ${kind} call…` });
+  }
+
+  // Accept incoming call
+  async function listenIncoming(){
+    if(!currentRoom) return;
+    const callRef = ref(db,`calls/${currentRoom}`);
+    // Offer watcher
+    const unsubOffer = onValue(child(callRef,'offer'), async snap=>{
+      const off=snap.val(); if(!off || off.from===me.uid) return;
+      // popup modal
+      const peerName = currentPeer?.username || 'Teman';
+      callTitle.textContent=(off.kind==='video'?'Video':'Voice')+' call dari '+peerName;
+      callModal.style.display='grid'; $('#videoWrap').style.display = off.kind==='video' ? 'grid' : 'none';
+      callHint.textContent='Menjawab…';
+
+      try{
+        localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:(off.kind==='video')});
+      }catch(e){ alert('Tidak bisa akses mic/kamera: '+e.message); endCall(); return; }
+
+      pc = new RTCPeerConnection(rtcCfg);
+      localStream.getTracks().forEach(t=>pc.addTrack(t, localStream));
+      remoteStream = new MediaStream();
+      pc.ontrack = e=>{ e.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t)); remoteVideo.srcObject=remoteStream; };
+      localVideo.srcObject=localStream;
+
+      pc.onicecandidate = e=>{
+        if(e.candidate){
+          push(child(callRef,'calleeCandidates'), e.candidate.toJSON());
+        }
+      };
+
+      await pc.setRemoteDescription(new RTCSessionDescription(off));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await set(child(callRef,'answer'), { sdp:answer.sdp, type:answer.type, from:me.uid, ts:Date.now() });
+      callHint.textContent='Terhubung ✅';
+
+      // Listen caller ICE
+      const unsubCallerIce = onChildAdded(child(callRef,'callerCandidates'), async s=>{
+        try{ await pc.addIceCandidate(s.val()); }catch{}
+      }); callUnsubs.push(unsubCallerIce);
     });
+    callUnsubs.push(unsubOffer);
+  }
 
-    // Switch
-    window.showGlobal = () => {
-      document.getElementById("globalBox").style.display = "block";
-      document.getElementById("privateBox").style.display = "none";
-    };
-    window.showPrivate = () => {
-      document.getElementById("globalBox").style.display = "none";
-      document.getElementById("privateBox").style.display = "block";
-    };
-  </script>
+  btnCall.onclick = ()=> startCall('voice');
+  btnVCall.onclick = ()=> startCall('video');
+
+  // ===== Auth & bootstrap =====
+  onAuthStateChanged(auth, async (u)=>{
+    if(!u){ nav('login.html'); return; }
+    const us=await get(ref(db,`users/${u.uid}`)); let profile=us.exists()?us.val():null;
+    if(!profile){ profile={email:u.email, username:(u.email||'').split('@')[0], avatar:PRESETS[Math.floor(Math.random()*PRESETS.length)]}; await set(ref(db,`users/${u.uid}`),profile); }
+    me={uid:u.uid,email:u.email,username:profile.username,avatar:profile.avatar};
+    $('#whoMe').textContent=`${me.username} (${me.email})`;
+    $('#meAva').src=me.avatar||''; chatAva.src='https://i.imgur.com/sg1m2mM.png'; chatTitle.textContent='Global Chat'; chatSub.textContent='Semua pemain';
+    setMode('global'); loadUsers();
+  });
+
+  // Profile UI
+  btnLogout.onclick=()=>signOut(auth).then(()=>nav('login.html'));
+  btnProfile.onclick=()=>{ $('#profileModal').style.display='grid'; $('#meAva').src=me?.avatar||''; $('#meName').value=me?.username||''; renderPresetGrid(me?.avatar); };
+  $('#btnCloseProfile').onclick=()=> $('#profileModal').style.display='none';
+  $('#btnUpload').onclick=()=> $('#meFile').click();
+  $('#meFile').onchange=async e=>{ const f=e.target.files?.[0]; if(!f) return; const r=sRef(storage,`avatars/${me.uid}.jpg`); await uploadBytes(r,f); $('#meAva').src=await getDownloadURL(r); };
+  $('#btnSaveProfile').onclick=async ()=>{ const username=$('#meName').value.trim()||me.email; await update(ref(db,`users/${me.uid}`),{username,avatar:$('#meAva').src}); me.username=username; me.avatar=$('#meAva').src; $('#whoMe').textContent=`${me.username} (${me.email})`; $('#profileModal').style.display='none'; };
+
+  // Private incoming listener rebind saat pilih peer
+  const origStartPrivate = startPrivateStream;
+  startPrivateStream = function(roomId, peer){ origStartPrivate(roomId, peer); listenIncoming(); };
+</script>
 </body>
 </html>
