@@ -2,97 +2,138 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Tamagotchi - Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daftar Akun Tamagotchi</title>
-  <script type="module">
-    // Import Firebase SDK
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 320px;
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #FF6F61;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #e85b50;
+    }
+    .link {
+      margin-top: 10px;
+      display: block;
+      color: #007BFF;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Register</h2>
+    <input type="text" id="username" placeholder="Username unik" required><br>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="register()">Daftar</button>
+    <a class="link" href="login.html">Sudah punya akun? Login</a>
+  </div>
 
-    // Konfigurasi Firebase (ganti dengan punyamu)
+  <script>
+    // 🔥 Firebase Config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
       databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
       projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.appspot.com",
-      messagingSenderId: "SENDER_ID",
-      appId: "APP_ID"
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
 
-    async function registerUser(e) {
-      e.preventDefault();
-
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const username = document.getElementById("username").value.trim();
+    // 📝 Register function
+    async function register() {
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
       if (!username || !email || !password) {
-        alert("Semua field wajib diisi!");
+        alert("Harap isi semua field!");
         return;
       }
 
-      try {
-        // 🔍 Cek apakah username sudah ada
-        const dbRef = ref(db);
-        const snapshot = await get(child(dbRef, "usernames/" + username));
-
-        if (snapshot.exists()) {
-          alert("❌ Username sudah dipakai, pilih yang lain.");
-          return;
-        }
-
-        // ✅ Buat akun
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const uid = userCredential.user.uid;
-
-        // Simpan data user
-        await set(ref(db, "users/" + uid), {
-          uid: uid,
-          email: email,
-          username: username,
-          coins: 0,
-          pet: {
-            level: 1,
-            hunger: 100,
-            happiness: 100
-          }
-        });
-
-        // Simpan mapping username → uid
-        await set(ref(db, "usernames/" + username), { uid: uid });
-
-        alert("✅ Pendaftaran berhasil! Silakan login.");
-        window.location.href = "index.html"; // balik ke login
-      } catch (error) {
-        console.error("Error register:", error.message);
-        alert("❌ Gagal daftar: " + error.message);
+      // ✅ Cek apakah username sudah dipakai
+      const usernameRef = db.ref("usernames/" + username);
+      const snapshot = await usernameRef.get();
+      if (snapshot.exists()) {
+        alert("Username sudah dipakai, silakan pilih yang lain.");
+        return;
       }
+
+      // ✅ Buat akun baru
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(async (userCredential) => {
+          const user = userCredential.user;
+
+          // Simpan data user ke database
+          await db.ref("users/" + user.uid).set({
+            username: username,
+            email: email,
+            coins: 0,
+            pet: {
+              level: 1,
+              hunger: 100,
+              happiness: 100
+            }
+          });
+
+          // Simpan mapping username → uid
+          await db.ref("usernames/" + username).set({
+            uid: user.uid
+          });
+
+          alert("Registrasi berhasil! Silakan login.");
+          window.location.href = "login.html";
+        })
+        .catch((error) => {
+          alert("Error: " + error.message);
+        });
     }
-
-    window.registerUser = registerUser;
   </script>
-</head>
-<body>
-  <h2>Daftar Akun Baru</h2>
-  <form onsubmit="registerUser(event)">
-    <label>Username:</label><br>
-    <input type="text" id="username" placeholder="Username unik"><br><br>
-
-    <label>Email:</label><br>
-    <input type="email" id="email" placeholder="Email"><br><br>
-
-    <label>Password:</label><br>
-    <input type="password" id="password" placeholder="Password"><br><br>
-
-    <button type="submit">Daftar</button>
-  </form>
-
-  <p>Sudah punya akun? <a href="index.html">Login di sini</a></p>
 </body>
 </html>
