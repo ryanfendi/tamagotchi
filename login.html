@@ -1,78 +1,197 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login Tamagotchi</title>
-<style>
-  body {background:#0b1220;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
-  .box {background:#101a2b;padding:20px;border-radius:12px;width:320px;text-align:center}
-  input {width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#fff}
-  button {width:100%;padding:10px;margin:6px 0;background:#10b981;border:0;color:#06261f;font-weight:700;border-radius:10px;cursor:pointer}
-  button:hover{transform:scale(1.05)}
-  .toggle {color:#60a5fa;cursor:pointer;font-size:14px;margin-top:8px;display:inline-block}
-</style>
+  <meta charset="UTF-8">
+  <title>Login - Tamagotchi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #2575fc;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #6a11cb;
+    }
+    #usernameStatus {
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+    .link {
+      margin-top: 15px;
+      font-size: 14px;
+    }
+    .link a {
+      color: #2575fc;
+      text-decoration: none;
+    }
+  </style>
 </head>
 <body>
-  <div class="box">
-    <h2 id="title">Login</h2>
-    <input id="email" type="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <input id="username" type="text" placeholder="Username (saat daftar)" style="display:none">
-    <button id="actionBtn">Login</button>
-    <span class="toggle" onclick="toggleMode()">Belum punya akun? Daftar</span>
-    <p id="msg"></p>
+
+<div class="container">
+  <h2>Login Tamagotchi</h2>
+
+  <!-- Email -->
+  <input type="email" id="emailField" placeholder="Email" required>
+
+  <!-- Password -->
+  <input type="password" id="passwordField" placeholder="Password" required>
+
+  <!-- Username (untuk daftar) -->
+  <input type="text" id="usernameField" placeholder="Username (untuk daftar)">
+  <div id="usernameStatus"></div>
+
+  <!-- Tombol -->
+  <button id="loginBtn">Login</button>
+  <button id="registerBtn">Daftar</button>
+
+  <div class="link">
+    <a href="#">Lupa password?</a>
   </div>
+</div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth=firebase.auth(), db=firebase.database();
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    let isLogin=true;
-    function toggleMode(){
-      isLogin=!isLogin;
-      document.getElementById("title").textContent=isLogin?"Login":"Daftar";
-      document.getElementById("actionBtn").textContent=isLogin?"Login":"Daftar";
-      document.getElementById("username").style.display=isLogin?"none":"block";
-      document.querySelector(".toggle").textContent=isLogin?"Belum punya akun? Daftar":"Sudah punya akun? Login";
+<script>
+  // 🔥 Config Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+    authDomain: "tamagotchi-2be0c.firebaseapp.com",
+    databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+    projectId: "tamagotchi-2be0c",
+    storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+    messagingSenderId: "202052432703",
+    appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+    measurementId: "G-TWGGSJRX26"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  const auth = firebase.auth();
+  const db = firebase.database();
+
+  let usernameValid = false;
+
+  // ✅ Cek username unik realtime
+  document.getElementById("usernameField").addEventListener("input", function(){
+    const username = this.value.trim().toLowerCase();
+    if(username.length < 3){
+      document.getElementById("usernameStatus").innerHTML = "<span style='color:red'>Minimal 3 huruf</span>";
+      usernameValid = false;
+      return;
+    }
+    db.ref("usernames/"+username).once("value").then((snap)=>{
+      if(snap.exists()){
+        document.getElementById("usernameStatus").innerHTML = "<span style='color:red'>❌ Username sudah dipakai</span>";
+        usernameValid = false;
+      }else{
+        document.getElementById("usernameStatus").innerHTML = "<span style='color:green'>✅ Username tersedia</span>";
+        usernameValid = true;
+      }
+    });
+  });
+
+  // 🔑 Login
+  document.getElementById("loginBtn").addEventListener("click", function(){
+    const email = document.getElementById("emailField").value;
+    const password = document.getElementById("passwordField").value;
+
+    auth.signInWithEmailAndPassword(email, password)
+      .then(()=>{
+        window.location.href = "game.html";
+      })
+      .catch(err=>{
+        alert(err.message);
+      });
+  });
+
+  // 📝 Register
+  document.getElementById("registerBtn").addEventListener("click", function(){
+    const email = document.getElementById("emailField").value;
+    const password = document.getElementById("passwordField").value;
+    const username = document.getElementById("usernameField").value.trim().toLowerCase();
+
+    if(!usernameValid){
+      alert("Username belum valid atau sudah dipakai!");
+      return;
     }
 
-    document.getElementById("actionBtn").onclick=async ()=>{
-      const email=document.getElementById("email").value;
-      const pass=document.getElementById("password").value;
-      const uname=document.getElementById("username").value;
-      const msg=document.getElementById("msg");
-      msg.textContent="⏳...";
-      try{
-        if(isLogin){
-          await auth.signInWithEmailAndPassword(email,pass);
-        }else{
-          const cred=await auth.createUserWithEmailAndPassword(email,pass);
-          await db.ref("users/"+cred.user.uid).set({
-            email:email, username:uname||"player", coins:50, level:1, hunger:100, energy:100, hp:100,
-            currentPet:0, inventory:[{name:"Chick",level:1,kind:"egg"}], updatedAt:Date.now()
-          });
-        }
-        location.href="game.html";
-      }catch(e){ msg.textContent="⚠️ "+e.message; }
-    };
+    auth.createUserWithEmailAndPassword(email, password)
+      .then((userCredential)=>{
+        const user = userCredential.user;
 
-    // kalau user sudah login, langsung masuk game
-    auth.onAuthStateChanged(u=>{ if(u) location.href="game.html"; });
-  </script>
+        // Simpan username unik
+        db.ref("usernames/"+username).set(user.uid);
+
+        // Simpan data user
+        db.ref("users/"+user.uid).set({
+          email: email,
+          username: username,
+          coins: 100,
+          pet: {
+            level: 1,
+            exp: 0,
+            hunger: 100,
+            happiness: 100
+          },
+          createdAt: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        alert("Akun berhasil dibuat! Silakan login.");
+        window.location.href = "login.html";
+      })
+      .catch(err=>{
+        alert(err.message);
+      });
+  });
+
+  // 🚀 Auto redirect jika sudah login
+  auth.onAuthStateChanged(user=>{
+    if(user){
+      window.location.href = "game.html";
+    }
+  });
+</script>
+
 </body>
 </html>
