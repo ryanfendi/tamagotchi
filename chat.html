@@ -1,168 +1,152 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tamagotchi Chat</title>
-<style>
-  body { font-family:sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:0; }
-  h2 { margin:10px; }
-  .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
-  .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
-  .from { font-weight:bold; color:#38bdf8; }
-  input, select { padding:6px; border-radius:6px; border:1px solid #334155; margin-right:4px; }
-  button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
-  .tab { margin:10px; }
-  #privateOptions { margin:10px 0; }
-</style>
+  <meta charset="UTF-8">
+  <title>Chat App</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; }
+    #tabs { display:flex; background:#333; color:#fff; }
+    #tabs button { flex:1; padding:10px; background:#444; border:none; color:white; cursor:pointer; }
+    #tabs button.active { background:#666; }
+    #chatBox { height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px; }
+  </style>
 </head>
 <body>
-<h2>💬 Tamagotchi Chat</h2>
-
-<div class="tab">
-  <button onclick="switchTab('global')">🌍 Global</button>
-  <button onclick="switchTab('private')">👤 Private</button>
-</div>
-
-<!-- Global Chat -->
-<div id="globalTab">
-  <h3>🌍 Global Chat</h3>
-  <div class="chat-box" id="globalMessages"></div>
-  <input type="text" id="globalInput" placeholder="Tulis pesan...">
-  <button onclick="sendGlobal()">Kirim</button>
-</div>
-
-<!-- Private Chat -->
-<div id="privateTab" style="display:none">
-  <h3>👤 Private Chat</h3>
-  <div id="privateOptions">
-    <select id="userDropdown"></select>
-    <button onclick="startPrivate()">Mulai Chat</button>
+  <!-- Tabs -->
+  <div id="tabs">
+    <button onclick="switchTab('global')" id="tabGlobal" class="active">🌍 Global Chat</button>
+    <button onclick="switchTab('private')" id="tabPrivate">🔒 Private Chat</button>
   </div>
-  <div class="chat-box" id="privateMessages"></div>
-  <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
-  <button onclick="sendPrivate()">Kirim</button>
-</div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, get, child, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+  <!-- Chat box -->
+  <div id="chatBox"></div>
 
-// 🔥 Config
-const firebaseConfig = {
-  apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-  authDomain: "tamagotchi-2be0c.firebaseapp.com",
-  databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-  projectId: "tamagotchi-2be0c",
-  storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-  messagingSenderId: "202052432703",
-  appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-  measurementId: "G-TWGGSJRX26"
-};
+  <!-- Input -->
+  <div id="inputBox">
+    <input type="text" id="messageInput" placeholder="Type your message..." style="width:80%;">
+    <button onclick="sendGlobal()">Send</button>
+  </div>
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth();
+  <!-- Dropdown private -->
+  <div id="privateControls" style="display:none; margin-top:10px;">
+    <select id="userSelect"></select>
+    <button onclick="startPrivate()">Start Private Chat</button>
+    <button onclick="sendPrivate()">Send Private</button>
+  </div>
 
-let currentUser = null;
-let currentRoom = null;
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getDatabase, ref, onChildAdded, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-function switchTab(tab){
-  document.getElementById('globalTab').style.display = tab==='global'?'block':'none';
-  document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
-}
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
 
-// ✅ Load users for private chat dropdown
-async function loadUserDropdown(){
-  const dbRef = ref(db);
-  const snapshot = await get(child(dbRef,"users"));
-  const dropdown = document.getElementById("userDropdown");
-  dropdown.innerHTML = "<option value=''>-- Pilih User --</option>";
-  if(snapshot.exists()){
-    const users = snapshot.val();
-    for(const uid in users){
-      if(uid !== currentUser.uid){
-        const opt = document.createElement("option");
-        opt.value = uid;
-        opt.textContent = users[uid].username || uid;
-        dropdown.appendChild(opt);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let currentTab = "global";
+    let currentUser = null;
+    let currentRoom = null;
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById("tabGlobal").classList.remove("active");
+      document.getElementById("tabPrivate").classList.remove("active");
+      document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add("active");
+      document.getElementById("chatBox").innerHTML = "";
+      if (tab === "global") {
+        document.getElementById("privateControls").style.display = "none";
+        loadGlobal();
+      } else {
+        document.getElementById("privateControls").style.display = "block";
       }
     }
-  }
-}
 
-// 🌍 Global chat
-function sendGlobal(){
-  const txt = document.getElementById("globalInput").value.trim();
-  if(!txt) return;
-  push(ref(db,"chat"),{
-    from: currentUser.username,
-    uid: currentUser.uid,
-    text: txt,
-    time: Date.now()
-  });
-  document.getElementById("globalInput").value="";
-}
+    function loadGlobal() {
+      const chatRef = ref(db, "chat");
+      onChildAdded(chatRef, (snap) => {
+        const msg = snap.val();
+        addMessage(msg.from, msg.text);
+      });
+    }
 
-function loadGlobal(){
-  const gRef = ref(db,"chat");
-  onChildAdded(gRef,(snap)=>{
-    const d = snap.val();
-    const div = document.createElement("div");
-    div.className="msg";
-    div.innerHTML = `<span class="from">${d.from}:</span> ${d.text}`;
-    document.getElementById("globalMessages").appendChild(div);
-    div.scrollIntoView();
-  });
-}
+    function addMessage(user, text) {
+      const div = document.createElement("div");
+      div.textContent = `${user}: ${text}`;
+      document.getElementById("chatBox").appendChild(div);
+    }
 
-// 👤 Private chat
-function startPrivate(){
-  const sel = document.getElementById("userDropdown");
-  const toUid = sel.value;
-  if(!toUid) return alert("Pilih user!");
-  const toName = sel.options[sel.selectedIndex].text;
-  currentRoom = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
+    function sendGlobal() {
+      const msg = document.getElementById("messageInput").value;
+      if (!msg) return;
+      const chatRef = push(ref(db, "chat"));
+      set(chatRef, { from: currentUser.username, text: msg });
+      document.getElementById("messageInput").value = "";
+    }
 
-  // Register membership
-  set(ref(db, `privateChat/${currentRoom}/members/${currentUser.uid}`), true);
-  set(ref(db, `privateChat/${currentRoom}/members/${toUid}`), true);
+    function loadUserDropdown() {
+      const usersRef = ref(db, "users");
+      get(usersRef).then((snap) => {
+        const sel = document.getElementById("userSelect");
+        sel.innerHTML = "";
+        snap.forEach((child) => {
+          if (child.key !== currentUser.uid) {
+            const opt = document.createElement("option");
+            opt.value = child.key;
+            opt.textContent = child.val().username;
+            sel.appendChild(opt);
+          }
+        });
+      });
+    }
 
-  document.getElementById("privateMessages").innerHTML = "";
-  const msgRef = ref(db, `privateChat/${currentRoom}/messages`);
-  onChildAdded(msgRef,(snap)=>{
-    const d = snap.val();
-    const div = document.createElement("div");
-    div.className="msg";
-    const fromName = d.from === currentUser.uid ? "Saya" : toName;
-    div.innerHTML = `<span class="from">${fromName}:</span> ${d.text}`;
-    document.getElementById("privateMessages").appendChild(div);
-    div.scrollIntoView();
-  });
-}
+    function startPrivate() {
+      const otherUid = document.getElementById("userSelect").value;
+      if (!otherUid) return;
+      const roomId = [currentUser.uid, otherUid].sort().join("_");
+      currentRoom = roomId;
+      document.getElementById("chatBox").innerHTML = "";
+      const chatRef = ref(db, "privateChat/" + roomId + "/messages");
+      onChildAdded(chatRef, (snap) => {
+        const msg = snap.val();
+        addMessage(msg.from, msg.text);
+      });
+    }
 
-function sendPrivate(){
-  if(!currentRoom) return alert("Mulai chat dulu!");
-  const txt = document.getElementById("privateInput").value.trim();
-  if(!txt) return;
-  push(ref(db, `privateChat/${currentRoom}/messages`),{
-    from: currentUser.uid,
-    text: txt,
-    time: Date.now()
-  });
-  document.getElementById("privateInput").value="";
-}
+    function sendPrivate() {
+      if (!currentRoom) return alert("Start private chat first!");
+      const msg = document.getElementById("messageInput").value;
+      if (!msg) return;
+      const chatRef = push(ref(db, "privateChat/" + currentRoom + "/messages"));
+      set(chatRef, { from: currentUser.username, text: msg });
+      document.getElementById("messageInput").value = "";
+    }
 
-// 🔑 Auth
-onAuthStateChanged(auth, (user)=>{
-  if(!user) return window.location.href="login.html";
-  get(ref(db,"users/"+user.uid)).then((snap)=>{
-    currentUser = {uid:user.uid, ...snap.val()};
-    loadGlobal();
-    loadUserDropdown();
-  });
-});
-</script>
+    // ✅ Auth
+    onAuthStateChanged(auth, (user) => {
+      if (!user) return window.location.href = "login.html";
+      get(ref(db, "users/" + user.uid)).then((snap) => {
+        currentUser = { uid: user.uid, ...snap.val() };
+        loadGlobal();
+        loadUserDropdown();
+      });
+    });
+
+    // ✅ Expose ke global
+    window.switchTab = switchTab;
+    window.sendGlobal = sendGlobal;
+    window.startPrivate = startPrivate;
+    window.sendPrivate = sendPrivate;
+  </script>
 </body>
 </html>
