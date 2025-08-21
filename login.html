@@ -65,8 +65,8 @@
     <input type="email" id="email" placeholder="Email" required><br>
     <input type="password" id="password" placeholder="Password" required><br>
     <button onclick="login()">Login</button>
-    <button onclick="resetPassword()">Lupa Password?</button>
     <a class="link" href="register.html">Belum punya akun? Daftar</a>
+    <a class="link" href="#" onclick="resetPassword()">Lupa Password?</a>
   </div>
 
   <script>
@@ -82,44 +82,47 @@
       measurementId: "G-TWGGSJRX26"
     };
 
+    // 🔧 Init Firebase
     const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.database();
 
-    // 🔑 Login function
-    function login() {
+    // 🟢 Login
+    async function login() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
 
       if (!email || !password) {
-        alert("Harap isi email & password!");
+        alert("Harap isi email dan password!");
         return;
       }
 
-      auth.signInWithEmailAndPassword(email, password)
-        .then(() => {
-          alert("Login berhasil!");
-          window.location.href = "index.html"; // redirect setelah login
-        })
-        .catch((error) => {
-          alert("Error: " + error.message);
-        });
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        alert("🎉 Login berhasil!");
+        window.location.href = "game.html"; // ganti ke halaman utama game
+      } catch (error) {
+        console.error("🔥 ERROR:", error.message);
+        alert("Error: " + error.message);
+      }
     }
 
-    // 🔑 Reset password
-    function resetPassword() {
+    // 🔑 Reset Password
+    async function resetPassword() {
       const email = document.getElementById('email').value;
       if (!email) {
-        alert("Masukkan email untuk reset password!");
+        alert("Masukkan email terlebih dahulu!");
         return;
       }
 
-      auth.sendPasswordResetEmail(email)
-        .then(() => {
-          alert("Link reset password telah dikirim ke " + email);
-        })
-        .catch((error) => {
-          alert("Error: " + error.message);
-        });
+      try {
+        await auth.sendPasswordResetEmail(email);
+        alert("📩 Link reset password telah dikirim ke email kamu.");
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
     }
   </script>
 </body>
