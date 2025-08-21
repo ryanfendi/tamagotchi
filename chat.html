@@ -12,7 +12,6 @@
     .from { font-weight:bold; color:#38bdf8; }
     input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
     button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
-    button:disabled { background:#475569; cursor:not-allowed; }
     .tab { margin:10px; }
   </style>
 </head>
@@ -38,13 +37,11 @@
   <div id="privateTab" style="display:none">
     <h3>👤 Private Chat</h3>
     <label>Pilih User: 
-      <select id="userSelect">
-        <option value="">-- pilih user --</option>
-      </select>
+      <select id="userSelect"></select>
     </label>
     <div class="chat-box" id="privateMessages"></div>
-    <input type="text" id="privateInput" placeholder="Tulis pesan privat..." disabled>
-    <button id="btnPrivateSend" onclick="sendPrivate()" disabled>Kirim</button>
+    <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
+    <button onclick="sendPrivate()">Kirim</button>
   </div>
 
   <!-- Firebase -->
@@ -52,6 +49,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
+    // 🔥 Konfigurasi Firebase
     const cfg={
       apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain:"tamagotchi-2be0c.firebaseapp.com",
@@ -74,12 +72,12 @@
       document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
     }
 
-    // Kirim pesan global
+    // === GLOBAL CHAT ===
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
       if(!txt || !currentUser) return;
       db.ref("chat").push({
-        from: currentUser.username,
+        from: currentUser.username || currentUser.email,
         uid: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -87,76 +85,73 @@
       document.getElementById('globalInput').value='';
     }
 
-    // Load pesan global
     function loadGlobal(){
-      db.ref("chat").limitToLast(50).on("child_added",snap=>{
+      const box=document.getElementById("globalMessages");
+      box.innerHTML="";
+      db.ref("chat").limitToLast(50).on("child_added", snap=>{
         const d=snap.val();
         if(!d) return;
         const div=document.createElement("div");
         div.className="msg";
-        div.innerHTML=`<span class="from">${d.from}:</span> ${d.text}`;
-        document.getElementById("globalMessages").appendChild(div);
-        div.scrollIntoView();
+        div.innerHTML=`<span class="from">${d.from||"Anon"}:</span> ${d.text}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
       });
     }
 
-    // Setup private chat
+    // === PRIVATE CHAT ===
     function setupPrivateChat(toUid,toName){
-      const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
+      const roomId = currentUser.uid < toUid 
+        ? `room_${currentUser.uid}_${toUid}` 
+        : `room_${toUid}_${currentUser.uid}`;
+
       currentRoom = roomId;
 
-      // aktifkan input & tombol
-      document.getElementById("privateInput").disabled=false;
-      document.getElementById("btnPrivateSend").disabled=false;
-
-      // register membership
+      // Daftar member
       db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
       db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
 
-      document.getElementById("privateMessages").innerHTML="";
+      // Kosongkan lalu listen
+      const box=document.getElementById("privateMessages");
+      box.innerHTML="";
       db.ref("privateChat/"+roomId+"/messages").off();
-      db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added",snap=>{
+      db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added", snap=>{
         const d=snap.val();
         if(!d) return;
         const div=document.createElement("div");
         div.className="msg";
-        const from=(d.from===currentUser.uid? "Saya": d.fromName||toName);
+        const from=(d.from===currentUser.uid ? "Saya" : toName);
         div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
-        document.getElementById("privateMessages").appendChild(div);
-        div.scrollIntoView();
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
       });
     }
 
-    // Kirim pesan privat
     function sendPrivate(){
       const txt=document.getElementById('privateInput').value.trim();
       if(!txt || !currentRoom || !currentUser) return;
       db.ref("privateChat/"+currentRoom+"/messages").push({
         from: currentUser.uid,
-        fromName: currentUser.username,
         text: txt,
-        time: Date.now(),
-        status: "sent"
+        time: Date.now()
       });
       document.getElementById('privateInput').value='';
     }
 
-    // Load daftar user untuk dropdown
     function loadUsers(){
       db.ref("users").once("value",snap=>{
         const sel=document.getElementById("userSelect");
-        sel.innerHTML="<option value=''>-- pilih user --</option>";
+        sel.innerHTML="";
         snap.forEach(ch=>{
           const u=ch.val();
           if(ch.key!==currentUser.uid){
             const opt=document.createElement("option");
             opt.value=ch.key;
-            opt.text=u.username || u.email || "User";
+            opt.text=u.username||u.email||"Tanpa Nama";
             sel.appendChild(opt);
           }
         });
         sel.onchange=()=>{
-          if(!sel.value) return;
           const uid=sel.value;
           const name=sel.options[sel.selectedIndex].text;
           setupPrivateChat(uid,name);
@@ -164,16 +159,11 @@
       });
     }
 
-    // Auth listener
+    // === LOGIN STATE ===
     auth.onAuthStateChanged(u=>{
       if(!u){ nav("index.html"); return; }
       db.ref("users/"+u.uid).once("value",snap=>{
-        const userData=snap.val()||{};
-        currentUser={
-          uid:u.uid,
-          username:userData.username || (u.email? u.email.split("@")[0] : "User"),
-          email:userData.email || u.email || "unknown"
-        };
+        currentUser={uid:u.uid,...snap.val()};
         loadGlobal();
         loadUsers();
       });
