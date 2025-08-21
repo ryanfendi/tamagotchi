@@ -1,88 +1,76 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Tamagotchi - Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Tamagotchi</title>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0; padding: 0;
-      display: flex; justify-content: center; align-items: center;
-      height: 100vh; background: #f0f0f0;
-      opacity: 0; transition: opacity 0.4s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
     }
-    body.fade-in { opacity: 1; }
-    body.fade-out { opacity: 0; }
-
     .container {
-      width: 90%; max-width: 400px;
-      background: white; padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 320px;
+      text-align: center;
     }
-    h2 { text-align: center; margin-bottom: 15px; }
     input {
-      width: 100%; padding: 10px;
-      margin: 8px 0; border: 1px solid #ccc;
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
       border-radius: 8px;
+      border: 1px solid #ccc;
     }
     button {
-      width: 100%; padding: 10px;
-      margin-top: 10px;
-      border: none; border-radius: 8px;
-      background: #4CAF50; color: white;
-      font-size: 16px; cursor: pointer;
-    }
-    button:hover { background: #45a049; }
-
-    .link {
-      display: block; margin-top: 12px;
-      text-align: center; color: #007bff;
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #FF6F61;
+      color: white;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
+      transition: background 0.2s ease;
     }
-    .loader {
-      display: none; margin: 10px auto;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%; width: 28px; height: 28px;
-      animation: spin 1s linear infinite;
+    button:hover {
+      background: #e85b50;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg);}
-      100% { transform: rotate(360deg);}
+    .link {
+      margin-top: 10px;
+      display: block;
+      color: #007BFF;
+      cursor: pointer;
+      text-decoration: none;
     }
-    .toast {
-      position: fixed; bottom: 20px; left: 50%;
-      transform: translateX(-50%);
-      padding: 10px 20px; border-radius: 8px;
-      color: white; display: none;
+    .link:hover {
+      text-decoration: underline;
     }
-    .toast.success { background: #28a745; }
-    .toast.error { background: #dc3545; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Login Tamagotchi</h2>
-    <input type="text" id="usernameField" placeholder="Username (saat daftar)">
-    <input type="email" id="emailField" placeholder="Email">
-    <input type="password" id="passwordField" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <button id="registerBtn">Daftar</button>
-    <div class="link" id="forgotPasswordLink">Lupa Password?</div>
-    <div class="loader" id="loader"></div>
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="login()">Login</button>
+    <button onclick="resetPassword()">Lupa Password?</button>
+    <a class="link" href="register.html">Belum punya akun? Daftar</a>
   </div>
 
-  <div class="toast" id="toast"></div>
-
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
   <script>
-    // 🔑 Config
+    // 🔥 Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -93,102 +81,46 @@
       appId: "1:202052432703:web:cb76b50e42149a2c92998a",
       measurementId: "G-TWGGSJRX26"
     };
-    firebase.initializeApp(firebaseConfig);
+
+    const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db = firebase.database();
 
-    const loader = document.getElementById("loader");
-    const toast = document.getElementById("toast");
+    // 🔑 Login function
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-    function showLoader(show){
-      loader.style.display = show ? "block" : "none";
-    }
-    function showToast(msg, type="success"){
-      toast.innerText = msg;
-      toast.className = "toast " + type;
-      toast.style.display = "block";
-      setTimeout(()=> toast.style.display="none", 3000);
-    }
-
-    // 🚀 Fade in saat buka
-    window.addEventListener("load", ()=> {
-      document.body.classList.add("fade-in");
-    });
-
-    // ✅ Login
-    document.getElementById("loginBtn").addEventListener("click", ()=>{
-      const email = document.getElementById("emailField").value;
-      const password = document.getElementById("passwordField").value;
-
-      if(!email || !password) {
-        showToast("❌ Email & Password wajib diisi!", "error");
+      if (!email || !password) {
+        alert("Harap isi email & password!");
         return;
       }
 
-      showLoader(true);
       auth.signInWithEmailAndPassword(email, password)
-        .then(()=>{
-          showLoader(false);
-          showToast("✅ Login berhasil!", "success");
-          document.body.classList.add("fade-out");
-          setTimeout(()=> window.location.href = "game.html", 400);
+        .then(() => {
+          alert("Login berhasil!");
+          window.location.href = "index.html"; // redirect setelah login
         })
-        .catch(err=>{
-          showLoader(false);
-          showToast("❌ " + err.message, "error");
+        .catch((error) => {
+          alert("Error: " + error.message);
         });
-    });
+    }
 
-    // ✅ Register
-    document.getElementById("registerBtn").addEventListener("click", ()=>{
-      const email = document.getElementById("emailField").value;
-      const password = document.getElementById("passwordField").value;
-      const username = document.getElementById("usernameField").value.trim().toLowerCase();
-
-      if(!email || !password || !username) {
-        showToast("❌ Semua field wajib diisi!", "error");
+    // 🔑 Reset password
+    function resetPassword() {
+      const email = document.getElementById('email').value;
+      if (!email) {
+        alert("Masukkan email untuk reset password!");
         return;
       }
 
-      showLoader(true);
-      db.ref("usernames/"+username).once("value", snapshot=>{
-        if(snapshot.exists()){
-          showLoader(false);
-          showToast("❌ Username sudah dipakai!", "error");
-        } else {
-          auth.createUserWithEmailAndPassword(email, password)
-            .then(userCredential=>{
-              const user = userCredential.user;
-              db.ref("usernames/"+username).set(user.uid);
-              db.ref("users/"+user.uid).set({
-                email: email,
-                username: username,
-                coins: 100,
-                pet: { level: 1, exp: 0, hunger: 100, happiness: 100 },
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-              });
-              showLoader(false);
-              showToast("✅ Akun dibuat! Silakan login.", "success");
-            })
-            .catch(err=>{
-              showLoader(false);
-              showToast("❌ " + err.message, "error");
-            });
-        }
-      });
-    });
-
-    // 🔑 Reset Password
-    document.getElementById("forgotPasswordLink").addEventListener("click", ()=>{
-      const email = document.getElementById("emailField").value;
-      if(!email){
-        showToast("❌ Masukkan email untuk reset!", "error");
-        return;
-      }
       auth.sendPasswordResetEmail(email)
-        .then(()=> showToast("📩 Link reset password terkirim ke email!", "success"))
-        .catch(err=> showToast("❌ " + err.message, "error"));
-    });
+        .then(() => {
+          alert("Link reset password telah dikirim ke " + email);
+        })
+        .catch((error) => {
+          alert("Error: " + error.message);
+        });
+    }
   </script>
 </body>
 </html>
