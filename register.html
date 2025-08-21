@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <title>Tamagotchi - Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Firebase (pakai compat supaya stabil) -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -82,15 +82,15 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // Init Firebase (compat)
-    firebase.initializeApp(firebaseConfig);
+    // ✅ Inisialisasi Firebase (HARUS di atas, sebelum pakai db/auth)
+    const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // 📝 Register function
+    // 📝 Fungsi Register
     async function register() {
       const username = document.getElementById('username').value.trim();
-      const email = document.getElementById('email').value;
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
 
       if (!username || !email || !password) {
@@ -99,19 +99,24 @@
       }
 
       try {
-        // ✅ Cek apakah username sudah dipakai
+        console.log("🔍 Cek username:", username);
         const usernameRef = db.ref("usernames/" + username);
         const snapshot = await usernameRef.get();
+
         if (snapshot.exists()) {
-          alert("Username sudah dipakai, silakan pilih yang lain.");
+          alert("⚠️ Username sudah dipakai, pilih yang lain.");
           return;
         }
 
-        // ✅ Buat akun baru
+        console.log("✅ Username tersedia, lanjut daftar...");
+
+        // Buat akun
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // Simpan data user ke database
+        console.log("✅ User dibuat:", user.uid);
+
+        // Simpan data user
         await db.ref("users/" + user.uid).set({
           username: username,
           email: email,
@@ -128,11 +133,12 @@
           uid: user.uid
         });
 
-        alert("Registrasi berhasil! Silakan login.");
+        alert("🎉 Registrasi berhasil! Silakan login.");
         window.location.href = "login.html";
+
       } catch (error) {
-        console.error("🔥 ERROR:", error.message);
-        alert("Error: " + error.message);
+        console.error("🔥 ERROR:", error);
+        alert("🔥 ERROR: " + error.message);
       }
     }
   </script>
