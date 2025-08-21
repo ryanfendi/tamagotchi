@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Chat WhatsApp Style</title>
+  <title>Chat (Global & Private)</title>
   <script type="module">
+    // Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getDatabase, ref, push, set, onChildAdded, get, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    // 🔥 Firebase Config
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -22,75 +23,94 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const auth = getAuth(app);
+    const auth = getAuth();
 
     let currentUser = null;
-    let currentRoom = "chat"; // default = group chat
+    let currentRoom = "global"; // default global chat
 
-    // 🔑 Login anonymous
-    signInAnonymously(auth).then((res) => {
-      currentUser = res.user.uid;
-      document.getElementById("userId").innerText = "User ID: " + currentUser;
-      loadMessages();
+    // Login anon
+    signInAnonymously(auth).catch(err => console.error(err));
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        currentUser = user;
+        console.log("Login sebagai:", user.uid);
+        loadMessages("global");
+      }
     });
 
-    // 📌 Ganti room (global/private)
-    function switchRoom(roomId) {
+    // Kirim pesan
+    async function sendMessage() {
+      const text = document.getElementById("messageInput").value;
+      if (!text.trim()) return;
+
+      let msgRef;
+      if (currentRoom === "global") {
+        msgRef = ref(db, "chat");
+      } else {
+        msgRef = ref(db, `privateChat/${currentRoom}/messages`);
+        // pastikan user masuk members
+        const memberRef = ref(db, `privateChat/${currentRoom}/members/${currentUser.uid}`);
+        await set(memberRef, true);
+      }
+
+      push(msgRef, {
+        from: currentUser.uid,
+        text: text,
+        timestamp: Date.now()
+      });
+
+      document.getElementById("messageInput").value = "";
+    }
+
+    // Load pesan
+    function loadMessages(room) {
       document.getElementById("messages").innerHTML = "";
-      currentRoom = roomId;
-      loadMessages();
-    }
-    window.switchRoom = switchRoom;
+      currentRoom = room;
 
-    // 📩 Ambil pesan dari room aktif
-    function loadMessages() {
-      const chatRef = ref(db, currentRoom);
-      onChildAdded(chatRef, (snap) => {
+      let msgRef = room === "global" 
+        ? ref(db, "chat") 
+        : ref(db, `privateChat/${room}/messages`);
+
+      onChildAdded(msgRef, snap => {
         const msg = snap.val();
-        const key = snap.key;
-        appendMessage(msg, key);
-
-        if (msg.from !== currentUser) {
-          update(ref(db, currentRoom + "/" + key), { status: "read" });
-        }
+        const div = document.createElement("div");
+        div.textContent = msg.from + ": " + msg.text;
+        document.getElementById("messages").appendChild(div);
       });
     }
 
-    // ➕ Kirim pesan
-    document.getElementById("sendBtn").onclick = () => {
-      const text = document.getElementById("msgInput").value;
-      if (!text) return;
+    // Buat/join private chat
+    async function startPrivateChat(otherUserId) {
+      // Room ID unik: urutkan 2 uid (biar konsisten)
+      const ids = [currentUser.uid, otherUserId].sort().join("_");
+      const roomId = "room_" + ids;
 
-      push(ref(db, currentRoom), {
-        from: currentUser,
-        text,
-        timestamp: Date.now(),
-        status: "sent"
+      // Tambahkan kedua user ke members
+      const membersRef = ref(db, `privateChat/${roomId}/members`);
+      await update(membersRef, {
+        [currentUser.uid]: true,
+        [otherUserId]: true
       });
 
-      document.getElementById("msgInput").value = "";
-    };
-
-    // 🖼️ Tampilkan pesan
-    function appendMessage(msg, key) {
-      const div = document.createElement("div");
-      let statusIcon = msg.status === "read" ? "✔✔" : "✔";
-      div.innerHTML = `<b>${msg.from}:</b> ${msg.text} <small>${statusIcon}</small>`;
-      document.getElementById("messages").appendChild(div);
+      loadMessages(roomId);
     }
+
+    // expose ke window
+    window.sendMessage = sendMessage;
+    window.loadMessages = loadMessages;
+    window.startPrivateChat = startPrivateChat;
   </script>
 </head>
 <body>
-  <h1>🔥 WhatsApp Style Chat</h1>
-  <p id="userId">Loading...</p>
+  <h2>Chat App</h2>
+  <button onclick="loadMessages('global')">🌍 Global Chat</button>
+  <button onclick="startPrivateChat(prompt('Masukkan UID teman:'))">💬 Private Chat</button>
 
-  <!-- Menu Pilihan -->
-  <button onclick="switchRoom('chat')">🌍 Group Chat</button>
-  <button onclick="switchRoom('privateChat_room1')">🔒 Private Chat (Room 1)</button>
+  <div id="messages" style="border:1px solid #aaa; height:300px; overflow-y:auto; margin:10px 0; padding:5px;">
+  </div>
 
-  <div id="messages" style="border:1px solid #ccc; height:200px; overflow-y:scroll; margin:10px 0;"></div>
-
-  <input id="msgInput" placeholder="Tulis pesan...">
-  <button id="sendBtn">Kirim</button>
+  <input id="messageInput" placeholder="Ketik pesan..." />
+  <button onclick="sendMessage()">Kirim</button>
 </body>
 </html>
