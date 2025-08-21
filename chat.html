@@ -1,15 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Chat Global</title>
+  <title>Chat</title>
   <script type="module">
-    // Import Firebase SDK
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getDatabase, ref, push, set, onChildAdded, serverTimestamp, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    // Config dari kamu
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -21,57 +20,161 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
     let currentUser = null;
+    let activeRoomId = null;
 
-    // Login anonim otomatis
-    signInAnonymously(auth).catch(err => console.error("Login gagal:", err));
+    // --- Format Last Seen
+    function formatLastSeen(timestamp) {
+      if (!timestamp) return "Belum ada aktivitas";
+      const date = new Date(timestamp);
+      return date.toLocaleString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "short"
+      });
+    }
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        console.log("Login sebagai:", user.uid);
-      }
-    });
+    // --- Load Global Chat
+    function loadGlobalChat() {
+      const chatRef = ref(db, "chat");
+      onChildAdded(chatRef, (snap) => {
+        const data = snap.val();
+        const div = document.createElement("div");
+        div.textContent = `${data.from}: ${data.text}`;
+        document.getElementById("globalMessages").appendChild(div);
+      });
+    }
 
-    // Referensi chat global
-    const chatRef = ref(db, "chat");
+    function sendGlobalMessage() {
+      const input = document.getElementById("globalInput");
+      if (input.value.trim() === "") return;
 
-    // Fungsi kirim pesan
-    window.sendMessage = () => {
-      const text = document.getElementById("message").value;
-      if (!currentUser) {
-        alert("Belum login, tunggu sebentar...");
-        return;
-      }
-      if (text.trim() === "") return;
-
+      const chatRef = ref(db, "chat");
       push(chatRef, {
-        from: currentUser.uid,
-        text: text,
+        from: currentUser?.displayName || currentUser?.email || "Anonim",
+        text: input.value,
         timestamp: serverTimestamp()
       });
 
-      document.getElementById("message").value = "";
-    };
+      input.value = "";
+    }
 
-    // Tampilkan pesan baru
-    onChildAdded(chatRef, (snapshot) => {
-      const msg = snapshot.val();
-      const div = document.createElement("div");
-      div.textContent = msg.from + ": " + msg.text;
-      document.getElementById("messages").appendChild(div);
+    // --- Cari Member
+    function loadMembers() {
+      const userRef = ref(db, "users");
+      onValue(userRef, (snap) => {
+        const dropdown = document.getElementById("memberDropdown");
+        dropdown.innerHTML = "";
+        snap.forEach((child) => {
+          const user = child.val();
+          const option = document.createElement("option");
+          option.value = child.key;
+          option.textContent = user.username || user.email;
+          dropdown.appendChild(option);
+        });
+      });
+    }
+
+    // --- Private Chat
+    function openPrivateChat(uid) {
+      const roomId = [auth.currentUser.uid, uid].sort().join("_");
+      activeRoomId = roomId;
+
+      // Update Header dengan status online
+      const userRef = ref(db, "users/" + uid);
+      onValue(userRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.val();
+          document.getElementById("chatWith").textContent = data.username || "Unknown";
+
+          if (data.online) {
+            document.getElementById("chatStatus").textContent = "🟢 Online";
+          } else {
+            document.getElementById("chatStatus").textContent = "⚪ Last seen: " + formatLastSeen(data.lastSeen);
+          }
+        }
+      });
+
+      // Load pesan
+      const msgRef = ref(db, "privateChat/" + roomId + "/messages");
+      document.getElementById("privateMessages").innerHTML = "";
+      onChildAdded(msgRef, (snap) => {
+        const data = snap.val();
+        const div = document.createElement("div");
+        div.textContent = `${data.from}: ${data.text}`;
+        document.getElementById("privateMessages").appendChild(div);
+      });
+    }
+
+    function sendPrivateMessage() {
+      if (!activeRoomId) return;
+      const input = document.getElementById("privateInput");
+      if (input.value.trim() === "") return;
+
+      const msgRef = ref(db, "privateChat/" + activeRoomId + "/messages");
+      push(msgRef, {
+        from: currentUser?.uid,
+        text: input.value,
+        timestamp: serverTimestamp()
+      });
+
+      input.value = "";
+    }
+
+    // --- Auth Listener
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        loadGlobalChat();
+        loadMembers();
+
+        // update online status
+        const userStatus = ref(db, "users/" + user.uid);
+        update(userStatus, {
+          username: user.displayName || user.email,
+          online: true,
+          lastSeen: serverTimestamp()
+        });
+
+        window.addEventListener("beforeunload", () => {
+          update(userStatus, { online: false, lastSeen: serverTimestamp() });
+        });
+      } else {
+        window.location.href = "login.html";
+      }
     });
+
+    // --- Event Listeners
+    window.sendGlobalMessage = sendGlobalMessage;
+    window.sendPrivateMessage = sendPrivateMessage;
+    window.openPrivateChat = () => {
+      const uid = document.getElementById("memberDropdown").value;
+      if (uid) openPrivateChat(uid);
+    };
   </script>
 </head>
 <body>
-  <h2>Chat Global</h2>
-  <div id="messages" style="border:1px solid #ccc; height:200px; overflow-y:scroll; padding:5px;"></div>
-  <input id="message" placeholder="Ketik pesan..." />
-  <button onclick="sendMessage()">Kirim</button>
+  <h2>🌍 Global Chat</h2>
+  <div id="globalMessages" style="border:1px solid #ccc;height:200px;overflow:auto;"></div>
+  <input id="globalInput" placeholder="Ketik pesan...">
+  <button onclick="sendGlobalMessage()">Kirim</button>
+
+  <h2>🔎 Cari Member</h2>
+  <select id="memberDropdown"></select>
+  <button onclick="openPrivateChat()">Chat</button>
+
+  <h2>💬 Private Chat</h2>
+  <div id="privateChatHeader">
+    <h3 id="chatWith"></h3>
+    <small id="chatStatus"></small>
+  </div>
+  <div id="privateMessages" style="border:1px solid #ccc;height:200px;overflow:auto;"></div>
+  <input id="privateInput" placeholder="Ketik pesan...">
+  <button onclick="sendPrivateMessage()">Kirim</button>
 </body>
 </html>
