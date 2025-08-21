@@ -1,15 +1,46 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chat (Global & Private)</title>
-  <script type="module">
-    // Import Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, set, onChildAdded, get, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  <title>Chat App</title>
+  <style>
+    body { display:flex; height:100vh; margin:0; font-family:Arial, sans-serif; }
+    .sidebar { width:250px; border-right:1px solid #ccc; padding:10px; overflow-y:auto; }
+    .chat-container { flex:1; display:flex; flex-direction:column; }
+    .chat-box { flex:1; padding:10px; overflow-y:auto; background:#f5f5f5; }
+    .chat-input { display:flex; border-top:1px solid #ccc; }
+    .chat-input input { flex:1; padding:10px; border:none; outline:none; }
+    .chat-input button { padding:10px; border:none; background:#4CAF50; color:white; cursor:pointer; }
+    .message { margin:5px 0; padding:5px 10px; border-radius:8px; max-width:70%; }
+    .me { background:#dcf8c6; margin-left:auto; }
+    .other { background:#fff; margin-right:auto; }
+    .badge { background:red; color:white; border-radius:50%; padding:2px 6px; font-size:12px; margin-left:5px; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3>Chats</h3>
+    <div id="chatList"></div>
+  </div>
+  <div class="chat-container">
+    <div id="chatHeader">Select a chat</div>
+    <div class="chat-box" id="chatBox"></div>
+    <div class="chat-input">
+      <input id="messageInput" type="text" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
 
-    // Firebase Config
+  <!-- 🔔 Notifikasi suara -->
+  <audio id="notifGlobal" src="https://www.myinstants.com/media/sounds/bleep.mp3"></audio>
+  <audio id="notifPrivate" src="https://www.myinstants.com/media/sounds/notification.mp3"></audio>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref, push, set, onChildAdded, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -22,95 +53,138 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getDatabase(app);
-    const auth = getAuth();
 
     let currentUser = null;
-    let currentRoom = "global"; // default global chat
+    let currentMode = null; // "global" | "private"
+    let currentRoom = null;
+    let unsubscribe = null;
+    let unreadCounts = {};
 
-    // Login anon
-    signInAnonymously(auth).catch(err => console.error(err));
-
+    // Login anonymous
+    signInAnonymously(auth);
     onAuthStateChanged(auth, user => {
       if (user) {
         currentUser = user;
-        console.log("Login sebagai:", user.uid);
-        loadMessages("global");
+        loadChats();
       }
     });
 
-    // Kirim pesan
-    async function sendMessage() {
-      const text = document.getElementById("messageInput").value;
-      if (!text.trim()) return;
+    function loadChats() {
+      const chatList = document.getElementById("chatList");
+      chatList.innerHTML = "";
 
-      let msgRef;
-      if (currentRoom === "global") {
-        msgRef = ref(db, "chat");
-      } else {
-        msgRef = ref(db, `privateChat/${currentRoom}/messages`);
-        // pastikan user masuk members
-        const memberRef = ref(db, `privateChat/${currentRoom}/members/${currentUser.uid}`);
-        await set(memberRef, true);
-      }
+      // Global Chat
+      const globalBtn = document.createElement("button");
+      globalBtn.textContent = "🌍 Global Chat";
+      globalBtn.onclick = () => {
+        currentMode = "global";
+        currentRoom = null;
+        document.getElementById("chatHeader").textContent = "🌍 Global Chat";
+        openChat("chat");
+        resetBadge("global");
+      };
+      chatList.appendChild(globalBtn);
 
-      push(msgRef, {
-        from: currentUser.uid,
-        text: text,
-        timestamp: Date.now()
-      });
-
-      document.getElementById("messageInput").value = "";
+      // Private Room contoh
+      const privateBtn = document.createElement("button");
+      privateBtn.textContent = "👤 Private Room 1";
+      privateBtn.onclick = () => {
+        currentMode = "private";
+        currentRoom = "room1";
+        document.getElementById("chatHeader").textContent = "👤 Private Room 1";
+        openChat("privateChat/room1/messages");
+        resetBadge("room1");
+      };
+      chatList.appendChild(privateBtn);
     }
 
-    // Load pesan
-    function loadMessages(room) {
-      document.getElementById("messages").innerHTML = "";
-      currentRoom = room;
+    function openChat(path) {
+      const chatBox = document.getElementById("chatBox");
+      chatBox.innerHTML = "";
+      if (unsubscribe) unsubscribe();
 
-      let msgRef = room === "global" 
-        ? ref(db, "chat") 
-        : ref(db, `privateChat/${room}/messages`);
-
-      onChildAdded(msgRef, snap => {
+      const msgRef = ref(db, path);
+      unsubscribe = onChildAdded(msgRef, snap => {
         const msg = snap.val();
-        const div = document.createElement("div");
-        div.textContent = msg.from + ": " + msg.text;
-        document.getElementById("messages").appendChild(div);
+        const key = snap.key;
+        displayMessage(msg);
+
+        // mark delivered
+        if (msg.from !== currentUser.uid && msg.status === "sent") {
+          update(ref(db, path + "/" + key), { status: "delivered" });
+
+          // 🔔 mainkan suara sesuai mode
+          if (path.startsWith("chat")) {
+            document.getElementById("notifGlobal").play().catch(()=>{});
+          } else {
+            document.getElementById("notifPrivate").play().catch(()=>{});
+          }
+
+          // hitung unread kalau bukan room aktif
+          const thisRoom = (currentMode === "global") ? "global" : currentRoom;
+          if (!(currentMode !== "global" && path.includes(currentRoom))) {
+            unreadCounts[thisRoom] = (unreadCounts[thisRoom] || 0) + 1;
+            updateBadge(thisRoom);
+          }
+        }
       });
     }
 
-    // Buat/join private chat
-    async function startPrivateChat(otherUserId) {
-      // Room ID unik: urutkan 2 uid (biar konsisten)
-      const ids = [currentUser.uid, otherUserId].sort().join("_");
-      const roomId = "room_" + ids;
-
-      // Tambahkan kedua user ke members
-      const membersRef = ref(db, `privateChat/${roomId}/members`);
-      await update(membersRef, {
-        [currentUser.uid]: true,
-        [otherUserId]: true
-      });
-
-      loadMessages(roomId);
+    function displayMessage(msg) {
+      const div = document.createElement("div");
+      div.className = "message " + (msg.from === currentUser.uid ? "me" : "other");
+      let status = "";
+      if (msg.from === currentUser.uid) {
+        if (msg.status === "sent") status = "✓";
+        else if (msg.status === "delivered") status = "✓✓";
+        else if (msg.status === "read") status = "✓✓ (read)";
+      }
+      div.textContent = msg.text + " " + status;
+      document.getElementById("chatBox").appendChild(div);
+      div.scrollIntoView();
     }
 
-    // expose ke window
-    window.sendMessage = sendMessage;
-    window.loadMessages = loadMessages;
-    window.startPrivateChat = startPrivateChat;
+    document.getElementById("sendBtn").onclick = () => {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      let path;
+      if (currentMode === "global") path = "chat";
+      else if (currentMode === "private") path = "privateChat/" + currentRoom + "/messages";
+      else return alert("Select chat first!");
+
+      const msgRef = push(ref(db, path));
+      set(msgRef, {
+        from: currentUser.uid,
+        text,
+        timestamp: Date.now(),
+        status: "sent"
+      });
+      input.value = "";
+    };
+
+    function updateBadge(room) {
+      const chatList = document.getElementById("chatList").children;
+      for (let btn of chatList) {
+        if (btn.textContent.includes(room)) {
+          btn.innerHTML = btn.textContent.split(" ")[0] + " " + btn.textContent.split(" ")[1];
+          if (unreadCounts[room] > 0) {
+            const span = document.createElement("span");
+            span.className = "badge";
+            span.textContent = unreadCounts[room];
+            btn.appendChild(span);
+          }
+        }
+      }
+    }
+
+    function resetBadge(room) {
+      unreadCounts[room] = 0;
+      updateBadge(room);
+    }
   </script>
-</head>
-<body>
-  <h2>Chat App</h2>
-  <button onclick="loadMessages('global')">🌍 Global Chat</button>
-  <button onclick="startPrivateChat(prompt('Masukkan UID teman:'))">💬 Private Chat</button>
-
-  <div id="messages" style="border:1px solid #aaa; height:300px; overflow-y:auto; margin:10px 0; padding:5px;">
-  </div>
-
-  <input id="messageInput" placeholder="Ketik pesan..." />
-  <button onclick="sendMessage()">Kirim</button>
 </body>
 </html>
