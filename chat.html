@@ -12,6 +12,7 @@
     .from { font-weight:bold; color:#38bdf8; }
     input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
     button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
+    button:disabled { background:#475569; cursor:not-allowed; }
     .tab { margin:10px; }
   </style>
 </head>
@@ -37,11 +38,13 @@
   <div id="privateTab" style="display:none">
     <h3>👤 Private Chat</h3>
     <label>Pilih User: 
-      <select id="userSelect"></select>
+      <select id="userSelect">
+        <option value="">-- pilih user --</option>
+      </select>
     </label>
     <div class="chat-box" id="privateMessages"></div>
-    <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
-    <button onclick="sendPrivate()">Kirim</button>
+    <input type="text" id="privateInput" placeholder="Tulis pesan privat..." disabled>
+    <button id="btnPrivateSend" onclick="sendPrivate()" disabled>Kirim</button>
   </div>
 
   <!-- Firebase -->
@@ -101,6 +104,11 @@
     function setupPrivateChat(toUid,toName){
       const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
       currentRoom = roomId;
+
+      // aktifkan input & tombol
+      document.getElementById("privateInput").disabled=false;
+      document.getElementById("btnPrivateSend").disabled=false;
+
       // register membership
       db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
       db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
@@ -137,7 +145,7 @@
     function loadUsers(){
       db.ref("users").once("value",snap=>{
         const sel=document.getElementById("userSelect");
-        sel.innerHTML="";
+        sel.innerHTML="<option value=''>-- pilih user --</option>";
         snap.forEach(ch=>{
           const u=ch.val();
           if(ch.key!==currentUser.uid){
@@ -148,14 +156,11 @@
           }
         });
         sel.onchange=()=>{
+          if(!sel.value) return;
           const uid=sel.value;
           const name=sel.options[sel.selectedIndex].text;
           setupPrivateChat(uid,name);
         };
-        if(sel.options.length>0){
-          sel.selectedIndex=0;
-          sel.onchange();
-        }
       });
     }
 
