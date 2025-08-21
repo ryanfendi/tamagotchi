@@ -2,13 +2,106 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chat App</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getDatabase, ref, push, set, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Clone Chat</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #ece5dd;
+    }
+    /* Header */
+    .header {
+      background: #075E54;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+    /* Chat container */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    /* Messages area */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .message {
+      display: flex;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 8px;
+      object-fit: cover;
+    }
+    .bubble {
+      max-width: 70%;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      line-height: 1.4;
+      position: relative;
+    }
+    .bubble.left {
+      background: white;
+      border-top-left-radius: 0;
+    }
+    .bubble.right {
+      background: #DCF8C6;
+      border-top-right-radius: 0;
+      margin-left: auto;
+    }
+    /* Input */
+    .input-area {
+      display: flex;
+      padding: 10px;
+      background: #f0f0f0;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      outline: none;
+    }
+    .input-area button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 50%;
+      background: #075E54;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="header">WhatsApp Clone</div>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <input type="text" id="messageInput" placeholder="Type a message...">
+      <button id="sendBtn">➤</button>
+    </div>
+  </div>
 
-    // Firebase config
+  <!-- Notif sound -->
+  <audio id="notifSound" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3"></audio>
+
+  <script type="module">
+    // Firebase config (punyamu)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded, serverTimestamp } 
+      from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -20,108 +113,60 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const auth = getAuth(app);
 
-    let currentUser = null;
-    let currentRoom = null;
-    let isPrivate = false;
+    const messagesRef = ref(db, "chat");
 
-    // Audio notif mirip WhatsApp
-    const notifSound = new Audio("https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3");
+    const messagesDiv = document.getElementById("messages");
+    const input = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const notifSound = document.getElementById("notifSound");
 
-    // Login anonim
-    signInAnonymously(auth);
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        console.log("Login:", user.uid);
-        loadGlobalChat();
-      }
-    });
-
-    // Load Global Chat
-    function loadGlobalChat() {
-      isPrivate = false;
-      currentRoom = null;
-      const messagesRef = ref(db, "chat");
-      document.getElementById("messages").innerHTML = "";
-      onChildAdded(messagesRef, (snapshot) => {
-        const msg = snapshot.val();
-        displayMessage(msg.from, msg.text);
-        notifSound.play();
-      });
-    }
-
-    // Load Private Chat
-    function loadPrivateChat(roomId) {
-      isPrivate = true;
-      currentRoom = roomId;
-      const messagesRef = ref(db, "privateChat/" + roomId + "/messages");
-      document.getElementById("messages").innerHTML = "";
-      onChildAdded(messagesRef, (snapshot) => {
-        const msg = snapshot.val();
-        displayMessage(msg.from, msg.text);
-        notifSound.play();
-      });
-    }
+    const username = "User" + Math.floor(Math.random() * 1000);
+    const avatarUrl = "https://i.pravatar.cc/150?u=" + username; // default avatar unik
 
     // Kirim pesan
-    document.getElementById("sendBtn").addEventListener("click", () => {
-      const text = document.getElementById("messageInput").value;
-      if (text.trim() === "" || !currentUser) return;
-
-      const msg = {
-        from: currentUser.uid,
+    sendBtn.onclick = () => {
+      const text = input.value.trim();
+      if (!text) return;
+      push(messagesRef, {
+        from: username,
+        avatar: avatarUrl,
         text: text,
         timestamp: Date.now()
-      };
+      });
+      input.value = "";
+    };
 
-      if (isPrivate && currentRoom) {
-        const newMsgRef = push(ref(db, "privateChat/" + currentRoom + "/messages"));
-        set(newMsgRef, msg);
+    // Tampilkan pesan
+    onChildAdded(messagesRef, (snap) => {
+      const msg = snap.val();
+      const div = document.createElement("div");
+      div.classList.add("message");
+
+      // Avatar
+      const img = document.createElement("img");
+      img.src = msg.avatar || "https://i.pravatar.cc/150";
+      img.classList.add("avatar");
+
+      // Bubble
+      const bubble = document.createElement("div");
+      bubble.classList.add("bubble");
+      bubble.innerText = msg.from + ": " + msg.text;
+
+      if (msg.from === username) {
+        bubble.classList.add("right");
       } else {
-        const newMsgRef = push(ref(db, "chat"));
-        set(newMsgRef, msg);
+        bubble.classList.add("left");
+        notifSound.play(); // bunyi notif kalau pesan dari orang lain
       }
 
-      document.getElementById("messageInput").value = "";
+      div.appendChild(img);
+      div.appendChild(bubble);
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
-
-    // Tombol Global Chat
-    document.getElementById("globalBtn").addEventListener("click", () => {
-      loadGlobalChat();
-    });
-
-    // Tombol Private Chat
-    document.getElementById("privateBtn").addEventListener("click", () => {
-      const roomId = prompt("Masukkan Room ID untuk Private Chat:");
-      if (roomId) {
-        // Tambahkan user ke members
-        const memberRef = ref(db, "privateChat/" + roomId + "/members/" + currentUser.uid);
-        set(memberRef, true);
-
-        loadPrivateChat(roomId);
-      }
-    });
-
-    // Tampilkan pesan di layar
-    function displayMessage(from, text) {
-      const li = document.createElement("li");
-      li.textContent = from + ": " + text;
-      document.getElementById("messages").appendChild(li);
-    }
   </script>
-</head>
-<body>
-  <h2>Chat App</h2>
-  <button id="globalBtn">Global Chat</button>
-  <button id="privateBtn">Private Chat</button>
-  <ul id="messages"></ul>
-  <input id="messageInput" placeholder="Tulis pesan...">
-  <button id="sendBtn">Kirim</button>
 </body>
 </html>
