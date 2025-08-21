@@ -4,9 +4,73 @@
   <meta charset="UTF-8">
   <title>Tamagotchi - Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+    import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
+
+    // ✅ Inisialisasi
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // Register function
+    window.register = async function() {
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const log = document.getElementById("log");
+      log.innerText = "";
+
+      if (!username || !email || !password) {
+        log.innerText = "❌ Harap isi semua field!";
+        return;
+      }
+
+      try {
+        // 🔍 Cek username
+        const usernameRef = ref(db, "usernames/" + username);
+        const snapshot = await get(usernameRef);
+        if (snapshot.exists()) {
+          log.innerText = "❌ Username sudah dipakai!";
+          return;
+        }
+
+        // ✅ Buat user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Simpan data user
+        await set(ref(db, "users/" + user.uid), {
+          username: username,
+          email: email,
+          coins: 0,
+          pet: { level: 1, hunger: 100, happiness: 100 }
+        });
+
+        // Simpan mapping username → uid
+        await set(ref(db, "usernames/" + username), { uid: user.uid });
+
+        alert("Registrasi berhasil! Silakan login.");
+        window.location.href = "login.html";
+
+      } catch (err) {
+        log.innerText = "🔥 ERROR: " + err.message;
+      }
+    }
+  </script>
   <style>
     body { font-family: Arial, sans-serif; background:#fcb69f; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
     .container { background:white; padding:20px; border-radius:15px; width:320px; box-shadow:0 4px 12px rgba(0,0,0,0.2); text-align:center; }
@@ -25,71 +89,5 @@
     <button onclick="register()">Daftar</button>
     <div id="log"></div>
   </div>
-
-  <script>
-    // Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-
-    function log(msg) {
-      document.getElementById("log").innerText += msg + "\n";
-    }
-
-    async function register() {
-      document.getElementById("log").innerText = ""; // clear log
-      const username = document.getElementById('username').value.trim();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      if (!username || !email || !password) {
-        log("❌ Harap isi semua field!");
-        return;
-      }
-
-      try {
-        log("🔍 Cek username: " + username);
-        const usernameRef = db.ref("usernames/" + username);
-        const snapshot = await usernameRef.get();
-        if (snapshot.exists()) {
-          log("❌ Username sudah dipakai: " + username);
-          return;
-        }
-
-        log("✅ Username kosong, lanjut buat akun...");
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-        log("✅ Akun dibuat: " + user.uid);
-
-        await db.ref("users/" + user.uid).set({
-          username: username,
-          email: email,
-          coins: 0,
-          pet: { level: 1, hunger: 100, happiness: 100 }
-        });
-        log("✅ Data user tersimpan di /users");
-
-        await db.ref("usernames/" + username).set({ uid: user.uid });
-        log("✅ Username mapping tersimpan di /usernames");
-
-        alert("Registrasi berhasil! Silakan login.");
-        window.location.href = "login.html";
-
-      } catch (error) {
-        log("🔥 ERROR: " + error.message);
-      }
-    }
-  </script>
 </body>
 </html>
