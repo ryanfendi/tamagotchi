@@ -1,41 +1,102 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Tamagotchi</title>
-<style>
-body { background:#0b1220; color:#fff; font-family:sans-serif; text-align:center; padding:40px; }
-input, button { padding:10px; margin:5px; border-radius:6px; }
-button { background:#10b981; color:#fff; border:none; font-weight:bold; cursor:pointer; }
-</style>
+  <meta charset="UTF-8">
+  <title>Tamagotchi - Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 300px;
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .link {
+      margin-top: 10px;
+      display: block;
+      color: #007BFF;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-<h1>🐣 Tamagotchi Login</h1>
-<input id="username" placeholder="Username"><br>
-<input id="password" type="password" placeholder="Password"><br>
-<button onclick="login()">Login / Register</button>
+  <div class="container">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="login()">Login</button>
+    <a class="link" href="register.html">Belum punya akun? Daftar</a>
+  </div>
 
-<script>
-let players = JSON.parse(localStorage.getItem("players")||"{}");
-let session = JSON.parse(localStorage.getItem("session")||"{}");
+  <script>
+    // 🔥 Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain: "tamagotchi-2be0c.firebaseapp.com",
+      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId: "tamagotchi-2be0c",
+      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId: "202052432703",
+      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId: "G-TWGGSJRX26"
+    };
 
-if(session.currentUser){ location.href="menu.html"; }
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-function login(){
-  let u=document.getElementById("username").value.trim();
-  let p=document.getElementById("password").value.trim();
-  if(!u||!p) return alert("Isi username dan password");
+    // 🔑 Login function
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
 
-  if(!players[u]){ 
-    players[u]={ password:p, coins:1000, pet:{ level:1, health:1000,hunger:100,energy:100,alive:true}, inventory:[] };
-  } else {
-    if(players[u].password!==p) return alert("Password salah!");
-  }
-  localStorage.setItem("players",JSON.stringify(players));
-  localStorage.setItem("session",JSON.stringify({currentUser:u}));
-  location.href="menu.html";
-}
-</script>
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          window.location.href = "game.html"; // sukses → masuk game
+        })
+        .catch((error) => {
+          alert("Login gagal: " + error.message);
+        });
+    }
+  </script>
 </body>
 </html>
