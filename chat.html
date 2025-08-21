@@ -10,8 +10,8 @@
     .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
     .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
     .from { font-weight:bold; color:#38bdf8; }
-    input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
-    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
+    input, select { padding:6px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#f8fafc; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:2px; }
     .tab { margin:10px; }
   </style>
 </head>
@@ -29,7 +29,7 @@
   <div id="globalTab">
     <h3>🌍 Global Chat</h3>
     <div class="chat-box" id="globalMessages"></div>
-    <input type="text" id="globalInput" placeholder="Tulis pesan...">
+    <input type="text" id="globalInput" placeholder="Tulis pesan..." onkeypress="if(event.key==='Enter')sendGlobal()">
     <button onclick="sendGlobal()">Kirim</button>
   </div>
 
@@ -40,7 +40,7 @@
       <select id="userSelect"></select>
     </label>
     <div class="chat-box" id="privateMessages"></div>
-    <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
+    <input type="text" id="privateInput" placeholder="Tulis pesan privat..." onkeypress="if(event.key==='Enter')sendPrivate()">
     <button onclick="sendPrivate()">Kirim</button>
   </div>
 
@@ -49,11 +49,20 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
-    const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
+    const cfg={
+      apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain:"tamagotchi-2be0c.firebaseapp.com",
+      databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId:"tamagotchi-2be0c",
+      storageBucket:"tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId:"202052432703",
+      appId:"1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId:"G-TWGGSJRX26"
+    };
     firebase.initializeApp(cfg);
     const auth=firebase.auth(), db=firebase.database();
 
-    let currentUser, currentRoom=null;
+    let currentUser=null, currentRoom=null;
 
     function nav(p){ location.href=p; }
 
@@ -62,12 +71,12 @@
       document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
     }
 
-    // Global Chat
+    // ----------------- GLOBAL CHAT -----------------
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
-      if(!txt) return;
+      if(!txt || !currentUser) return;
       db.ref("chat").push({
-        from: currentUser.username,
+        from: currentUser.username || currentUser.email,
         uid: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -76,41 +85,46 @@
     }
 
     function loadGlobal(){
+      const box=document.getElementById("globalMessages");
+      box.innerHTML="";
       db.ref("chat").limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
         const div=document.createElement("div");
         div.className="msg";
         div.innerHTML=`<span class="from">${d.from}:</span> ${d.text}`;
-        document.getElementById("globalMessages").appendChild(div);
-        div.scrollIntoView();
+        box.appendChild(div);
+        box.scrollTop=box.scrollHeight;
       });
     }
 
-    // Private Chat
+    // ----------------- PRIVATE CHAT -----------------
     function setupPrivateChat(toUid,toName){
+      if(!toUid) return;
       const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
       currentRoom = roomId;
-      // register membership
-      db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
-      db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
 
-      document.getElementById("privateMessages").innerHTML="";
-      db.ref("privateChat/"+roomId+"/messages").off();
-      db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added",snap=>{
+      // register membership
+      db.ref(`privateChat/${roomId}/members/${currentUser.uid}`).set(true);
+      db.ref(`privateChat/${roomId}/members/${toUid}`).set(true);
+
+      const box=document.getElementById("privateMessages");
+      box.innerHTML="";
+      db.ref(`privateChat/${roomId}/messages`).off();
+      db.ref(`privateChat/${roomId}/messages`).limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
         const div=document.createElement("div");
         div.className="msg";
         const from=(d.from===currentUser.uid? "Saya": toName);
         div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
-        document.getElementById("privateMessages").appendChild(div);
-        div.scrollIntoView();
+        box.appendChild(div);
+        box.scrollTop=box.scrollHeight;
       });
     }
 
     function sendPrivate(){
       const txt=document.getElementById('privateInput').value.trim();
       if(!txt || !currentRoom) return;
-      db.ref("privateChat/"+currentRoom+"/messages").push({
+      db.ref(`privateChat/${currentRoom}/messages`).push({
         from: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -123,30 +137,33 @@
         const sel=document.getElementById("userSelect");
         sel.innerHTML="";
         snap.forEach(ch=>{
-          const u=ch.val();
           if(ch.key!==currentUser.uid){
+            const u=ch.val();
             const opt=document.createElement("option");
             opt.value=ch.key;
-            opt.text=u.username||u.email;
+            opt.text=u.username||u.email||"User";
             sel.appendChild(opt);
           }
         });
+        if(sel.options.length>0){
+          sel.selectedIndex=0;
+          const uid=sel.value;
+          const name=sel.options[sel.selectedIndex].text;
+          setupPrivateChat(uid,name);
+        }
         sel.onchange=()=>{
           const uid=sel.value;
           const name=sel.options[sel.selectedIndex].text;
           setupPrivateChat(uid,name);
         };
-        if(sel.options.length>0){
-          sel.selectedIndex=0;
-          sel.onchange();
-        }
       });
     }
 
+    // ----------------- AUTH -----------------
     auth.onAuthStateChanged(u=>{
       if(!u){ nav("index.html"); return; }
       db.ref("users/"+u.uid).once("value",snap=>{
-        currentUser={uid:u.uid,...snap.val()};
+        currentUser={uid:u.uid,...snap.val(), email:u.email};
         loadGlobal();
         loadUsers();
       });
