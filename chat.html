@@ -1,180 +1,168 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, push, set, onChildAdded, serverTimestamp, onValue, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-
-    // Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain: "tamagotchi-2be0c.firebaseapp.com",
-      databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId: "tamagotchi-2be0c",
-      storageBucket: "tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId: "202052432703",
-      appId: "1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId: "G-TWGGSJRX26"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    let currentUser = null;
-    let activeRoomId = null;
-
-    // --- Format Last Seen
-    function formatLastSeen(timestamp) {
-      if (!timestamp) return "Belum ada aktivitas";
-      const date = new Date(timestamp);
-      return date.toLocaleString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "short"
-      });
-    }
-
-    // --- Load Global Chat
-    function loadGlobalChat() {
-      const chatRef = ref(db, "chat");
-      onChildAdded(chatRef, (snap) => {
-        const data = snap.val();
-        const div = document.createElement("div");
-        div.textContent = `${data.from}: ${data.text}`;
-        document.getElementById("globalMessages").appendChild(div);
-      });
-    }
-
-    function sendGlobalMessage() {
-      const input = document.getElementById("globalInput");
-      if (input.value.trim() === "") return;
-
-      const chatRef = ref(db, "chat");
-      push(chatRef, {
-        from: currentUser?.displayName || currentUser?.email || "Anonim",
-        text: input.value,
-        timestamp: serverTimestamp()
-      });
-
-      input.value = "";
-    }
-
-    // --- Cari Member
-    function loadMembers() {
-      const userRef = ref(db, "users");
-      onValue(userRef, (snap) => {
-        const dropdown = document.getElementById("memberDropdown");
-        dropdown.innerHTML = "";
-        snap.forEach((child) => {
-          const user = child.val();
-          const option = document.createElement("option");
-          option.value = child.key;
-          option.textContent = user.username || user.email;
-          dropdown.appendChild(option);
-        });
-      });
-    }
-
-    // --- Private Chat
-    function openPrivateChat(uid) {
-      const roomId = [auth.currentUser.uid, uid].sort().join("_");
-      activeRoomId = roomId;
-
-      // Update Header dengan status online
-      const userRef = ref(db, "users/" + uid);
-      onValue(userRef, (snap) => {
-        if (snap.exists()) {
-          const data = snap.val();
-          document.getElementById("chatWith").textContent = data.username || "Unknown";
-
-          if (data.online) {
-            document.getElementById("chatStatus").textContent = "🟢 Online";
-          } else {
-            document.getElementById("chatStatus").textContent = "⚪ Last seen: " + formatLastSeen(data.lastSeen);
-          }
-        }
-      });
-
-      // Load pesan
-      const msgRef = ref(db, "privateChat/" + roomId + "/messages");
-      document.getElementById("privateMessages").innerHTML = "";
-      onChildAdded(msgRef, (snap) => {
-        const data = snap.val();
-        const div = document.createElement("div");
-        div.textContent = `${data.from}: ${data.text}`;
-        document.getElementById("privateMessages").appendChild(div);
-      });
-    }
-
-    function sendPrivateMessage() {
-      if (!activeRoomId) return;
-      const input = document.getElementById("privateInput");
-      if (input.value.trim() === "") return;
-
-      const msgRef = ref(db, "privateChat/" + activeRoomId + "/messages");
-      push(msgRef, {
-        from: currentUser?.uid,
-        text: input.value,
-        timestamp: serverTimestamp()
-      });
-
-      input.value = "";
-    }
-
-    // --- Auth Listener
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        loadGlobalChat();
-        loadMembers();
-
-        // update online status
-        const userStatus = ref(db, "users/" + user.uid);
-        update(userStatus, {
-          username: user.displayName || user.email,
-          online: true,
-          lastSeen: serverTimestamp()
-        });
-
-        window.addEventListener("beforeunload", () => {
-          update(userStatus, { online: false, lastSeen: serverTimestamp() });
-        });
-      } else {
-        window.location.href = "login.html";
-      }
-    });
-
-    // --- Event Listeners
-    window.sendGlobalMessage = sendGlobalMessage;
-    window.sendPrivateMessage = sendPrivateMessage;
-    window.openPrivateChat = () => {
-      const uid = document.getElementById("memberDropdown").value;
-      if (uid) openPrivateChat(uid);
-    };
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tamagotchi Chat</title>
+<style>
+  body { font-family:sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:0; }
+  h2 { margin:10px; }
+  .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
+  .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
+  .from { font-weight:bold; color:#38bdf8; }
+  input, select { padding:6px; border-radius:6px; border:1px solid #334155; margin-right:4px; }
+  button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
+  .tab { margin:10px; }
+  #privateOptions { margin:10px 0; }
+</style>
 </head>
 <body>
-  <h2>🌍 Global Chat</h2>
-  <div id="globalMessages" style="border:1px solid #ccc;height:200px;overflow:auto;"></div>
-  <input id="globalInput" placeholder="Ketik pesan...">
-  <button onclick="sendGlobalMessage()">Kirim</button>
+<h2>💬 Tamagotchi Chat</h2>
 
-  <h2>🔎 Cari Member</h2>
-  <select id="memberDropdown"></select>
-  <button onclick="openPrivateChat()">Chat</button>
+<div class="tab">
+  <button onclick="switchTab('global')">🌍 Global</button>
+  <button onclick="switchTab('private')">👤 Private</button>
+</div>
 
-  <h2>💬 Private Chat</h2>
-  <div id="privateChatHeader">
-    <h3 id="chatWith"></h3>
-    <small id="chatStatus"></small>
+<!-- Global Chat -->
+<div id="globalTab">
+  <h3>🌍 Global Chat</h3>
+  <div class="chat-box" id="globalMessages"></div>
+  <input type="text" id="globalInput" placeholder="Tulis pesan...">
+  <button onclick="sendGlobal()">Kirim</button>
+</div>
+
+<!-- Private Chat -->
+<div id="privateTab" style="display:none">
+  <h3>👤 Private Chat</h3>
+  <div id="privateOptions">
+    <select id="userDropdown"></select>
+    <button onclick="startPrivate()">Mulai Chat</button>
   </div>
-  <div id="privateMessages" style="border:1px solid #ccc;height:200px;overflow:auto;"></div>
-  <input id="privateInput" placeholder="Ketik pesan...">
-  <button onclick="sendPrivateMessage()">Kirim</button>
+  <div class="chat-box" id="privateMessages"></div>
+  <input type="text" id="privateInput" placeholder="Tulis pesan privat...">
+  <button onclick="sendPrivate()">Kirim</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, get, child, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+// 🔥 Config
+const firebaseConfig = {
+  apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+  authDomain: "tamagotchi-2be0c.firebaseapp.com",
+  databaseURL: "https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+  projectId: "tamagotchi-2be0c",
+  storageBucket: "tamagotchi-2be0c.firebasestorage.app",
+  messagingSenderId: "202052432703",
+  appId: "1:202052432703:web:cb76b50e42149a2c92998a",
+  measurementId: "G-TWGGSJRX26"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth();
+
+let currentUser = null;
+let currentRoom = null;
+
+function switchTab(tab){
+  document.getElementById('globalTab').style.display = tab==='global'?'block':'none';
+  document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
+}
+
+// ✅ Load users for private chat dropdown
+async function loadUserDropdown(){
+  const dbRef = ref(db);
+  const snapshot = await get(child(dbRef,"users"));
+  const dropdown = document.getElementById("userDropdown");
+  dropdown.innerHTML = "<option value=''>-- Pilih User --</option>";
+  if(snapshot.exists()){
+    const users = snapshot.val();
+    for(const uid in users){
+      if(uid !== currentUser.uid){
+        const opt = document.createElement("option");
+        opt.value = uid;
+        opt.textContent = users[uid].username || uid;
+        dropdown.appendChild(opt);
+      }
+    }
+  }
+}
+
+// 🌍 Global chat
+function sendGlobal(){
+  const txt = document.getElementById("globalInput").value.trim();
+  if(!txt) return;
+  push(ref(db,"chat"),{
+    from: currentUser.username,
+    uid: currentUser.uid,
+    text: txt,
+    time: Date.now()
+  });
+  document.getElementById("globalInput").value="";
+}
+
+function loadGlobal(){
+  const gRef = ref(db,"chat");
+  onChildAdded(gRef,(snap)=>{
+    const d = snap.val();
+    const div = document.createElement("div");
+    div.className="msg";
+    div.innerHTML = `<span class="from">${d.from}:</span> ${d.text}`;
+    document.getElementById("globalMessages").appendChild(div);
+    div.scrollIntoView();
+  });
+}
+
+// 👤 Private chat
+function startPrivate(){
+  const sel = document.getElementById("userDropdown");
+  const toUid = sel.value;
+  if(!toUid) return alert("Pilih user!");
+  const toName = sel.options[sel.selectedIndex].text;
+  currentRoom = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
+
+  // Register membership
+  set(ref(db, `privateChat/${currentRoom}/members/${currentUser.uid}`), true);
+  set(ref(db, `privateChat/${currentRoom}/members/${toUid}`), true);
+
+  document.getElementById("privateMessages").innerHTML = "";
+  const msgRef = ref(db, `privateChat/${currentRoom}/messages`);
+  onChildAdded(msgRef,(snap)=>{
+    const d = snap.val();
+    const div = document.createElement("div");
+    div.className="msg";
+    const fromName = d.from === currentUser.uid ? "Saya" : toName;
+    div.innerHTML = `<span class="from">${fromName}:</span> ${d.text}`;
+    document.getElementById("privateMessages").appendChild(div);
+    div.scrollIntoView();
+  });
+}
+
+function sendPrivate(){
+  if(!currentRoom) return alert("Mulai chat dulu!");
+  const txt = document.getElementById("privateInput").value.trim();
+  if(!txt) return;
+  push(ref(db, `privateChat/${currentRoom}/messages`),{
+    from: currentUser.uid,
+    text: txt,
+    time: Date.now()
+  });
+  document.getElementById("privateInput").value="";
+}
+
+// 🔑 Auth
+onAuthStateChanged(auth, (user)=>{
+  if(!user) return window.location.href="login.html";
+  get(ref(db,"users/"+user.uid)).then((snap)=>{
+    currentUser = {uid:user.uid, ...snap.val()};
+    loadGlobal();
+    loadUserDropdown();
+  });
+});
+</script>
 </body>
 </html>
