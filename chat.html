@@ -4,12 +4,10 @@
   <meta charset="UTF-8">
   <title>Chat App</title>
   <script type="module">
-    // === Import Firebase ===
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    // === Config ===
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
       authDomain: "tamagotchi-2be0c.firebaseapp.com",
@@ -21,25 +19,24 @@
       measurementId: "G-TWGGSJRX26"
     };
 
-    // === Init Firebase ===
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // === Login Anon ===
     let currentUser = null;
+    let currentRoom = null;
+    let privateListener = null;
+
     signInAnonymously(auth).then((res) => {
       currentUser = res.user.uid;
       document.getElementById("userId").innerText = "User ID: " + currentUser;
     });
 
-    // === Global Chat ===
+    // === GLOBAL CHAT ===
     const globalRef = ref(db, "chat");
     onChildAdded(globalRef, (snap) => {
       const msg = snap.val();
-      const div = document.createElement("div");
-      div.innerHTML = `<b>${msg.from}:</b> ${msg.text}`;
-      document.getElementById("globalMessages").appendChild(div);
+      appendMessage("globalMessages", msg);
     });
 
     document.getElementById("sendGlobal").onclick = () => {
@@ -53,34 +50,59 @@
       document.getElementById("globalInput").value = "";
     };
 
-    // === Private Chat ===
-    let currentRoom = "room1"; // default room
-    const loadPrivateChat = (roomId) => {
+    // === PRIVATE CHAT ===
+    function getRoomId(user1, user2) {
+      return [user1, user2].sort().join("_");
+    }
+
+    function loadPrivateChat(targetUser) {
+      if (!currentUser) return;
+      const roomId = getRoomId(currentUser, targetUser);
+
+      // stop listener lama
+      if (privateListener) off(privateListener);
+
       currentRoom = roomId;
       document.getElementById("privateMessages").innerHTML = "";
+
       const privateRef = ref(db, `privateChat/${roomId}/messages`);
+      privateListener = privateRef;
+
       onChildAdded(privateRef, (snap) => {
         const msg = snap.val();
-        const div = document.createElement("div");
-        div.innerHTML = `<b>${msg.from}:</b> ${msg.text}`;
-        document.getElementById("privateMessages").appendChild(div);
+        appendMessage("privateMessages", msg);
       });
-    };
+    }
 
     document.getElementById("sendPrivate").onclick = () => {
       const text = document.getElementById("privateInput").value;
-      if (!text) return;
-      const privateRef = ref(db, `privateChat/${currentRoom}/messages`);
+      const targetUser = document.getElementById("targetUser").value;
+      if (!text || !targetUser) return;
+
+      const roomId = getRoomId(currentUser, targetUser);
+      const privateRef = ref(db, `privateChat/${roomId}/messages`);
+
       push(privateRef, {
         from: currentUser,
         text,
         timestamp: Date.now()
       });
+
       document.getElementById("privateInput").value = "";
     };
 
-    // Load room1 default
-    loadPrivateChat("room1");
+    // === Utility render pesan ===
+    function appendMessage(containerId, msg) {
+      const div = document.createElement("div");
+      div.innerHTML = `<b>${msg.from}:</b> ${msg.text}`;
+      document.getElementById(containerId).appendChild(div);
+    }
+
+    // tombol join private chat
+    window.joinPrivate = () => {
+      const targetUser = document.getElementById("targetUser").value;
+      if (targetUser) loadPrivateChat(targetUser);
+    };
   </script>
 </head>
 <body>
@@ -95,11 +117,8 @@
 
   <hr>
   <h2>🔒 Private Chat</h2>
-  <label>Pilih Room: </label>
-  <select onchange="loadPrivateChat(this.value)">
-    <option value="room1">Room 1</option>
-    <option value="room2">Room 2</option>
-  </select>
+  <input id="targetUser" placeholder="Masukkan UserID tujuan...">
+  <button onclick="joinPrivate()">Join Private Chat</button>
   <div id="privateMessages" style="border:1px solid #ccc; height:150px; overflow-y:scroll;"></div>
   <input id="privateInput" placeholder="Tulis pesan...">
   <button id="sendPrivate">Kirim</button>
