@@ -1,43 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat App</title>
+  <meta charset="UTF-8" />
+  <title>Tamagotchi Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:0; }
-    #tabs { display:flex; background:#333; color:#fff; }
-    #tabs button { flex:1; padding:10px; background:#444; border:none; color:white; cursor:pointer; }
-    #tabs button.active { background:#666; }
-    #chatBox { height:300px; overflow-y:auto; border:1px solid #ccc; padding:10px; }
+    body{font-family:system-ui,Arial,sans-serif;background:#0f172a;color:#e2e8f0;margin:0}
+    header{display:flex;gap:8px;padding:10px;background:#111827;position:sticky;top:0}
+    header button{border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .tab{background:#1f2937;color:#fff} .tab.active{background:#374151}
+    .ghost{background:#0ea5e9;color:#02141b}
+    #wrap{max-width:800px;margin:0 auto;padding:12px}
+    #chatBox{height:360px;border:1px solid #334155;background:#0b1322;border-radius:10px;overflow-y:auto;padding:8px}
+    .msg{margin:6px 0;padding:6px 10px;border-radius:8px;background:#1f2937}
+    .from{font-weight:700;color:#38bdf8;margin-right:6px}
+    #inputArea{display:flex;gap:6px;margin-top:8px}
+    #inputArea input{flex:1;padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1322;color:#e2e8f0}
+    #inputArea button{padding:10px 12px;border-radius:8px;border:0;background:#22c55e;color:#012413;cursor:pointer}
+    #privCtrl{display:none;gap:6px;margin:8px 0}
+    select{padding:8px;border-radius:8px;border:1px solid #334155;background:#0b1322;color:#e2e8f0}
   </style>
 </head>
 <body>
-  <!-- Tabs -->
-  <div id="tabs">
-    <button onclick="switchTab('global')" id="tabGlobal" class="active">🌍 Global Chat</button>
-    <button onclick="switchTab('private')" id="tabPrivate">🔒 Private Chat</button>
+  <header>
+    <button class="tab active" id="tabGlobalBtn" onclick="switchTab('global')">🌍 Global</button>
+    <button class="tab" id="tabPrivateBtn" onclick="switchTab('private')">🔒 Private</button>
+    <button class="ghost" onclick="location.href='game.html'">⬅️ Kembali</button>
+  </header>
+
+  <div id="wrap">
+    <div id="privCtrl">
+      <select id="userSelect"></select>
+      <button onclick="startPrivate()">Mulai Private</button>
+    </div>
+
+    <div id="chatBox"></div>
+
+    <div id="inputArea">
+      <input id="messageInput" type="text" placeholder="Tulis pesan lalu Enter/Kirim…" />
+      <button id="sendBtn" onclick="sendCurrent()">Kirim</button>
+    </div>
   </div>
 
-  <!-- Chat box -->
-  <div id="chatBox"></div>
-
-  <!-- Input -->
-  <div id="inputBox">
-    <input type="text" id="messageInput" placeholder="Type your message..." style="width:80%;">
-    <button onclick="sendGlobal()">Send</button>
-  </div>
-
-  <!-- Dropdown private -->
-  <div id="privateControls" style="display:none; margin-top:10px;">
-    <select id="userSelect"></select>
-    <button onclick="startPrivate()">Start Private Chat</button>
-    <button onclick="sendPrivate()">Send Private</button>
-  </div>
-
+  <!-- Firebase v10 (modular) -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getDatabase, ref, onChildAdded, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getDatabase, ref, onChildAdded, push, set, get, off, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+    import {
+      getAuth, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
@@ -54,99 +69,156 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    let currentTab = "global";
-    let currentUser = null;
-    let currentRoom = null;
+    // ====== state ======
+    let me = null;                 // {uid, username, email}
+    let tab = "global";            // 'global' | 'private'
+    let roomId = null;             // private room id
+    let globalListener = null;
+    let privateListener = null;
 
-    function switchTab(tab) {
-      currentTab = tab;
-      document.getElementById("tabGlobal").classList.remove("active");
-      document.getElementById("tabPrivate").classList.remove("active");
-      document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add("active");
-      document.getElementById("chatBox").innerHTML = "";
-      if (tab === "global") {
-        document.getElementById("privateControls").style.display = "none";
-        loadGlobal();
-      } else {
-        document.getElementById("privateControls").style.display = "block";
-      }
+    // ====== helpers ======
+    const $ = s => document.querySelector(s);
+    function addMessage(name, text){
+      const div=document.createElement("div");
+      div.className="msg";
+      const span=document.createElement("span");
+      span.className="from";
+      span.textContent=(name||"Anon")+":";
+      div.appendChild(span);
+      div.appendChild(document.createTextNode(" "+text));
+      $("#chatBox").appendChild(div);
+      div.scrollIntoView({behavior:"smooth",block:"end"});
+    }
+    function displayName(u){ return (u?.username || u?.email || "Anon"); }
+
+    // ====== tabs ======
+    function switchTab(next){
+      tab = next;
+      $("#tabGlobalBtn").classList.toggle("active", tab==="global");
+      $("#tabPrivateBtn").classList.toggle("active", tab==="private");
+      $("#privCtrl").style.display = (tab==="private") ? "flex" : "none";
+      $("#chatBox").innerHTML = "";
+
+      // lepas listener lama
+      if(globalListener){ off(ref(db,"chat"), "child_added", globalListener); globalListener=null; }
+      if(privateListener && roomId){ off(ref(db,`privateChat/${roomId}/messages`), "child_added", privateListener); privateListener=null; }
+
+      if(tab==="global") loadGlobal();
     }
 
-    function loadGlobal() {
-      const chatRef = ref(db, "chat");
-      onChildAdded(chatRef, (snap) => {
-        const msg = snap.val();
-        addMessage(msg.from, msg.text);
-      });
-    }
+    // expose utk onclick
+    window.switchTab = switchTab;
 
-    function addMessage(user, text) {
-      const div = document.createElement("div");
-      div.textContent = `${user}: ${text}`;
-      document.getElementById("chatBox").appendChild(div);
+    // ====== GLOBAL CHAT ======
+    function loadGlobal(){
+      const r = ref(db, "chat");
+      globalListener = (snap)=>{
+        const v=snap.val();
+        addMessage(v?.fromName || v?.from || "Anon", v?.text || "");
+      };
+      onChildAdded(r, globalListener);
     }
-
-    function sendGlobal() {
-      const msg = document.getElementById("messageInput").value;
-      if (!msg) return;
-      const chatRef = push(ref(db, "chat"));
-      set(chatRef, { from: currentUser.username, text: msg });
-      document.getElementById("messageInput").value = "";
+    function sendGlobal(){
+      const txt = $("#messageInput").value.trim();
+      if(!txt) return;
+      const payload = {
+        fromUid: me.uid,
+        fromName: displayName(me),   // <- tidak akan undefined
+        text: txt,
+        time: serverTimestamp()
+      };
+      const p = push(ref(db,"chat"));
+      set(p, payload);
+      $("#messageInput").value="";
     }
+    window.sendGlobal = sendGlobal;
 
-    function loadUserDropdown() {
-      const usersRef = ref(db, "users");
-      get(usersRef).then((snap) => {
-        const sel = document.getElementById("userSelect");
-        sel.innerHTML = "";
-        snap.forEach((child) => {
-          if (child.key !== currentUser.uid) {
+    // ====== PRIVATE CHAT ======
+    async function loadUserDropdown(){
+      // pakai 'usernames' agar tidak kena rules /users
+      const snap = await get(ref(db, "usernames"));
+      const sel = $("#userSelect");
+      sel.innerHTML = "";
+      if(snap.exists()){
+        const data = snap.val();
+        Object.entries(data).forEach(([uname, obj])=>{
+          if(obj?.uid && obj.uid !== me.uid){
             const opt = document.createElement("option");
-            opt.value = child.key;
-            opt.textContent = child.val().username;
+            opt.value = `${obj.uid}:::${uname}`;
+            opt.textContent = uname;
             sel.appendChild(opt);
           }
         });
-      });
+      }
     }
 
-    function startPrivate() {
-      const otherUid = document.getElementById("userSelect").value;
-      if (!otherUid) return;
-      const roomId = [currentUser.uid, otherUid].sort().join("_");
-      currentRoom = roomId;
-      document.getElementById("chatBox").innerHTML = "";
-      const chatRef = ref(db, "privateChat/" + roomId + "/messages");
-      onChildAdded(chatRef, (snap) => {
-        const msg = snap.val();
-        addMessage(msg.from, msg.text);
-      });
-    }
+    async function startPrivate(){
+      const v = $("#userSelect").value;
+      if(!v) return;
+      const [otherUid, otherName] = v.split(":::");
+      roomId = [me.uid, otherUid].sort().join("_");
 
-    function sendPrivate() {
-      if (!currentRoom) return alert("Start private chat first!");
-      const msg = document.getElementById("messageInput").value;
-      if (!msg) return;
-      const chatRef = push(ref(db, "privateChat/" + currentRoom + "/messages"));
-      set(chatRef, { from: currentUser.username, text: msg });
-      document.getElementById("messageInput").value = "";
-    }
+      // Tulis membership (jika rules mengharuskan)
+      try{
+        await set(ref(db,`privateChat/${roomId}/members/${me.uid}`), true);
+        await set(ref(db,`privateChat/${roomId}/members/${otherUid}`), true);
+      }catch(e){
+        // abaikan jika rules tidak membutuhkan
+        console.debug("Membership write skipped:", e?.message);
+      }
 
-    // ✅ Auth
-    onAuthStateChanged(auth, (user) => {
-      if (!user) return window.location.href = "login.html";
-      get(ref(db, "users/" + user.uid)).then((snap) => {
-        currentUser = { uid: user.uid, ...snap.val() };
-        loadGlobal();
-        loadUserDropdown();
-      });
+      $("#chatBox").innerHTML="";
+      const r = ref(db, `privateChat/${roomId}/messages`);
+      privateListener = (snap)=>{
+        const v=snap.val();
+        addMessage(v?.fromName || "Anon", v?.text || "");
+      };
+      onChildAdded(r, privateListener);
+    }
+    window.startPrivate = startPrivate;
+
+    function sendPrivate(){
+      if(!roomId) return alert("Pilih user lalu klik 'Mulai Private' dulu.");
+      const txt = $("#messageInput").value.trim();
+      if(!txt) return;
+      const payload = {
+        fromUid: me.uid,
+        fromName: displayName(me),
+        text: txt,
+        time: serverTimestamp()
+      };
+      const p = push(ref(db, `privateChat/${roomId}/messages`));
+      set(p, payload);
+      $("#messageInput").value="";
+    }
+    window.sendPrivate = sendPrivate;
+
+    // Tombol kirim menyesuaikan tab aktif
+    function sendCurrent(){ (tab==="global") ? sendGlobal() : sendPrivate(); }
+    window.sendCurrent = sendCurrent;
+
+    // Enter untuk kirim
+    $("#messageInput").addEventListener("keydown", (e)=>{
+      if(e.key==="Enter"){ e.preventDefault(); sendCurrent(); }
     });
 
-    // ✅ Expose ke global
-    window.switchTab = switchTab;
-    window.sendGlobal = sendGlobal;
-    window.startPrivate = startPrivate;
-    window.sendPrivate = sendPrivate;
+    // ====== AUTH ======
+    onAuthStateChanged(auth, async (u)=>{
+      if(!u){ location.href="login.html"; return; }
+
+      // Ambil profil minimal utk display name; fallback aman
+      let username = null;
+      try{
+        const userSnap = await get(ref(db, `users/${u.uid}`));
+        if(userSnap.exists()) username = userSnap.val().username || null;
+      }catch(_) {}
+
+      me = { uid: u.uid, email: u.email || null, username };
+
+      // start
+      switchTab("global");
+      await loadUserDropdown();
+    });
   </script>
 </body>
 </html>
