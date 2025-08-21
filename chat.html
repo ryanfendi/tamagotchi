@@ -8,11 +8,13 @@
     body { font-family:sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:0; }
     h2 { margin:10px; }
     .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
-    .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
+    .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; position:relative; }
     .from { font-weight:bold; color:#38bdf8; }
-    input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
-    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
+    input, select { padding:6px; border-radius:6px; border:1px solid #334155; margin:4px 0; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:4px 0; }
     .tab { margin:10px; }
+    .tick { font-size:12px; position:absolute; right:6px; bottom:2px; opacity:0.7; }
+    .tick.read { color:#3b82f6; } /* biru jika pesan dibaca */
   </style>
 </head>
 <body>
@@ -36,10 +38,8 @@
   <!-- Private Chat -->
   <div id="privateTab" style="display:none">
     <h3>👤 Private Chat</h3>
-    <label>Cari User: 
-      <input type="text" id="userSearch" placeholder="Ketik nama/email...">
-    </label>
-    <br><br>
+    <input type="text" id="searchUser" placeholder="Cari user...">
+    <br>
     <label>Pilih User: 
       <select id="userSelect"></select>
     </label>
@@ -57,7 +57,7 @@
     firebase.initializeApp(cfg);
     const auth=firebase.auth(), db=firebase.database();
 
-    let currentUser, currentRoom=null, allUsers=[];
+    let currentUser, currentRoom=null;
 
     function nav(p){ location.href=p; }
 
@@ -69,9 +69,9 @@
     // Global Chat
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
-      if(!txt) return;
+      if(!txt || !currentUser) return;
       db.ref("chat").push({
-        from: currentUser.username || currentUser.email || "Anon",
+        from: currentUser.username || currentUser.email,
         uid: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -103,10 +103,26 @@
         const d=snap.val();
         const div=document.createElement("div");
         div.className="msg";
-        const from=(d.uid===currentUser.uid? "Saya": toName);
-        div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
+
+        // Status centang
+        let statusIcon = "";
+        if(d.from===currentUser.uid){
+          if(d.status==="read"){
+            statusIcon = `<span class="tick read">✔✔</span>`;
+          } else {
+            statusIcon = `<span class="tick">✔</span>`;
+          }
+        }
+
+        const from=(d.from===currentUser.uid? "Saya": toName);
+        div.innerHTML=`<span class="from">${from}:</span> ${d.text} ${statusIcon}`;
         document.getElementById("privateMessages").appendChild(div);
         div.scrollIntoView();
+
+        // Kalau saya penerima → update status jadi read
+        if(d.from!==currentUser.uid && d.status!=="read"){
+          db.ref("privateChat/"+roomId+"/messages/"+snap.key+"/status").set("read");
+        }
       });
     }
 
@@ -114,51 +130,47 @@
       const txt=document.getElementById('privateInput').value.trim();
       if(!txt || !currentRoom) return;
       db.ref("privateChat/"+currentRoom+"/messages").push({
-        from: currentUser.username || currentUser.email || "Anon",
-        uid: currentUser.uid,
+        from: currentUser.uid,
         text: txt,
-        time: Date.now()
+        time: Date.now(),
+        status: "sent"
       });
       document.getElementById('privateInput').value='';
     }
 
-    function renderUserList(filter=""){
-      const sel=document.getElementById("userSelect");
-      sel.innerHTML="";
-      allUsers.forEach(u=>{
-        const name=u.username || u.email || "User";
-        if(name.toLowerCase().includes(filter.toLowerCase())){
-          const opt=document.createElement("option");
-          opt.value=u.uid;
-          opt.text=name;
-          sel.appendChild(opt);
-        }
-      });
-      if(sel.options.length>0){
-        sel.selectedIndex=0;
-        const uid=sel.value;
-        const name=sel.options[sel.selectedIndex].text;
-        setupPrivateChat(uid,name);
-      } else {
-        document.getElementById("privateMessages").innerHTML="<i>Tidak ada user ditemukan</i>";
-      }
-    }
-
     function loadUsers(){
       db.ref("users").once("value",snap=>{
-        allUsers=[];
+        const sel=document.getElementById("userSelect");
+        sel.innerHTML="";
         snap.forEach(ch=>{
           const u=ch.val();
           if(ch.key!==currentUser.uid){
-            allUsers.push({uid:ch.key,...u});
+            const opt=document.createElement("option");
+            opt.value=ch.key;
+            opt.text=u.username||u.email;
+            sel.appendChild(opt);
           }
         });
-        renderUserList();
+        sel.onchange=()=>{
+          const uid=sel.value;
+          const name=sel.options[sel.selectedIndex].text;
+          setupPrivateChat(uid,name);
+        };
+        if(sel.options.length>0){
+          sel.selectedIndex=0;
+          sel.onchange();
+        }
       });
     }
 
-    document.getElementById("userSearch").addEventListener("input",e=>{
-      renderUserList(e.target.value);
+    // 🔍 Pencarian dropdown
+    document.getElementById("searchUser").addEventListener("input",()=>{
+      const filter=document.getElementById("searchUser").value.toLowerCase();
+      const sel=document.getElementById("userSelect");
+      for(let i=0;i<sel.options.length;i++){
+        const txt=sel.options[i].text.toLowerCase();
+        sel.options[i].style.display= txt.includes(filter)? "block":"none";
+      }
     });
 
     auth.onAuthStateChanged(u=>{
