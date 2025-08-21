@@ -8,13 +8,11 @@
     body { font-family:sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:0; }
     h2 { margin:10px; }
     .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
-    .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; position:relative; }
+    .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
     .from { font-weight:bold; color:#38bdf8; }
-    input, select { padding:6px; border-radius:6px; border:1px solid #334155; margin:4px 0; }
-    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:4px 0; }
+    input, select { padding:6px; border-radius:6px; border:1px solid #334155; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; }
     .tab { margin:10px; }
-    .tick { font-size:12px; position:absolute; right:6px; bottom:2px; opacity:0.7; }
-    .tick.read { color:#3b82f6; } /* biru jika pesan dibaca */
   </style>
 </head>
 <body>
@@ -38,8 +36,6 @@
   <!-- Private Chat -->
   <div id="privateTab" style="display:none">
     <h3>👤 Private Chat</h3>
-    <input type="text" id="searchUser" placeholder="Cari user...">
-    <br>
     <label>Pilih User: 
       <select id="userSelect"></select>
     </label>
@@ -53,11 +49,20 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
-    const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
+    const cfg={
+      apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
+      authDomain:"tamagotchi-2be0c.firebaseapp.com",
+      databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
+      projectId:"tamagotchi-2be0c",
+      storageBucket:"tamagotchi-2be0c.firebasestorage.app",
+      messagingSenderId:"202052432703",
+      appId:"1:202052432703:web:cb76b50e42149a2c92998a",
+      measurementId:"G-TWGGSJRX26"
+    };
     firebase.initializeApp(cfg);
     const auth=firebase.auth(), db=firebase.database();
 
-    let currentUser, currentRoom=null;
+    let currentUser=null, currentRoom=null;
 
     function nav(p){ location.href=p; }
 
@@ -66,12 +71,12 @@
       document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
     }
 
-    // Global Chat
+    // Kirim pesan global
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
       if(!txt || !currentUser) return;
       db.ref("chat").push({
-        from: currentUser.username || currentUser.email,
+        from: currentUser.username,
         uid: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -79,9 +84,11 @@
       document.getElementById('globalInput').value='';
     }
 
+    // Load pesan global
     function loadGlobal(){
       db.ref("chat").limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
+        if(!d) return;
         const div=document.createElement("div");
         div.className="msg";
         div.innerHTML=`<span class="from">${d.from}:</span> ${d.text}`;
@@ -90,10 +97,11 @@
       });
     }
 
-    // Private Chat
+    // Setup private chat
     function setupPrivateChat(toUid,toName){
       const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
       currentRoom = roomId;
+      // register membership
       db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
       db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
 
@@ -101,36 +109,23 @@
       db.ref("privateChat/"+roomId+"/messages").off();
       db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
+        if(!d) return;
         const div=document.createElement("div");
         div.className="msg";
-
-        // Status centang
-        let statusIcon = "";
-        if(d.from===currentUser.uid){
-          if(d.status==="read"){
-            statusIcon = `<span class="tick read">✔✔</span>`;
-          } else {
-            statusIcon = `<span class="tick">✔</span>`;
-          }
-        }
-
-        const from=(d.from===currentUser.uid? "Saya": toName);
-        div.innerHTML=`<span class="from">${from}:</span> ${d.text} ${statusIcon}`;
+        const from=(d.from===currentUser.uid? "Saya": d.fromName||toName);
+        div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
         document.getElementById("privateMessages").appendChild(div);
         div.scrollIntoView();
-
-        // Kalau saya penerima → update status jadi read
-        if(d.from!==currentUser.uid && d.status!=="read"){
-          db.ref("privateChat/"+roomId+"/messages/"+snap.key+"/status").set("read");
-        }
       });
     }
 
+    // Kirim pesan privat
     function sendPrivate(){
       const txt=document.getElementById('privateInput').value.trim();
-      if(!txt || !currentRoom) return;
+      if(!txt || !currentRoom || !currentUser) return;
       db.ref("privateChat/"+currentRoom+"/messages").push({
         from: currentUser.uid,
+        fromName: currentUser.username,
         text: txt,
         time: Date.now(),
         status: "sent"
@@ -138,6 +133,7 @@
       document.getElementById('privateInput').value='';
     }
 
+    // Load daftar user untuk dropdown
     function loadUsers(){
       db.ref("users").once("value",snap=>{
         const sel=document.getElementById("userSelect");
@@ -147,7 +143,7 @@
           if(ch.key!==currentUser.uid){
             const opt=document.createElement("option");
             opt.value=ch.key;
-            opt.text=u.username||u.email;
+            opt.text=u.username || u.email || "User";
             sel.appendChild(opt);
           }
         });
@@ -163,20 +159,16 @@
       });
     }
 
-    // 🔍 Pencarian dropdown
-    document.getElementById("searchUser").addEventListener("input",()=>{
-      const filter=document.getElementById("searchUser").value.toLowerCase();
-      const sel=document.getElementById("userSelect");
-      for(let i=0;i<sel.options.length;i++){
-        const txt=sel.options[i].text.toLowerCase();
-        sel.options[i].style.display= txt.includes(filter)? "block":"none";
-      }
-    });
-
+    // Auth listener
     auth.onAuthStateChanged(u=>{
       if(!u){ nav("index.html"); return; }
       db.ref("users/"+u.uid).once("value",snap=>{
-        currentUser={uid:u.uid,...snap.val()};
+        const userData=snap.val()||{};
+        currentUser={
+          uid:u.uid,
+          username:userData.username || (u.email? u.email.split("@")[0] : "User"),
+          email:userData.email || u.email || "unknown"
+        };
         loadGlobal();
         loadUsers();
       });
