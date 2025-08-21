@@ -10,12 +10,32 @@
     .chat-box { height:300px; overflow-y:auto; border:1px solid #334155; padding:8px; margin-bottom:8px; background:#1e293b; }
     .msg { margin:4px 0; padding:4px 8px; border-radius:6px; background:#334155; }
     .from { font-weight:bold; color:#38bdf8; }
-    input, select { padding:6px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:#f8fafc; }
-    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:4px 0; }
-    button:hover { background:#2563eb; }
+    input, select { padding:6px; border-radius:6px; border:1px solid #334155; margin:4px 0; }
+    button { padding:6px 12px; border-radius:6px; border:0; background:#3b82f6; color:#fff; cursor:pointer; margin:2px; }
     .tab { margin:10px; }
-    #privateBtn { position:relative; }
-    #notifDot { position:absolute; top:0; right:0; background:red; color:white; font-size:12px; border-radius:50%; padding:2px 5px; display:none; }
+
+    /* ✅ Toast Notification */
+    #toastContainer {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      z-index: 1000;
+    }
+    .toast {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 10px 16px;
+      margin-top: 8px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -24,9 +44,7 @@
   <!-- Tabs -->
   <div class="tab">
     <button onclick="switchTab('global')">🌍 Global</button>
-    <button id="privateBtn" onclick="switchTab('private')">👤 Private 
-      <span id="notifDot">🔔</span>
-    </button>
+    <button onclick="switchTab('private')">👤 Private</button>
     <button onclick="nav('game.html')">⬅️ Kembali</button>
   </div>
 
@@ -41,7 +59,10 @@
   <!-- Private Chat -->
   <div id="privateTab" style="display:none">
     <h3>👤 Private Chat</h3>
-    <label>Pilih User: 
+    <label>Cari User: 
+      <input type="text" id="userSearch" placeholder="Cari nama..." oninput="renderUserList(this.value)">
+    </label><br>
+    <label>Pilih User:
       <select id="userSelect"></select>
     </label>
     <div class="chat-box" id="privateMessages"></div>
@@ -49,49 +70,53 @@
     <button onclick="sendPrivate()">Kirim</button>
   </div>
 
-  <!-- 🔊 Suara notifikasi -->
-  <audio id="notifSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+  <!-- 🔔 Toast Container -->
+  <div id="toastContainer"></div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script>
-    const cfg={
-      apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",
-      authDomain:"tamagotchi-2be0c.firebaseapp.com",
-      databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",
-      projectId:"tamagotchi-2be0c",
-      storageBucket:"tamagotchi-2be0c.firebasestorage.app",
-      messagingSenderId:"202052432703",
-      appId:"1:202052432703:web:cb76b50e42149a2c92998a",
-      measurementId:"G-TWGGSJRX26"
-    };
+    const cfg={apiKey:"AIzaSyAN0GNZdIx_xPHT7MZKWJweLtNhies6QxY",authDomain:"tamagotchi-2be0c.firebaseapp.com",databaseURL:"https://tamagotchi-2be0c-default-rtdb.firebaseio.com",projectId:"tamagotchi-2be0c",storageBucket:"tamagotchi-2be0c.firebasestorage.app",messagingSenderId:"202052432703",appId:"1:202052432703:web:cb76b50e42149a2c92998a",measurementId:"G-TWGGSJRX26"};
     firebase.initializeApp(cfg);
     const auth=firebase.auth(), db=firebase.database();
 
-    let currentUser=null, currentRoom=null;
-    let activeTab="global";
+    let currentUser, currentRoom=null;
+    let usersData={};
 
     function nav(p){ location.href=p; }
 
     function switchTab(tab){
-      activeTab=tab;
       document.getElementById('globalTab').style.display = tab==='global'?'block':'none';
       document.getElementById('privateTab').style.display = tab==='private'?'block':'none';
-
-      // reset notif kalau masuk tab private
-      if(tab==="private"){
-        document.getElementById("notifDot").style.display="none";
-      }
     }
 
-    // ✅ Global Chat
+    function formatTime(ts){
+      const d=new Date(ts);
+      return d.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+    }
+
+    // ✅ Toast function
+    function showToast(msg){
+      const container=document.getElementById("toastContainer");
+      const t=document.createElement("div");
+      t.className="toast";
+      t.textContent=msg;
+      container.appendChild(t);
+      setTimeout(()=>t.classList.add("show"),50);
+      setTimeout(()=>{
+        t.classList.remove("show");
+        setTimeout(()=>t.remove(),300);
+      },3000);
+    }
+
+    // Global Chat
     function sendGlobal(){
       const txt=document.getElementById('globalInput').value.trim();
-      if(!txt || !currentUser) return;
+      if(!txt) return;
       db.ref("chat").push({
-        from: currentUser.username || currentUser.email,
+        from: currentUser.username,
         uid: currentUser.uid,
         text: txt,
         time: Date.now()
@@ -100,28 +125,25 @@
     }
 
     function loadGlobal(){
-      const box=document.getElementById("globalMessages");
-      box.innerHTML="";
       db.ref("chat").limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
         const div=document.createElement("div");
         div.className="msg";
         div.innerHTML=`<span class="from">${d.from}:</span> ${d.text}`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        document.getElementById("globalMessages").appendChild(div);
+        div.scrollIntoView();
       });
     }
 
-    // ✅ Private Chat
+    // Private Chat
     function setupPrivateChat(toUid,toName){
       const roomId = currentUser.uid < toUid ? `room_${currentUser.uid}_${toUid}` : `room_${toUid}_${currentUser.uid}`;
       currentRoom = roomId;
-      // register membership
+
       db.ref("privateChat/"+roomId+"/members/"+currentUser.uid).set(true);
       db.ref("privateChat/"+roomId+"/members/"+toUid).set(true);
 
-      const box=document.getElementById("privateMessages");
-      box.innerHTML="";
+      document.getElementById("privateMessages").innerHTML="";
       db.ref("privateChat/"+roomId+"/messages").off();
       db.ref("privateChat/"+roomId+"/messages").limitToLast(50).on("child_added",snap=>{
         const d=snap.val();
@@ -129,8 +151,8 @@
         div.className="msg";
         const from=(d.from===currentUser.uid? "Saya": toName);
         div.innerHTML=`<span class="from">${from}:</span> ${d.text}`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
+        document.getElementById("privateMessages").appendChild(div);
+        div.scrollIntoView();
       });
     }
 
@@ -145,58 +167,65 @@
       document.getElementById('privateInput').value='';
     }
 
-    function loadUsers(){
-      db.ref("users").once("value",snap=>{
-        const sel=document.getElementById("userSelect");
-        sel.innerHTML="";
-        snap.forEach(ch=>{
-          const u=ch.val();
-          if(ch.key!==currentUser.uid){
+    // Dropdown Users
+    function renderUserList(filter=""){
+      const sel=document.getElementById("userSelect");
+      sel.innerHTML="";
+      Object.keys(usersData).forEach(uid=>{
+        if(uid!==currentUser.uid){
+          const u=usersData[uid];
+          const name=u.username||u.email||"User";
+          if(name.toLowerCase().includes(filter.toLowerCase())){
             const opt=document.createElement("option");
-            opt.value=ch.key;
-            opt.text=u.username||u.email;
+            let status="⚪";
+            if(u.online) status="🟢";
+            else if(u.lastSeen) status=`⚪ (${formatTime(u.lastSeen)})`;
+            opt.value=uid;
+            opt.text=`${name} ${status}`;
             sel.appendChild(opt);
           }
-        });
-        sel.onchange=()=>{
-          const uid=sel.value;
-          const name=sel.options[sel.selectedIndex].text;
-          setupPrivateChat(uid,name);
-        };
-        if(sel.options.length>0){
-          sel.selectedIndex=0;
-          sel.onchange();
         }
       });
+      sel.onchange=()=>{
+        const uid=sel.value;
+        if(!uid) return;
+        const name=sel.options[sel.selectedIndex].text.split(" ")[0];
+        setupPrivateChat(uid,name);
+      };
+      if(sel.options.length>0){
+        sel.selectedIndex=0;
+        sel.onchange();
+      }
     }
 
-    // 🔔 Deteksi pesan privat baru untuk notif + suara
-    function monitorPrivateNotif(){
-      db.ref("privateChat").on("child_added",snap=>{
-        const room=snap.key;
-        // cek apakah currentUser termasuk member
-        db.ref("privateChat/"+room+"/members/"+currentUser.uid).once("value",m=>{
-          if(m.exists()){
-            db.ref("privateChat/"+room+"/messages").limitToLast(1).on("child_added",msgSnap=>{
-              const d=msgSnap.val();
-              if(d.from!==currentUser.uid && activeTab!=="private"){
-                document.getElementById("notifDot").style.display="inline";
-                document.getElementById("notifSound").play().catch(()=>{}); // 🔊 play ding
-              }
-            });
-          }
-        });
-      });
-    }
-
-    // 🔑 Cek login
+    // Auth & Presence
     auth.onAuthStateChanged(u=>{
       if(!u){ nav("index.html"); return; }
       db.ref("users/"+u.uid).once("value",snap=>{
         currentUser={uid:u.uid,...snap.val()};
+
+        const userStatusRef = db.ref("usersData/"+u.uid);
+        db.ref(".info/connected").on("value", function(snap) {
+          if (snap.val() === true) {
+            userStatusRef.onDisconnect().update({online:false,lastSeen:firebase.database.ServerValue.TIMESTAMP});
+            userStatusRef.update({online:true,lastSeen:firebase.database.ServerValue.TIMESTAMP,username:currentUser.username,email:currentUser.email});
+          }
+        });
+
         loadGlobal();
-        loadUsers();
-        monitorPrivateNotif(); // mulai pantau notif privat
+
+        db.ref("usersData").on("child_changed", snap=>{
+          const u=snap.val();
+          if(u && u.username && u.uid!==currentUser.uid){
+            if(u.online) showToast(`🟢 ${u.username} baru online`);
+            else showToast(`⚪ ${u.username} offline`);
+          }
+        });
+
+        db.ref("usersData").on("value", snap=>{
+          usersData = snap.val() || {};
+          renderUserList(document.getElementById("userSearch").value);
+        });
       });
     });
   </script>
